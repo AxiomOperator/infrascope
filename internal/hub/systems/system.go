@@ -438,7 +438,10 @@ func SaveMonitorResults(app core.App, systemID string, monitorResults map[string
 	if len(monitorResults) == 0 {
 		return nil
 	}
-	var err error
+	monitorResults, err := ownedMonitorResults(app, systemID, monitorResults)
+	if err != nil || len(monitorResults) == 0 {
+		return err
+	}
 	systemId := systemID
 	const monitorCollectionName = "network_monitors"
 
@@ -546,6 +549,35 @@ func SaveMonitorResults(app core.App, systemID string, monitorResults map[string
 	}
 
 	return nil
+}
+
+// ownedMonitorResults returns the results of monitors that belong to
+// systemID (hub monitors when empty). Results for other monitors, which an
+// agent must not write, are dropped.
+func ownedMonitorResults(app core.App, systemID string, results map[string]monitor.Result) (map[string]monitor.Result, error) {
+	ids := make([]any, 0, len(results))
+	for id := range results {
+		ids = append(ids, id)
+	}
+	var owned []string
+	err := app.DB().Select("id").From("network_monitors").
+		Where(dbx.HashExp{"system": systemID}).AndWhere(dbx.In("id", ids...)).Column(&owned)
+	if err != nil {
+		return nil, err
+	}
+	if len(owned) == len(results) {
+		return results, nil
+	}
+	filtered := make(map[string]monitor.Result, len(owned))
+	for _, id := range owned {
+		filtered[id] = results[id]
+	}
+	for id := range results {
+		if _, ok := filtered[id]; !ok {
+			app.Logger().Debug("Ignoring result of a monitor of another system", "system", systemID, "monitor", id)
+		}
+	}
+	return filtered, nil
 }
 
 // createContainerRecords creates container records

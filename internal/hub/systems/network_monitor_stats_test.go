@@ -10,6 +10,7 @@ import (
 	"github.com/fxamacker/cbor/v2"
 	"github.com/henrygd/beszel/internal/entities/monitor"
 	"github.com/henrygd/beszel/internal/entities/system"
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/subscriptions"
 	"github.com/stretchr/testify/assert"
@@ -265,6 +266,71 @@ func TestNetworkMonitorCertPersistence(t *testing.T) {
 			}})
 			require.NoError(t, err)
 			assert.Equal(t, *cert, storedCert())
+		})
+	}
+}
+
+// Agents may only write results of their own system's monitors.
+func TestSaveMonitorResultsIgnoresForeignMonitors(t *testing.T) {
+	for _, realtime := range []bool{false, true} {
+		t.Run(fmt.Sprint(realtime), func(t *testing.T) {
+			sys, app := newTestSystemWithHub(t)
+			if realtime {
+				client := subscriptions.NewDefaultClient()
+				client.Subscribe("network_monitors/*")
+				app.SubscriptionsBroker().Register(client)
+				t.Cleanup(func() { app.SubscriptionsBroker().Unregister(client.Id()) })
+			}
+			systems, err := app.FindCachedCollectionByNameOrId("systems")
+			require.NoError(t, err)
+			otherSystem := core.NewRecord(systems)
+			otherSystem.Set("name", "other")
+			otherSystem.Set("host", "127.0.0.2")
+			require.NoError(t, app.SaveNoValidate(otherSystem))
+			col, err := app.FindCachedCollectionByNameOrId("network_monitors")
+			require.NoError(t, err)
+			for id, systemID := range map[string]string{"own": sys.Id, "foreign": otherSystem.Id, "hub": ""} {
+				record := core.NewRecord(col)
+				record.Id = id
+				record.Set("system", systemID)
+				require.NoError(t, app.SaveNoValidate(record))
+			}
+			result := monitor.Result{LastProbeAt: 1000, AvgResponse: 20, PacketLoss1h: 50, TotalCount: 1, SuccessCount: 1,
+				Cert: &monitor.CertInfo{Expires: 1_800_000_000_000, Issuer: "Evil CA"}}
+			_, err = sys.createRecords(&system.CombinedData{Monitors: map[string]monitor.Result{
+				"own": result, "foreign": result, "hub": result,
+			}})
+			require.NoError(t, err)
+
+			for id, written := range map[string]bool{"own": true, "foreign": false, "hub": false} {
+				record, err := app.FindRecordById("network_monitors", id)
+				require.NoError(t, err)
+				stats, err := app.CountRecords("network_monitor_stats", dbx.HashExp{"monitor": id})
+				require.NoError(t, err)
+				if written {
+					assert.Equal(t, 50.0, record.GetFloat("loss1h"), id)
+					assert.NotEmpty(t, record.GetString("certInfo"), id)
+					assert.EqualValues(t, 1, stats, id)
+				} else {
+					assert.Zero(t, record.GetFloat("loss1h"), id)
+					assert.Zero(t, record.GetFloat("res"), id)
+					assert.Empty(t, record.GetString("updated"), id)
+					var cert monitor.CertInfo
+					_ = record.UnmarshalJSONField("certInfo", &cert)
+					assert.Zero(t, cert.Expires, id)
+					assert.EqualValues(t, 0, stats, id)
+				}
+			}
+			_, saved := sys.lastSavedMonitorProbe["foreign"]
+			assert.False(t, saved)
+
+			// The hub collector (no system) may only write hub monitors.
+			savedProbes := map[string]int64{}
+			require.NoError(t, SaveMonitorResults(app, "", map[string]monitor.Result{"own": {LastProbeAt: 5000, PacketLoss1h: 1}, "hub": result}, nil, savedProbes))
+			assert.Equal(t, map[string]int64{"hub": 1000}, savedProbes)
+			own, err := app.FindRecordById("network_monitors", "own")
+			require.NoError(t, err)
+			assert.Equal(t, 50.0, own.GetFloat("loss1h"))
 		})
 	}
 }

@@ -44,6 +44,10 @@ type Hub struct {
 	// uptime derives monitor status from check results.
 	uptime     *uptime.Engine
 	uptimeOnce sync.Once
+	// maintenance holds the monitor maintenance windows for the engine.
+	maintenance *maintenanceWindows
+	// monitorNotices delivers the engine's status changes to the alert manager.
+	monitorNotices *transitionQueue
 }
 
 // NewHub creates a new Hub instance with default configuration
@@ -53,7 +57,12 @@ func NewHub(app core.App) *Hub {
 	hub.um = users.NewUserManager(hub)
 	hub.rm = records.NewRecordManager(hub)
 	hub.sm = systems.NewSystemManager(hub)
-	hub.uptime = uptime.New(app)
+	hub.maintenance = newMaintenanceWindows(app)
+	hub.monitorNotices = newTransitionQueue(hub.AlertManager.HandleMonitorTransitions)
+	hub.uptime = uptime.New(app,
+		uptime.WithNotifier(hub.monitorNotices.push),
+		uptime.WithMaintenanceCheck(hub.maintenance.Active),
+	)
 	hub.hubMonitors = newHubMonitorRunner(app, hub.uptime)
 	hub.hb = heartbeat.New(app, utils.GetEnv)
 	if hub.hb != nil {
@@ -191,6 +200,8 @@ func (h *Hub) registerCronJobs(_ *core.ServeEvent) error {
 	h.Cron().MustAdd("delete old records", "8 * * * *", h.rm.DeleteOldRecords)
 	// create longer records every 10 minutes
 	h.Cron().MustAdd("create longer records", "*/10 * * * *", h.rm.CreateLongerRecords)
+	// notify expiring monitor certificates; new certificate info is picked up within the hour
+	h.Cron().MustAdd("monitor certificates", "17 * * * *", h.CheckMonitorCerts)
 	return nil
 }
 

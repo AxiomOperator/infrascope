@@ -62,7 +62,8 @@ import (
 // lock is held and written in order, in one transaction per drain, without
 // holding the lock. Check results (lastCheck, lastError, lastStatusCode,
 // recent) and uptime are written by Flush. Transitions are passed to the
-// notifier after the drain that persists them, without any lock held.
+// notifier after the drain that persists them, without engine locks held,
+// serially and in order.
 
 // Engine derives monitor status from check results. It is safe for
 // concurrent use.
@@ -76,6 +77,11 @@ type Engine struct {
 	monitors map[string]*monitorState
 	queue    []op
 	notices  []Transition
+	// ready holds persisted transitions awaiting delivery, oldest first.
+	ready []Transition
+
+	// notifyMu serializes notifier calls, so transitions are delivered in order.
+	notifyMu sync.Mutex
 
 	// writeMu serializes drains so queued writes are persisted in order.
 	writeMu sync.Mutex
@@ -85,7 +91,9 @@ type Engine struct {
 type Option func(*Engine)
 
 // WithNotifier sets the function that receives confirmed status changes. It
-// is called after the changes are persisted, without engine locks held.
+// is called after the changes are persisted, without engine locks held, one
+// call at a time and in the order the changes occurred. It should return
+// quickly, since it delays delivery of later changes.
 func WithNotifier(fn func([]Transition)) Option {
 	return func(e *Engine) { e.notifier = fn }
 }

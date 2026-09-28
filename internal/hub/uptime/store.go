@@ -59,6 +59,9 @@ func (e *Engine) drainLocked() {
 		notices = append(notices, e.notices...)
 		e.queue, e.notices = nil, nil
 		if len(ops) == 0 {
+			// Drains are serialized by writeMu, so appending here keeps
+			// persisted transitions in the order they occurred.
+			e.ready = append(e.ready, notices...)
 			// Release writeMu while holding mu, so an operation queued after
 			// this check always finds writeMu free for its own drain.
 			e.writeMu.Unlock()
@@ -72,8 +75,30 @@ func (e *Engine) drainLocked() {
 		e.mu.Unlock()
 		e.write(ops, live)
 	}
-	if len(notices) > 0 && e.notifier != nil {
-		e.notifier(notices)
+	e.deliver()
+}
+
+// deliver passes persisted transitions to the notifier, in order and one
+// call at a time. If another goroutine is delivering, it also delivers the
+// transitions queued now, so a notifier that re-enters the engine (and drains)
+// cannot deadlock.
+func (e *Engine) deliver() {
+	for e.notifyMu.TryLock() {
+		e.mu.Lock()
+		ready := e.ready
+		e.ready = nil
+		e.mu.Unlock()
+		if len(ready) > 0 && e.notifier != nil {
+			e.notifier(ready)
+		}
+		e.notifyMu.Unlock()
+		// Transitions queued while notifyMu was held were left for this loop.
+		e.mu.Lock()
+		more := len(e.ready) > 0
+		e.mu.Unlock()
+		if !more {
+			return
+		}
 	}
 }
 

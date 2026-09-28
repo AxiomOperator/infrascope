@@ -205,6 +205,7 @@ func TestPushMonitorChecks(t *testing.T) {
 	runner.applyChecks()
 	assert.Equal(t, uptime.StatusUp, env.hub.Uptime().Status(record.Id))
 
+	time.Sleep(2 * time.Millisecond) // distinct check times
 	runner.resetPushLimit(record.Id)
 	response = pushRequest(t, handler, http.MethodPost, token, "status=down&msg=backup+failed", "")
 	require.Equal(t, http.StatusOK, response.Code, response.Body.String())
@@ -294,6 +295,7 @@ func TestPushDeadline(t *testing.T) {
 	assert.Equal(t, uptime.StatusDown, status(), "down after retries+1 missed intervals")
 
 	// A push restarts the deadline.
+	time.Sleep(2 * time.Millisecond) // distinct check times
 	require.NoError(t, runner.recordPush(record.Id, netmon.Outcome{ResponseUs: 1000}))
 	assert.Equal(t, uptime.StatusUp, status())
 	check(time.Since(start) + 69*time.Second)

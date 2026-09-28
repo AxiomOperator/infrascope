@@ -9,6 +9,10 @@ import (
 
 // On triggered alert record delete, set matching alert history record to resolved
 func resolveHistoryOnAlertDelete(e *core.RecordEvent) error {
+	// Monitor alert history belongs to monitors, not alerts records.
+	if isMonitorAlertName(e.Record.GetString("name")) {
+		return e.Next()
+	}
 	if e.Record.GetString("name") == alertNameNetworkMonitorLoss {
 		if err := resolveNetworkMonitorHistory(e.App, e.Record.Id); err != nil {
 			return err
@@ -24,8 +28,9 @@ func resolveHistoryOnAlertDelete(e *core.RecordEvent) error {
 
 // On alert record update, update alert history record
 func updateHistoryOnAlertUpdate(e *core.RecordEvent) error {
-	// Network monitor incidents have separate history entries per monitor.
-	if e.Record.GetString("name") == alertNameNetworkMonitorLoss {
+	// Network monitor incidents have separate history entries per monitor, and
+	// monitor alert history belongs to monitors, not alerts records.
+	if name := e.Record.GetString("name"); name == alertNameNetworkMonitorLoss || isMonitorAlertName(name) {
 		return e.Next()
 	}
 	original := e.Record.Original()
@@ -52,7 +57,9 @@ func updateHistoryOnAlertUpdate(e *core.RecordEvent) error {
 
 // resolveAlertHistoryRecord sets the resolved field to the current time
 func resolveAlertHistoryRecord(app core.App, alertRecordID string) error {
-	alertHistoryRecord, err := app.FindFirstRecordByFilter("alerts_history", "alert_id={:alert_id} && resolved=null", dbx.Params{"alert_id": alertRecordID})
+	alertHistoryRecord, err := app.FindFirstRecordByFilter("alerts_history",
+		"alert_id={:alert_id} && resolved=null && name!={:down} && name!={:cert}",
+		dbx.Params{"alert_id": alertRecordID, "down": alertNameMonitorDown, "cert": alertNameMonitorCert})
 	if err != nil || alertHistoryRecord == nil {
 		return err
 	}

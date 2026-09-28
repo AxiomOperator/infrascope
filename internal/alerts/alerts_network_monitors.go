@@ -273,7 +273,7 @@ func resolveMonitorIncident(app core.App, id string, now time.Time) error {
 }
 
 func resolveNetworkMonitorHistory(app core.App, alertID string) error {
-	records, err := app.FindAllRecords("alerts_history", dbx.HashExp{"alert_id": alertID, "resolved": ""})
+	records, err := app.FindAllRecords("alerts_history", dbx.HashExp{"alert_id": alertID, "name": alertNameNetworkMonitorLoss, "resolved": ""})
 	if err != nil {
 		return err
 	}

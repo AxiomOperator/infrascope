@@ -105,3 +105,8 @@ func (am *AlertManager) SetAlertTriggered(alert CachedAlertData, triggered bool)
 func BuildContainerLogExcerpt(raw string) string {
 	return buildContainerLogExcerpt(raw)
 }
+
+// CheckMonitorCertsAt runs the monitor certificate check at now (for testing).
+func (am *AlertManager) CheckMonitorCertsAt(now time.Time) error {
+	return am.checkMonitorCerts(now)
+}

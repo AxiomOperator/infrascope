@@ -26,7 +26,7 @@ const (
 
 // monitorServerFields are network_monitors fields written only by the hub.
 var monitorServerFields = []string{
-	"status", "statusChanged", "lastCheck", "lastError", "lastStatusCode", "recent", "uptime", "state",
+	"status", "statusChanged", "lastCheck", "lastError", "lastStatusCode", "recent", "uptime", "state", "certState",
 	"res", "resAvg1h", "resMin1h", "resMax1h", "loss1h", "certInfo", "updated",
 }
 

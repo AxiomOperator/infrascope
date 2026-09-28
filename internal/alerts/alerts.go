@@ -121,6 +121,7 @@ func (am *AlertManager) bindEvents() {
 	am.bindNetworkMonitorAlertEvents()
 	am.hub.OnRecordAfterUpdateSuccess("alerts").BindFunc(updateHistoryOnAlertUpdate)
 	am.hub.OnRecordAfterDeleteSuccess("alerts").BindFunc(resolveHistoryOnAlertDelete)
+	am.hub.OnRecordAfterDeleteSuccess("network_monitors").BindFunc(resolveDeletedMonitorHistory)
 	am.hub.OnRecordAfterUpdateSuccess("smart_devices").BindFunc(am.handleSmartDeviceAlert)
 	am.hub.OnRecordAfterCreateSuccess("zfs_pools").BindFunc(am.handleZfsPoolCreateAlert)
 	am.hub.OnRecordAfterUpdateSuccess("zfs_pools").BindFunc(am.handleZfsPoolAlert)
@@ -169,44 +170,13 @@ func (am *AlertManager) IsNotificationSilenced(userID, systemID string) bool {
 	}
 
 	now := time.Now().UTC()
-
 	for _, window := range quietHourWindows {
-		windowType := window.GetString("type")
 		start := window.GetDateTime("start").Time()
 		end := window.GetDateTime("end").Time()
-
-		if windowType == "daily" {
-			// For daily recurring windows, extract just the time portion and compare
-			// The start/end are stored as full datetime but we only care about HH:MM
-			startHour, startMin, _ := start.Clock()
-			endHour, endMin, _ := end.Clock()
-			nowHour, nowMin, _ := now.Clock()
-
-			// Convert to minutes since midnight for easier comparison
-			startMinutes := startHour*60 + startMin
-			endMinutes := endHour*60 + endMin
-			nowMinutes := nowHour*60 + nowMin
-
-			// Handle case where window crosses midnight
-			if endMinutes < startMinutes {
-				// Window crosses midnight (e.g., 23:00 - 01:00)
-				if nowMinutes >= startMinutes || nowMinutes < endMinutes {
-					return true
-				}
-			} else {
-				// Normal case (e.g., 09:00 - 17:00)
-				if nowMinutes >= startMinutes && nowMinutes < endMinutes {
-					return true
-				}
-			}
-		} else {
-			// One-time window: check if current time is within the date range
-			if (now.After(start) || now.Equal(start)) && now.Before(end) {
-				return true
-			}
+		if WindowActive(window.GetString("type"), start, end, now) {
+			return true
 		}
 	}
-
 	return false
 }
 

@@ -588,3 +588,25 @@ func TestConcurrentObserve(t *testing.T) {
 		assert.Equal(t, env.engine.Status(id), env.record(id).GetString("status"))
 	}
 }
+
+// The notifier is called serially and may re-enter the engine (and drain)
+// without deadlocking; transitions keep their order.
+func TestNotifierReentrantAndOrdered(t *testing.T) {
+	env := newTestEnv(t)
+	record := env.createMonitor(nil)
+	var got []string
+	env.engine.notifier = func(transitions []Transition) {
+		for _, transition := range transitions {
+			got = append(got, transition.Status)
+		}
+		// Re-entering drains inside the notifier.
+		env.engine.Upsert(env.record(record.Id))
+		env.engine.MarkUnknown(nil)
+	}
+	env.check(record.Id, true, "")
+	for range 3 {
+		env.check(record.Id, false, "timeout")
+		env.check(record.Id, true, "")
+	}
+	assert.Equal(t, []string{"down", "up", "down", "up", "down", "up"}, got)
+}
