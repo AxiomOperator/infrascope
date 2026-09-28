@@ -1,4 +1,4 @@
-package agent
+package netmon
 
 import (
 	"math"

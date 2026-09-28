@@ -1,6 +1,6 @@
 //go:build testing
 
-package agent
+package netmon
 
 import (
 	"context"
@@ -155,7 +155,7 @@ func TestUpsertMonitorRunNowIncludesCert(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	defer server.Close()
 
-	pm := newMonitorManagerWithProbe(func(context.Context, monitor.Config) (int64, error) { return 100, nil })
+	pm := newManagerWithProbe(func(context.Context, monitor.Config) (int64, error) { return 100, nil }, testDefaultIntervalMs)
 	defer pm.Stop()
 	config := monitor.Config{ID: "cert", Target: server.URL, Protocol: "http", Interval: 60}
 	result, err := pm.UpsertMonitor(config, true)
@@ -167,10 +167,10 @@ func TestUpsertMonitorRunNowIncludesCert(t *testing.T) {
 	// Realtime results never carry the certificate, and the default interval
 	// sends it only once per check.
 	assert.Nil(t, pm.GetResults(1000)["cert"].Cert)
-	results := pm.GetResults(defaultDataCacheTimeMs)
+	results := pm.GetResults(testDefaultIntervalMs)
 	require.NotNil(t, results["cert"].Cert)
 	assert.Equal(t, result.Cert.Expires, results["cert"].Cert.Expires)
-	assert.Nil(t, pm.GetResults(defaultDataCacheTimeMs)["cert"].Cert)
+	assert.Nil(t, pm.GetResults(testDefaultIntervalMs)["cert"].Cert)
 
 	// Changing the interval keeps the known certificate without resending it.
 	config.Interval = 30
@@ -180,5 +180,5 @@ func TestUpsertMonitorRunNowIncludesCert(t *testing.T) {
 	task := pm.monitors["cert"]
 	pm.mu.RUnlock()
 	assert.NotNil(t, task.certInfo())
-	assert.Nil(t, pm.GetResults(defaultDataCacheTimeMs)["cert"].Cert)
+	assert.Nil(t, pm.GetResults(testDefaultIntervalMs)["cert"].Cert)
 }

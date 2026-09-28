@@ -1,6 +1,6 @@
 //go:build testing
 
-package agent
+package netmon
 
 import (
 	"context"
@@ -51,7 +51,7 @@ func TestMonitorResumePause(t *testing.T) {
 
 func TestMonitorResumeGuardLifecycle(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		pm := newMonitorManagerWithProbe(func(context.Context, monitor.Config) (int64, error) { return 1, nil })
+		pm := newManagerWithProbe(func(context.Context, monitor.Config) (int64, error) { return 1, nil }, testDefaultIntervalMs)
 		defer pm.Stop()
 		assert.Nil(t, pm.resumeGuard.stop)
 		pm.SyncMonitors([]monitor.Config{{ID: "a", Interval: 3600}, {ID: "b", Interval: 3600}})
@@ -102,10 +102,10 @@ func TestMonitorResumeDiscardsInflightProbe(t *testing.T) {
 func TestMonitorResumeSkipsScheduledProbes(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		var calls atomic.Int32
-		pm := newMonitorManagerWithProbe(func(context.Context, monitor.Config) (int64, error) {
+		pm := newManagerWithProbe(func(context.Context, monitor.Config) (int64, error) {
 			calls.Add(1)
 			return 1, nil
-		})
+		}, testDefaultIntervalMs)
 		defer pm.Stop()
 		pm.SyncMonitors([]monitor.Config{{ID: "test", Interval: 1}})
 		simulateMonitorSleep(&pm.resumeGuard)

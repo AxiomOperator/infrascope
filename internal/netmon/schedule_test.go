@@ -1,6 +1,6 @@
 //go:build testing
 
-package agent
+package netmon
 
 import (
 	"context"
@@ -72,12 +72,12 @@ func TestMonitorScheduledAndImmediateRequestsShareProbe(t *testing.T) {
 		var calls atomic.Int32
 		release := make(chan struct{})
 		cfg := monitor.Config{ID: "test", Interval: 10}
-		pm := newMonitorManagerWithProbe(func(ctx context.Context, config monitor.Config) (int64, error) {
+		pm := newManagerWithProbe(func(ctx context.Context, config monitor.Config) (int64, error) {
 			assert.Equal(t, cfg, config)
 			calls.Add(1)
 			<-release
 			return 42, nil
-		})
+		}, testDefaultIntervalMs)
 		defer pm.Stop()
 		task := newMonitorTask(cfg)
 		pm.monitors[cfg.ID] = task
@@ -113,13 +113,13 @@ func TestMonitorScheduledAndImmediateRequestsShareProbe(t *testing.T) {
 func TestMonitorReplacementCancelsSharedProbe(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		cfg := monitor.Config{ID: "test", Interval: 10}
-		pm := newMonitorManagerWithProbe(func(ctx context.Context, config monitor.Config) (int64, error) {
+		pm := newManagerWithProbe(func(ctx context.Context, config monitor.Config) (int64, error) {
 			if config.Interval == 10 {
 				<-ctx.Done()
 				return 0, ctx.Err()
 			}
 			return 30, nil
-		})
+		}, testDefaultIntervalMs)
 		defer pm.Stop()
 		task := newMonitorTask(cfg)
 		task.history.record(monitorSample{responseUs: 10, timestamp: time.Now()})
@@ -149,12 +149,12 @@ func TestMonitorReplacementCancelsSharedProbe(t *testing.T) {
 
 func TestMonitorInjectedProbeTimeoutRecordsLoss(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		pm := newMonitorManagerWithProbe(func(ctx context.Context, _ monitor.Config) (int64, error) {
+		pm := newManagerWithProbe(func(ctx context.Context, _ monitor.Config) (int64, error) {
 			ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 			defer cancel()
 			<-ctx.Done()
 			return 0, ctx.Err()
-		})
+		}, testDefaultIntervalMs)
 		defer pm.Stop()
 		start := time.Now()
 		result, err := pm.UpsertMonitor(monitor.Config{ID: "test", Interval: 3600}, true)

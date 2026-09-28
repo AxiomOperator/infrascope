@@ -1,4 +1,4 @@
-package agent
+package netmon
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func (pm *MonitorManager) startMonitor(task *monitorTask) {
+func (pm *Manager) startMonitor(task *monitorTask) {
 	interval := time.Duration(task.config.Interval) * time.Second
 	if interval < time.Second {
 		interval = 30 * time.Second

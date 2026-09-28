@@ -1,6 +1,6 @@
 //go:build testing
 
-package agent
+package netmon
 
 import (
 	"context"
