@@ -52,7 +52,7 @@ func (pm *MonitorManager) SyncMonitors(configs []monitor.Config) {
 	// Start new monitors and restart tasks whose config changed.
 	for key, cfg := range newKeys {
 		task, exists := pm.monitors[key]
-		if exists && task.config == cfg {
+		if exists && task.config.Equal(cfg) {
 			continue
 		}
 		if exists {
@@ -103,7 +103,7 @@ func (pm *MonitorManager) UpsertMonitor(config monitor.Config, runNow bool) (*mo
 
 	pm.mu.Lock()
 	task, exists := pm.monitors[config.ID]
-	if exists && task.config == config {
+	if exists && task.config.Equal(config) {
 		pm.mu.Unlock()
 		if !runNow {
 			return nil, nil

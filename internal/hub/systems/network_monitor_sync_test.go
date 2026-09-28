@@ -175,6 +175,23 @@ func TestNetworkMonitorReconnectSync(t *testing.T) {
 	}
 }
 
+func TestGetMonitorConfigsForSystemIncludesServer(t *testing.T) {
+	sys, app := newTestSystemWithHub(t)
+	collection, err := app.FindCachedCollectionByNameOrId("network_monitors")
+	require.NoError(t, err)
+	probe := core.NewRecord(collection)
+	probe.Load(map[string]any{
+		"system": sys.Id, "target": "example.com", "protocol": "dns",
+		"server": "1.1.1.1", "interval": 60, "enabled": true,
+	})
+	require.NoError(t, app.SaveNoValidate(probe))
+
+	configs, err := sys.manager.GetMonitorConfigsForSystem(sys.Id)
+	require.NoError(t, err)
+	require.Len(t, configs, 1)
+	require.Equal(t, "1.1.1.1", configs[0].Server, "reconnect sync must keep the custom DNS server")
+}
+
 func TestGetMonitorConfigsForSystemQueryError(t *testing.T) {
 	sys, app := newTestSystemWithHub(t)
 	_, err := app.DB().NewQuery("DROP TABLE network_monitors").Execute()

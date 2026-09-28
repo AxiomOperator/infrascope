@@ -1,6 +1,9 @@
 package monitor
 
-import "time"
+import (
+	"reflect"
+	"time"
+)
 
 // MaxProbeTimeout is the longest agent probe timeout (currently HTTP).
 // Hub requests that run a probe must allow this time in addition to transport overhead.
@@ -28,6 +31,12 @@ type Config struct {
 	// Server is the DNS server to query (host or host:port, default port 53).
 	// Only used when Protocol is "dns"; empty means use the system resolver.
 	Server string `cbor:"5,keyasint,omitempty"`
+}
+
+// Equal reports whether two configs describe the same monitor task.
+// Use it instead of == so Config can hold slices, maps and pointers.
+func (c Config) Equal(other Config) bool {
+	return reflect.DeepEqual(c, other)
 }
 
 // CertInfo holds details of the leaf TLS certificate presented by a target.
