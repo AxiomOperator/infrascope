@@ -18,6 +18,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/henrygd/beszel/internal/entities/monitor"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
@@ -87,8 +88,8 @@ var (
 // unprivileged datagram, or exec fallback) is detected once per address
 // family and cached for subsequent monitors.
 // Returns response in microseconds, or -1 and an error on failure.
-func monitorICMP(ctx context.Context, target string) (int64, error) {
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+func monitorICMP(ctx context.Context, target string, timeout time.Duration) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	family, ip, err := resolveICMPTarget(ctx, target)
@@ -126,8 +127,11 @@ func resolveICMPTarget(ctx context.Context, target string) (*icmpFamily, net.IP,
 	}
 
 	ips, err := net.DefaultResolver.LookupIP(ctx, "ip", target)
-	if err != nil || len(ips) == 0 {
+	if err != nil {
 		return nil, nil, err
+	}
+	if len(ips) == 0 {
+		return nil, nil, errors.New("no addresses resolved")
 	}
 	for _, ip := range ips {
 		if v4 := ip.To4(); v4 != nil {
@@ -206,8 +210,12 @@ func monitorICMPPacket(ctx context.Context, conn net.PacketConn, family *icmpFam
 		return -1, err
 	}
 
-	// Set deadline before sending
-	if err := conn.SetDeadline(time.Now().Add(3 * time.Second)); err != nil {
+	// Set deadline before sending, bounded by the probe timeout when set.
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		deadline = time.Now().Add(monitor.DefaultProbeTimeout)
+	}
+	if err := conn.SetDeadline(deadline); err != nil {
 		return -1, err
 	}
 
@@ -277,9 +285,14 @@ func pingCommand(goos, target string, isIPv6 bool) (string, []string, error) {
 }
 
 // monitorICMPExec falls back to the system ping command. Returns -1 and an error on failure.
+// Without a context deadline, the default probe timeout applies. The Windows
+// ping command additionally stops waiting after 3 seconds.
 func monitorICMPExec(ctx context.Context, target string, isIPv6 bool) (int64, error) {
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, monitor.DefaultProbeTimeout)
+		defer cancel()
+	}
 	name, args, err := pingCommand(runtime.GOOS, target, isIPv6)
 	if err != nil {
 		return -1, err

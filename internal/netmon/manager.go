@@ -3,7 +3,6 @@ package netmon
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"sync"
 	"time"
 
@@ -18,20 +17,71 @@ type Manager struct {
 	certCheck   certChecker
 	resumeGuard monitorResumeGuard
 	// defaultIntervalMs is the GetResults duration whose results update monitor
-	// records on the hub. Only requests for it consume unsent certificate info.
+	// records on the hub. Only requests for it consume unsent certificate info
+	// and check events.
 	defaultIntervalMs uint16
+	onCheck           func(id string, event monitor.CheckEvent)
+}
+
+// Option configures a Manager.
+type Option func(*managerOptions)
+
+type managerOptions struct {
+	userAgent   string
+	concurrency int
+	onCheck     func(id string, event monitor.CheckEvent)
+}
+
+// WithUserAgent sets the User-Agent of HTTP probes. A User-Agent header in a
+// monitor's HTTP options still takes precedence.
+func WithUserAgent(userAgent string) Option {
+	return func(o *managerOptions) { o.userAgent = userAgent }
+}
+
+// WithConcurrency limits how many probes run at once across all monitors.
+// Zero or less means unlimited.
+func WithConcurrency(n int) Option {
+	return func(o *managerOptions) { o.concurrency = n }
+}
+
+// WithOnCheck sets a callback run after each recorded check, including
+// immediate and external checks. It runs outside locks on the checking
+// goroutine, so it should return quickly.
+func WithOnCheck(onCheck func(id string, event monitor.CheckEvent)) Option {
+	return func(o *managerOptions) { o.onCheck = onCheck }
 }
 
 // NewManager returns a Manager that probes monitors over the network.
 // defaultIntervalMs is the GetResults duration (in ms) used for the regular
 // stats interval; only GetResults calls with that duration consume unsent
-// certificate info.
-func NewManager(defaultIntervalMs uint16) *Manager {
-	return newManagerWithProbe(networkMonitorProbe(&http.Client{Timeout: monitor.MaxProbeTimeout}), defaultIntervalMs)
+// certificate info and check events.
+func NewManager(defaultIntervalMs uint16, opts ...Option) *Manager {
+	options := managerOptions{userAgent: networkMonitorUserAgent}
+	for _, opt := range opts {
+		opt(&options)
+	}
+	probe := networkMonitorProbe(newHTTPProber(options.userAgent))
+	if options.concurrency > 0 {
+		probe = limitProbe(probe, make(chan struct{}, options.concurrency))
+	}
+	pm := newManagerWithProbe(probe, defaultIntervalMs)
+	pm.onCheck = options.onCheck
+	return pm
 }
 
 func newManagerWithProbe(probe monitorProbe, defaultIntervalMs uint16) *Manager {
 	return &Manager{monitors: make(map[string]*monitorTask), probe: probe, certCheck: checkCert, defaultIntervalMs: defaultIntervalMs}
+}
+
+// newTask requires mu. It replaces existing (which may be nil) with a task for
+// config, keeping its history.
+func (pm *Manager) newTask(config monitor.Config, existing *monitorTask) *monitorTask {
+	task := newMonitorTaskFromExisting(config, existing)
+	task.resumeGuard = &pm.resumeGuard
+	task.onCheck = pm.onCheck
+	pm.resumeGuard.start()
+	pm.monitors[config.ID] = task
+	return task
 }
 
 // SyncMonitors replaces all monitor tasks with the given configs.
@@ -65,11 +115,7 @@ func (pm *Manager) SyncMonitors(configs []monitor.Config) {
 		if exists {
 			task.cancel()
 		}
-		task = newMonitorTaskFromExisting(cfg, task)
-		task.resumeGuard = &pm.resumeGuard
-		pm.resumeGuard.start()
-		pm.monitors[key] = task
-		pm.startMonitor(task)
+		pm.startMonitor(pm.newTask(cfg, task))
 	}
 	if len(pm.monitors) == 0 {
 		pm.resumeGuard.shutdown()
@@ -120,10 +166,7 @@ func (pm *Manager) UpsertMonitor(config monitor.Config, runNow bool) (*monitor.R
 	if exists {
 		task.cancel()
 	}
-	task = newMonitorTaskFromExisting(config, task)
-	task.resumeGuard = &pm.resumeGuard
-	pm.resumeGuard.start()
-	pm.monitors[config.ID] = task
+	task = pm.newTask(config, task)
 	pm.mu.Unlock()
 
 	if runNow {
@@ -136,16 +179,41 @@ func (pm *Manager) UpsertMonitor(config monitor.Config, runNow bool) (*monitor.R
 }
 
 // runNow runs a probe and any due certificate check concurrently, so the
-// response fits within the hub's single probe timeout budget.
+// response fits within the hub's single probe timeout budget. Push monitors
+// are not probed; their latest result is returned instead.
 func (pm *Manager) runNow(task *monitorTask) *monitor.Result {
+	if task.config.Protocol == monitor.ProtocolPush {
+		if result, ok := task.history.result(time.Minute, time.Now()); ok {
+			return &result
+		}
+		return nil
+	}
 	var wg sync.WaitGroup
 	wg.Go(func() { task.refreshCert(pm.certCheck) })
-	result := task.runProbe(pm.probe)
+	result := task.run(pm.probe, true)
 	wg.Wait()
 	if result != nil {
 		result.Cert = task.certInfo()
 	}
 	return result
+}
+
+// RecordExternal records an outcome for a monitor as if it had been probed,
+// updating history and queuing a check event. It is meant for push monitors.
+func (pm *Manager) RecordExternal(id string, out Outcome) error {
+	// Look up again if the task is replaced concurrently.
+	for range 3 {
+		pm.mu.RLock()
+		task := pm.monitors[id]
+		pm.mu.RUnlock()
+		if task == nil {
+			break
+		}
+		if task.recordExternal(out) {
+			return nil
+		}
+	}
+	return fmt.Errorf("unknown monitor: %s", id)
 }
 
 // DeleteMonitor stops and removes a single monitor task.
@@ -180,9 +248,10 @@ func (pm *Manager) GetResults(durationMs uint16) map[string]monitor.Result {
 			continue
 		}
 		// Only the default interval updates monitor records on the hub, so
-		// realtime requests must not consume the unsent certificate.
+		// realtime requests must not consume the unsent certificate or checks.
 		if durationMs == pm.defaultIntervalMs {
 			result.Cert = task.takeUnsentCert()
+			result.Checks, result.Dropped = task.takeUnsentChecks()
 		}
 		results[task.config.ID] = result
 	}

@@ -14,12 +14,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// legacyProbe adapts a probe returning a response time and error.
+func legacyProbe(probe func(context.Context, monitor.Config) (int64, error)) monitorProbe {
+	return func(ctx context.Context, config monitor.Config) Outcome {
+		return outcomeOf(probe(ctx, config))
+	}
+}
+
 func TestMonitorScheduleTiming(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 		var calls atomic.Int32
-		go runMonitorSchedule(ctx, 10*time.Second, 5*time.Second, func() { calls.Add(1) })
+		go runMonitorSchedule(ctx, 10*time.Second, 0, 5*time.Second, func() bool { calls.Add(1); return false })
 		synctest.Wait()
 		time.Sleep(4 * time.Second)
 		synctest.Wait()
@@ -44,12 +51,13 @@ func TestMonitorScheduleSlowProbe(t *testing.T) {
 		defer cancel()
 		var calls atomic.Int32
 		release := make(chan struct{})
-		go runMonitorSchedule(ctx, time.Second, 0, func() {
+		go runMonitorSchedule(ctx, time.Second, 0, 0, func() bool {
 			calls.Add(1)
 			select {
 			case <-release:
 			case <-ctx.Done():
 			}
+			return false
 		})
 		synctest.Wait()
 		assert.Equal(t, 1, int(calls.Load()))
@@ -72,16 +80,16 @@ func TestMonitorScheduledAndImmediateRequestsShareProbe(t *testing.T) {
 		var calls atomic.Int32
 		release := make(chan struct{})
 		cfg := monitor.Config{ID: "test", Interval: 10}
-		pm := newManagerWithProbe(func(ctx context.Context, config monitor.Config) (int64, error) {
+		pm := newManagerWithProbe(legacyProbe(func(ctx context.Context, config monitor.Config) (int64, error) {
 			assert.Equal(t, cfg, config)
 			calls.Add(1)
 			<-release
 			return 42, nil
-		}, testDefaultIntervalMs)
+		}), testDefaultIntervalMs)
 		defer pm.Stop()
 		task := newMonitorTask(cfg)
 		pm.monitors[cfg.ID] = task
-		go runMonitorSchedule(task.ctx, 10*time.Second, 0, func() { task.runProbe(pm.probe) })
+		go runMonitorSchedule(task.ctx, 10*time.Second, 0, 0, func() bool { task.runProbe(pm.probe); return false })
 		synctest.Wait()
 		results := make(chan *monitor.Result, 2)
 		for range 2 {
@@ -113,13 +121,13 @@ func TestMonitorScheduledAndImmediateRequestsShareProbe(t *testing.T) {
 func TestMonitorReplacementCancelsSharedProbe(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		cfg := monitor.Config{ID: "test", Interval: 10}
-		pm := newManagerWithProbe(func(ctx context.Context, config monitor.Config) (int64, error) {
+		pm := newManagerWithProbe(legacyProbe(func(ctx context.Context, config monitor.Config) (int64, error) {
 			if config.Interval == 10 {
 				<-ctx.Done()
 				return 0, ctx.Err()
 			}
 			return 30, nil
-		}, testDefaultIntervalMs)
+		}), testDefaultIntervalMs)
 		defer pm.Stop()
 		task := newMonitorTask(cfg)
 		task.history.record(monitorSample{responseUs: 10, timestamp: time.Now()})
@@ -149,12 +157,12 @@ func TestMonitorReplacementCancelsSharedProbe(t *testing.T) {
 
 func TestMonitorInjectedProbeTimeoutRecordsLoss(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		pm := newManagerWithProbe(func(ctx context.Context, _ monitor.Config) (int64, error) {
+		pm := newManagerWithProbe(legacyProbe(func(ctx context.Context, _ monitor.Config) (int64, error) {
 			ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 			defer cancel()
 			<-ctx.Done()
 			return 0, ctx.Err()
-		}, testDefaultIntervalMs)
+		}), testDefaultIntervalMs)
 		defer pm.Stop()
 		start := time.Now()
 		result, err := pm.UpsertMonitor(monitor.Config{ID: "test", Interval: 3600}, true)

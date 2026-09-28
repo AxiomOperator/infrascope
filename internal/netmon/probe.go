@@ -5,41 +5,93 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/http"
+	"strings"
 	"time"
 
 	"github.com/henrygd/beszel"
 	"github.com/henrygd/beszel/internal/entities/monitor"
 )
 
-const networkMonitorUserAgent = "Beszel-Agent/" + beszel.Version + " (+https://beszel.dev)"
+const (
+	networkMonitorUserAgent = "Beszel-Agent/" + beszel.Version + " (+https://beszel.dev)"
+	// maxCheckErrLen bounds error text stored in check events.
+	maxCheckErrLen = 200
+)
 
-// monitorProbe performs one check. Errors are recorded as loss by the task runner.
+// Outcome is the result of a single probe or externally reported check.
+type Outcome struct {
+	// ResponseUs is the response time in microseconds. It is ignored when Err is set.
+	ResponseUs int64
+	// StatusCode is the HTTP status of the evaluated response, if one was received.
+	StatusCode uint16
+	// Err is set when the check failed.
+	Err error
+	// Keyword reports whether the configured keyword was found in the response
+	// body, before KeywordInvert applies. It is nil when no keyword was checked.
+	Keyword *bool
+}
+
+// outcomeOf converts a response time and error into an outcome.
+func outcomeOf(responseUs int64, err error) Outcome {
+	if err == nil && responseUs < 0 {
+		err = errors.New("probe failed")
+	}
+	if err != nil {
+		return Outcome{ResponseUs: -1, Err: err}
+	}
+	return Outcome{ResponseUs: responseUs}
+}
+
+// checkErrString returns error text short enough to store in a check event.
+func checkErrString(err error) string {
+	text := err.Error()
+	if len(text) <= maxCheckErrLen {
+		return text
+	}
+	return strings.ToValidUTF8(text[:maxCheckErrLen], "")
+}
+
+// monitorProbe performs one check. Failures are recorded as loss by the task runner.
 // Implementations must honor cancellation and bound their execution time.
-type monitorProbe func(context.Context, monitor.Config) (int64, error)
+type monitorProbe func(context.Context, monitor.Config) Outcome
 
-func networkMonitorProbe(client *http.Client) monitorProbe {
-	return func(ctx context.Context, config monitor.Config) (int64, error) {
+func networkMonitorProbe(httpProbe *httpProber) monitorProbe {
+	return func(ctx context.Context, config monitor.Config) Outcome {
+		timeout := config.ProbeTimeout()
 		switch config.Protocol {
 		case "icmp":
-			return monitorICMP(ctx, config.Target)
+			return outcomeOf(monitorICMP(ctx, config.Target, timeout))
 		case "tcp":
-			return monitorTCP(ctx, config.Target, config.Port)
+			return outcomeOf(monitorTCP(ctx, config.Target, config.Port, timeout))
 		case "http":
-			return monitorHTTP(ctx, client, config.Target)
+			return httpProbe.probe(ctx, config)
 		case "dns":
-			return monitorDNS(ctx, config.Target, config.Server)
+			return outcomeOf(monitorDNS(ctx, config.Target, config.Server, timeout))
 		default:
-			return -1, fmt.Errorf("unknown monitor protocol: %s", config.Protocol)
+			return outcomeOf(-1, fmt.Errorf("unknown monitor protocol: %s", config.Protocol))
 		}
+	}
+}
+
+// limitProbe allows at most cap(sem) probes to run at once. Waiting for a slot
+// does not count toward the probe timeout.
+func limitProbe(probe monitorProbe, sem chan struct{}) monitorProbe {
+	return func(ctx context.Context, config monitor.Config) Outcome {
+		select {
+		case sem <- struct{}{}:
+		case <-ctx.Done():
+			return outcomeOf(-1, ctx.Err())
+		}
+		defer func() { <-sem }()
+		return probe(ctx, config)
 	}
 }
 
 // monitorTCP measures connection establishment time, including address fallback
 // but excluding DNS resolution.
 // Returns -1 and an error on failure.
-func monitorTCP(ctx context.Context, target string, port uint16) (int64, error) {
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+func monitorTCP(ctx context.Context, target string, port uint16, timeout time.Duration) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	// Resolve DNS first, outside the timing window but within the probe deadline.
@@ -76,8 +128,8 @@ func monitorTCP(ctx context.Context, target string, port uint16) (int64, error) 
 // monitorDNS measures DNS resolution response time in microseconds. If server is
 // non-empty, the lookup is sent to that DNS server (host or host:port, default
 // port 53) instead of the system resolver. Returns -1 and an error on failure.
-func monitorDNS(ctx context.Context, target, server string) (int64, error) {
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+func monitorDNS(ctx context.Context, target, server string, timeout time.Duration) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	resolver := net.DefaultResolver
@@ -87,8 +139,11 @@ func monitorDNS(ctx context.Context, target, server string) (int64, error) {
 
 	start := time.Now()
 	ips, err := resolver.LookupHost(ctx, target)
-	if err != nil || len(ips) == 0 {
+	if err != nil {
 		return -1, err
+	}
+	if len(ips) == 0 {
+		return -1, errors.New("no addresses resolved")
 	}
 	return time.Since(start).Microseconds(), nil
 }
@@ -108,26 +163,4 @@ func dnsResolverForServer(server string) *net.Resolver {
 			return dialer.DialContext(ctx, network, address)
 		},
 	}
-}
-
-// monitorHTTP measures HTTP GET request response in microseconds. Returns -1 and an error on failure.
-func monitorHTTP(ctx context.Context, client *http.Client, url string) (int64, error) {
-	if client == nil {
-		client = http.DefaultClient
-	}
-	start := time.Now()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return -1, err
-	}
-	req.Header.Set("User-Agent", networkMonitorUserAgent)
-	resp, err := client.Do(req)
-	if err != nil {
-		return -1, err
-	}
-	resp.Body.Close()
-	if resp.StatusCode >= 400 {
-		return -1, fmt.Errorf("HTTP error: %s", resp.Status)
-	}
-	return time.Since(start).Microseconds(), nil
 }

@@ -22,3 +22,8 @@ var MinVersionZfsData = semver.MustParse("0.18.9")
 
 // MinVersionNetworkMonitors is the minimum agent version that supports network monitor sync.
 var MinVersionNetworkMonitors = semver.MustParse("0.20.0")
+
+// MinVersionMonitorChecks is the minimum agent version that supports monitor
+// timeouts, HTTP options, retry intervals and per-check events. Older agents
+// receive configs without these fields (see monitor.Config.Legacy).
+var MinVersionMonitorChecks = semver.MustParse("0.21.0")

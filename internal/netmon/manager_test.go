@@ -148,7 +148,7 @@ func TestMonitorManagerApplySyncUpsertRunsImmediatelyAndReturnsResult(t *testing
 
 	pm := &Manager{
 		monitors: make(map[string]*monitorTask),
-		probe:    networkMonitorProbe(server.Client()),
+		probe:    networkMonitorProbe(newHTTPProber(networkMonitorUserAgent)),
 	}
 
 	resp, err := pm.HandleSyncRequest(monitor.SyncRequest{
@@ -249,9 +249,10 @@ func TestMonitorHTTP(t *testing.T) {
 		}))
 		defer server.Close()
 
-		responseUs, err := monitorHTTP(context.Background(), server.Client(), server.URL)
-		require.NoError(t, err)
-		assert.GreaterOrEqual(t, responseUs, int64(0))
+		out := newHTTPProber(networkMonitorUserAgent).probe(context.Background(), monitor.Config{Protocol: "http", Target: server.URL})
+		require.NoError(t, out.Err)
+		assert.GreaterOrEqual(t, out.ResponseUs, int64(0))
+		assert.Equal(t, uint16(http.StatusNoContent), out.StatusCode)
 	})
 
 	t.Run("server error", func(t *testing.T) {
@@ -260,9 +261,10 @@ func TestMonitorHTTP(t *testing.T) {
 		}))
 		defer server.Close()
 
-		responseUs, err := monitorHTTP(context.Background(), server.Client(), server.URL)
-		assert.Equal(t, int64(-1), responseUs)
-		require.Error(t, err)
+		out := newHTTPProber(networkMonitorUserAgent).probe(context.Background(), monitor.Config{Protocol: "http", Target: server.URL})
+		assert.Equal(t, int64(-1), out.ResponseUs)
+		require.EqualError(t, out.Err, "unexpected status 500")
+		assert.Equal(t, uint16(http.StatusInternalServerError), out.StatusCode)
 	})
 }
 
@@ -282,7 +284,7 @@ func TestMonitorTCP(t *testing.T) {
 		}()
 
 		port := uint16(listener.Addr().(*net.TCPAddr).Port)
-		responseUs, err := monitorTCP(context.Background(), "127.0.0.1", port)
+		responseUs, err := monitorTCP(context.Background(), "127.0.0.1", port, monitor.DefaultProbeTimeout)
 		require.NoError(t, err)
 		assert.GreaterOrEqual(t, responseUs, int64(0))
 		<-accepted
@@ -295,7 +297,7 @@ func TestMonitorTCP(t *testing.T) {
 		port := uint16(listener.Addr().(*net.TCPAddr).Port)
 		require.NoError(t, listener.Close())
 
-		responseUs, err := monitorTCP(context.Background(), "127.0.0.1", port)
+		responseUs, err := monitorTCP(context.Background(), "127.0.0.1", port, monitor.DefaultProbeTimeout)
 		assert.Equal(t, int64(-1), responseUs)
 		require.Error(t, err)
 	})
@@ -324,7 +326,7 @@ func TestMonitorTCPAddressFallback(t *testing.T) {
 			ips, err := net.DefaultResolver.LookupHost(t.Context(), "tcp-monitor.invalid.")
 			require.NoError(t, err)
 			require.Equal(t, tc.ips, ips)
-			responseUs, err := monitorTCP(t.Context(), "tcp-monitor.invalid.", uint16(listener.Addr().(*net.TCPAddr).Port))
+			responseUs, err := monitorTCP(t.Context(), "tcp-monitor.invalid.", uint16(listener.Addr().(*net.TCPAddr).Port), monitor.DefaultProbeTimeout)
 			if tc.loss {
 				require.Error(t, err)
 				assert.Equal(t, int64(-1), responseUs)
@@ -424,20 +426,20 @@ func udpDNSTestServer(t *testing.T, ips []string) string {
 
 func TestMonitorDNS(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		responseUs, err := monitorDNS(context.Background(), "localhost", "")
+		responseUs, err := monitorDNS(context.Background(), "localhost", "", monitor.DefaultProbeTimeout)
 		require.NoError(t, err)
 		assert.GreaterOrEqual(t, responseUs, int64(0))
 	})
 
 	t.Run("lookup failure", func(t *testing.T) {
-		responseUs, err := monitorDNS(context.Background(), "", "")
+		responseUs, err := monitorDNS(context.Background(), "", "", monitor.DefaultProbeTimeout)
 		assert.Equal(t, int64(-1), responseUs)
 		require.Error(t, err)
 	})
 
 	t.Run("custom server", func(t *testing.T) {
 		serverAddr := udpDNSTestServer(t, []string{"192.0.2.10"})
-		responseUs, err := monitorDNS(context.Background(), "example.test.", serverAddr)
+		responseUs, err := monitorDNS(context.Background(), "example.test.", serverAddr, monitor.DefaultProbeTimeout)
 		require.NoError(t, err)
 		assert.GreaterOrEqual(t, responseUs, int64(0))
 	})
@@ -451,7 +453,7 @@ func TestMonitorDNS(t *testing.T) {
 	})
 
 	t.Run("custom server unreachable", func(t *testing.T) {
-		responseUs, err := monitorDNS(context.Background(), "example.test.", "127.0.0.1:1")
+		responseUs, err := monitorDNS(context.Background(), "example.test.", "127.0.0.1:1", monitor.DefaultProbeTimeout)
 		assert.Equal(t, int64(-1), responseUs)
 		require.Error(t, err)
 	})
@@ -544,11 +546,11 @@ func TestMonitorResolutionCancellation(t *testing.T) {
 				var err error
 				switch protocol {
 				case "tcp":
-					_, err = monitorTCP(ctx, "monitor-cancellation.invalid.", 80)
+					_, err = monitorTCP(ctx, "monitor-cancellation.invalid.", 80, monitor.DefaultProbeTimeout)
 				case "dns":
-					_, err = monitorDNS(ctx, "monitor-cancellation.invalid.", "")
+					_, err = monitorDNS(ctx, "monitor-cancellation.invalid.", "", monitor.DefaultProbeTimeout)
 				case "icmp":
-					_, err = monitorICMP(ctx, "monitor-cancellation.invalid.")
+					_, err = monitorICMP(ctx, "monitor-cancellation.invalid.", monitor.DefaultProbeTimeout)
 				}
 				done <- err
 			}()
@@ -579,9 +581,9 @@ func TestMonitorProbeTimeoutRecordsLoss(t *testing.T) {
 	defer server.Close()
 	defer close(release)
 	pm := NewManager(testDefaultIntervalMs)
-	pm.probe = networkMonitorProbe(&http.Client{Timeout: 20 * time.Millisecond})
-	task := newMonitorTask(monitor.Config{ID: "timeout", Protocol: "http", Target: server.URL})
+	task := newMonitorTask(monitor.Config{ID: "timeout", Protocol: "http", Target: server.URL, Timeout: 1})
 	defer task.cancel()
+	start := time.Now()
 
 	result := task.runProbe(pm.probe)
 	require.NotNil(t, result)
@@ -590,4 +592,5 @@ func TestMonitorProbeTimeoutRecordsLoss(t *testing.T) {
 	require.Len(t, task.history.samples, 1)
 	assert.Equal(t, int64(-1), task.history.samples[0].responseUs)
 	assert.NoError(t, task.ctx.Err(), "a probe timeout must not cancel the task")
+	assert.InDelta(t, time.Second, time.Since(start), float64(500*time.Millisecond), "the configured timeout must apply")
 }

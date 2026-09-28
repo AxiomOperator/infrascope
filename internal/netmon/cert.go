@@ -16,6 +16,8 @@ import (
 const (
 	certCheckInterval      = 24 * time.Hour
 	certCheckRetryInterval = time.Hour
+	// certCheckTimeout bounds a certificate check; callers may set a shorter deadline.
+	certCheckTimeout = 10 * time.Second
 )
 
 // certChecker fetches the leaf certificate for an HTTPS target.
@@ -34,7 +36,7 @@ func checkCert(ctx context.Context, target string) (monitor.CertInfo, error) {
 	if err != nil {
 		return monitor.CertInfo{}, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, monitor.MaxProbeTimeout)
+	ctx, cancel := context.WithTimeout(ctx, certCheckTimeout)
 	defer cancel()
 	dialer := tls.Dialer{Config: &tls.Config{ServerName: host, InsecureSkipVerify: true}}
 	conn, err := dialer.DialContext(ctx, "tcp", address)

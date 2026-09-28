@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/henrygd/beszel"
 	"github.com/henrygd/beszel/internal/common"
 	"github.com/henrygd/beszel/internal/entities/monitor"
@@ -47,7 +48,7 @@ func (sys *System) UpsertNetworkMonitor(config monitor.Config, runNow bool) (*mo
 	if err != nil {
 		return nil, err
 	}
-	if resp.Result == (monitor.Result{}) {
+	if resp.Result.IsZero() {
 		return nil, nil
 	}
 	result := resp.Result
@@ -67,14 +68,33 @@ func (sys *System) syncNetworkMonitors(req monitor.SyncRequest) (monitor.SyncRes
 	if sys.agentVersion.LT(beszel.MinVersionNetworkMonitors) {
 		return monitor.SyncResponse{}, nil
 	}
+	req = syncRequestForAgent(req, sys.agentVersion)
 	timeout := 5 * time.Second
 	if req.Action == monitor.SyncActionUpsert && req.RunNow {
 		// Allow the probe to finish, including a timeout result, while preserving
-		// the normal request budget for transport and response handling.
-		timeout += monitor.MaxProbeTimeout
+		// the normal request budget for transport and response handling. The
+		// agent bounds an immediate certificate check by the same timeout.
+		timeout += req.Config.ProbeTimeout()
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	var result monitor.SyncResponse
 	return result, sys.request(ctx, common.SyncNetworkMonitors, req, &result)
+}
+
+// syncRequestForAgent strips config fields the agent version does not support,
+// so older agents keep probing with their defaults.
+func syncRequestForAgent(req monitor.SyncRequest, agentVersion semver.Version) monitor.SyncRequest {
+	if agentVersion.GTE(beszel.MinVersionMonitorChecks) {
+		return req
+	}
+	req.Config = req.Config.Legacy()
+	if req.Configs != nil {
+		configs := make([]monitor.Config, len(req.Configs))
+		for i, config := range req.Configs {
+			configs[i] = config.Legacy()
+		}
+		req.Configs = configs
+	}
+	return req
 }

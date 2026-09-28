@@ -155,7 +155,7 @@ func TestUpsertMonitorRunNowIncludesCert(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	defer server.Close()
 
-	pm := newManagerWithProbe(func(context.Context, monitor.Config) (int64, error) { return 100, nil }, testDefaultIntervalMs)
+	pm := newManagerWithProbe(legacyProbe(func(context.Context, monitor.Config) (int64, error) { return 100, nil }), testDefaultIntervalMs)
 	defer pm.Stop()
 	config := monitor.Config{ID: "cert", Target: server.URL, Protocol: "http", Interval: 60}
 	result, err := pm.UpsertMonitor(config, true)

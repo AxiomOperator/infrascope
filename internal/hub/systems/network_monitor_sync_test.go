@@ -199,3 +199,35 @@ func TestGetMonitorConfigsForSystemQueryError(t *testing.T) {
 	_, err = sys.manager.GetMonitorConfigsForSystem(sys.Id)
 	require.Error(t, err, "a failed query must not be treated as an empty monitor set")
 }
+
+func TestSyncRequestForAgentStripsUnsupportedFields(t *testing.T) {
+	full := monitor.Config{
+		ID: "m1", Target: "https://example.com", Protocol: "http", Interval: 60,
+		Timeout: 30, RetryInterval: 10, HTTP: &monitor.HTTPOptions{Method: "POST", Keyword: "ok"},
+	}
+	legacy := monitor.Config{ID: "m1", Target: "https://example.com", Protocol: "http", Interval: 60}
+	for _, tc := range []struct {
+		version string
+		want    monitor.Config
+	}{
+		{"0.20.0", legacy},
+		{"0.20.9", legacy},
+		{"0.21.0", full},
+		{"0.22.1", full},
+	} {
+		t.Run(tc.version, func(t *testing.T) {
+			version := semver.MustParse(tc.version)
+			upsert := syncRequestForAgent(monitor.SyncRequest{Action: monitor.SyncActionUpsert, Config: full, RunNow: true}, version)
+			require.Equal(t, tc.want, upsert.Config)
+			require.True(t, upsert.RunNow)
+
+			configs := []monitor.Config{full, full}
+			replace := syncRequestForAgent(monitor.SyncRequest{Action: monitor.SyncActionReplace, Configs: configs}, version)
+			require.Equal(t, []monitor.Config{tc.want, tc.want}, replace.Configs)
+			require.Equal(t, full, configs[0], "the caller's configs must not be modified")
+
+			empty := syncRequestForAgent(monitor.SyncRequest{Action: monitor.SyncActionReplace}, version)
+			require.Nil(t, empty.Configs)
+		})
+	}
+}

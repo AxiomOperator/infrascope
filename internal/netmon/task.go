@@ -9,7 +9,11 @@ import (
 	"github.com/henrygd/beszel/internal/entities/monitor"
 )
 
-const monitorFailureLogInterval = 5 * time.Minute
+const (
+	monitorFailureLogInterval = 5 * time.Minute
+	// maxUnsentChecks bounds the check events kept between default interval results.
+	maxUnsentChecks = 120
+)
 
 // monitorTask coordinates a probe and its history for one immutable configuration.
 type monitorTask struct {
@@ -21,6 +25,12 @@ type monitorTask struct {
 	runMu          sync.Mutex
 	inflight       *monitorRun
 	lastFailureLog int64 // Unix nanoseconds
+	lastFailed     bool  // the latest published check failed
+	onCheck        func(id string, event monitor.CheckEvent)
+	// unsentChecks holds scheduled and external check events, oldest first, until
+	// a default interval result reports them. Guarded by runMu.
+	unsentChecks  []monitor.CheckEvent
+	droppedChecks uint32
 
 	certMu        sync.Mutex
 	cert          *monitor.CertInfo
@@ -32,6 +42,13 @@ type monitorTask struct {
 type monitorRun struct {
 	done   chan struct{}
 	result *monitor.Result // published by closing done; never mutated afterwards
+}
+
+// monitorPublication describes a check recorded in history.
+type monitorPublication struct {
+	result     monitor.Result
+	event      monitor.CheckEvent
+	logFailure bool
 }
 
 func newMonitorTask(config monitor.Config) *monitorTask {
@@ -56,14 +73,29 @@ func newMonitorTaskFromExisting(config monitor.Config, existing *monitorTask) *m
 		if config.Target == existing.config.Target {
 			task.cert = existing.certInfo()
 		}
+		existing.runMu.Lock()
+		task.unsentChecks = append([]monitor.CheckEvent(nil), existing.unsentChecks...)
+		task.droppedChecks = existing.droppedChecks
+		existing.runMu.Unlock()
 	}
 	return task
 }
 
-// runProbe shares an in-flight check between scheduled and immediate requests.
-// Every completed check contributes exactly one sample, regardless of how many
-// callers were waiting for it. No task or history lock is held during network I/O.
+// runProbe runs a scheduled check; see run.
 func (task *monitorTask) runProbe(probe monitorProbe) *monitor.Result {
+	return task.run(probe, false)
+}
+
+// run shares an in-flight check between scheduled and immediate requests.
+// Every completed check contributes exactly one sample and one check event,
+// regardless of how many callers were waiting for it. No task or history lock
+// is held during network I/O.
+//
+// A check started by an immediate request reports its event only in that
+// request's result (Checks), not in later default interval results, so each
+// event is reported once. Callers that join an in-flight check receive no
+// Checks, since the event is reported by whoever started it.
+func (task *monitorTask) run(probe monitorProbe, immediate bool) *monitor.Result {
 	task.runMu.Lock()
 	if task.ctx.Err() != nil {
 		task.runMu.Unlock()
@@ -86,36 +118,108 @@ func (task *monitorTask) runProbe(probe monitorProbe) *monitor.Result {
 	task.runMu.Unlock()
 
 	generation, _ := task.resumeGuard.snapshot()
-	responseUs, err := probe(task.ctx, task.config)
-	var logFailure bool
+	out := probe(task.ctx, task.config)
+	var published *monitorPublication
 	task.runMu.Lock()
 	currentGeneration, _ := task.resumeGuard.snapshot()
 	if task.ctx.Err() == nil && generation == currentGeneration {
-		now := time.Now()
-		if err != nil {
-			responseUs = -1
-			logAt := now.UnixNano()
-			if task.lastFailureLog == 0 || logAt < task.lastFailureLog || logAt-task.lastFailureLog >= int64(monitorFailureLogInterval) {
-				logFailure = true
-				task.lastFailureLog = logAt
-			}
-		} else {
-			task.lastFailureLog = 0
-		}
-		result := task.history.record(monitorSample{responseUs: responseUs, timestamp: now})
-		run.result = &result
+		published = task.publishLocked(out, time.Now(), !immediate)
+		run.result = &published.result
 	}
 
 	task.inflight = nil
 	close(run.done)
 	task.runMu.Unlock()
-	if logFailure {
-		slog.Warn("monitor failed", "err", err, "target", task.config.Target, "protocol", task.config.Protocol)
+	if published != nil {
+		task.afterPublish(published, out.Err)
 	}
-	if task.ctx.Err() != nil {
+	if published == nil || task.ctx.Err() != nil {
 		return nil
 	}
-	return copyMonitorResult(run.result)
+	result := copyMonitorResult(run.result)
+	if immediate {
+		result.Checks = []monitor.CheckEvent{published.event}
+	}
+	return result
+}
+
+// recordExternal records an outcome reported from outside the task, such as a
+// push, as if the task had probed it. It reports false if the task was canceled.
+func (task *monitorTask) recordExternal(out Outcome) bool {
+	task.runMu.Lock()
+	if task.ctx.Err() != nil {
+		task.runMu.Unlock()
+		return false
+	}
+	published := task.publishLocked(out, time.Now(), true)
+	task.runMu.Unlock()
+	task.afterPublish(published, out.Err)
+	return true
+}
+
+// publishLocked requires runMu. It records the outcome in history and, when
+// queue is set, in the unsent check events.
+func (task *monitorTask) publishLocked(out Outcome, now time.Time, queue bool) *monitorPublication {
+	published := &monitorPublication{event: monitor.CheckEvent{At: now.UnixMilli(), ResponseUs: out.ResponseUs, StatusCode: out.StatusCode}}
+	if out.Err != nil {
+		published.event.ResponseUs = -1
+		published.event.Err = checkErrString(out.Err)
+		logAt := now.UnixNano()
+		if task.lastFailureLog == 0 || logAt < task.lastFailureLog || logAt-task.lastFailureLog >= int64(monitorFailureLogInterval) {
+			published.logFailure = true
+			task.lastFailureLog = logAt
+		}
+	} else {
+		task.lastFailureLog = 0
+	}
+	task.lastFailed = out.Err != nil
+	if queue {
+		task.queueCheckLocked(published.event)
+	}
+	published.result = task.history.record(monitorSample{responseUs: published.event.ResponseUs, timestamp: now})
+	return published
+}
+
+// queueCheckLocked requires runMu. The oldest event is dropped when full.
+func (task *monitorTask) queueCheckLocked(event monitor.CheckEvent) {
+	if n := len(task.unsentChecks); n > 0 && task.unsentChecks[n-1].Err == event.Err {
+		// Share repeated error text instead of keeping a copy per event.
+		event.Err = task.unsentChecks[n-1].Err
+	}
+	if len(task.unsentChecks) >= maxUnsentChecks {
+		n := copy(task.unsentChecks, task.unsentChecks[1:])
+		task.unsentChecks = task.unsentChecks[:n]
+		task.droppedChecks++
+	}
+	task.unsentChecks = append(task.unsentChecks, event)
+}
+
+// afterPublish runs the check callback and failure log outside locks.
+func (task *monitorTask) afterPublish(published *monitorPublication, err error) {
+	if task.onCheck != nil {
+		task.onCheck(task.config.ID, published.event)
+	}
+	if published.logFailure {
+		slog.Warn("monitor failed", "err", err, "target", task.config.Target, "protocol", task.config.Protocol)
+	}
+}
+
+// lastCheckFailed reports whether the latest published check failed.
+func (task *monitorTask) lastCheckFailed() bool {
+	task.runMu.Lock()
+	defer task.runMu.Unlock()
+	return task.lastFailed
+}
+
+// takeUnsentChecks returns and clears unsent check events, with repeated
+// errors omitted (see monitor.CheckEvent), and the number of dropped events.
+func (task *monitorTask) takeUnsentChecks() ([]monitor.CheckEvent, uint32) {
+	task.runMu.Lock()
+	checks, dropped := task.unsentChecks, task.droppedChecks
+	task.unsentChecks, task.droppedChecks = nil, 0
+	task.runMu.Unlock()
+	monitor.CompactCheckErrors(checks)
+	return checks, dropped
 }
 
 // refreshCert checks the certificate of an HTTPS target when due. A failed
@@ -135,7 +239,11 @@ func (task *monitorTask) refreshCert(check certChecker) {
 	task.certChecking = true
 	task.certMu.Unlock()
 
-	info, err := check(task.ctx, task.config.Target)
+	// Bound the check by the probe timeout, so an immediate request running it
+	// alongside a probe fits the hub's request budget.
+	ctx, cancel := context.WithTimeout(task.ctx, task.config.ProbeTimeout())
+	info, err := check(ctx, task.config.Target)
+	cancel()
 
 	task.certMu.Lock()
 	defer task.certMu.Unlock()

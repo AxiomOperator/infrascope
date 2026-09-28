@@ -51,7 +51,7 @@ func TestMonitorResumePause(t *testing.T) {
 
 func TestMonitorResumeGuardLifecycle(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		pm := newManagerWithProbe(func(context.Context, monitor.Config) (int64, error) { return 1, nil }, testDefaultIntervalMs)
+		pm := newManagerWithProbe(legacyProbe(func(context.Context, monitor.Config) (int64, error) { return 1, nil }), testDefaultIntervalMs)
 		defer pm.Stop()
 		assert.Nil(t, pm.resumeGuard.stop)
 		pm.SyncMonitors([]monitor.Config{{ID: "a", Interval: 3600}, {ID: "b", Interval: 3600}})
@@ -84,16 +84,16 @@ func TestMonitorResumeDiscardsInflightProbe(t *testing.T) {
 		task := newMonitorTask(monitor.Config{ID: "test"})
 		defer task.cancel()
 		task.resumeGuard = &g
-		result := task.runProbe(func(context.Context, monitor.Config) (int64, error) {
+		result := task.runProbe(legacyProbe(func(context.Context, monitor.Config) (int64, error) {
 			simulateMonitorSleep(&g)
 			return 0, errors.New("network not ready")
-		})
+		}))
 		assert.Nil(t, result)
 		assert.Empty(t, task.history.samples)
 		// Explicit requests may still run during the pause and record real failures.
-		result = task.runProbe(func(context.Context, monitor.Config) (int64, error) {
+		result = task.runProbe(legacyProbe(func(context.Context, monitor.Config) (int64, error) {
 			return 0, errors.New("unreachable")
-		})
+		}))
 		require.NotNil(t, result)
 		assert.Equal(t, 100.0, result.PacketLoss)
 	})
@@ -102,10 +102,10 @@ func TestMonitorResumeDiscardsInflightProbe(t *testing.T) {
 func TestMonitorResumeSkipsScheduledProbes(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		var calls atomic.Int32
-		pm := newManagerWithProbe(func(context.Context, monitor.Config) (int64, error) {
+		pm := newManagerWithProbe(legacyProbe(func(context.Context, monitor.Config) (int64, error) {
 			calls.Add(1)
 			return 1, nil
-		}, testDefaultIntervalMs)
+		}), testDefaultIntervalMs)
 		defer pm.Stop()
 		pm.SyncMonitors([]monitor.Config{{ID: "test", Interval: 1}})
 		simulateMonitorSleep(&pm.resumeGuard)
