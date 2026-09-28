@@ -52,6 +52,7 @@ export function QuietHours() {
 	const systems = useStore($systems)
 	useEffect(() => {
 		let unsubscribe: (() => void) | undefined
+		let cancelled = false
 		const pbOptions = {
 			expand: "system",
 			fields: "id,user,system,type,start,end,expand.system.name",
@@ -62,13 +63,16 @@ export function QuietHours() {
 				...pbOptions,
 				sort: "system",
 			})
-			.then(({ items }) => setData(items))
+			.then(({ items }) => {
+				if (!cancelled) setData(items)
+			})
 
 		// Subscribe to changes
 		;(async () => {
-			unsubscribe = await pb.collection("quiet_hours").subscribe(
+			const unsub = await pb.collection("quiet_hours").subscribe(
 				"*",
 				(e) => {
+					if (cancelled) return
 					if (e.action === "create") {
 						setData((current) => [e.record as QuietHoursRecord, ...current])
 					}
@@ -81,9 +85,15 @@ export function QuietHours() {
 				},
 				pbOptions
 			)
+			// the component may have unmounted while subscribing
+			if (cancelled) unsub()
+			else unsubscribe = unsub
 		})()
 		// Unsubscribe on unmount
-		return () => unsubscribe?.()
+		return () => {
+			cancelled = true
+			unsubscribe?.()
+		}
 	}, [])
 
 	const handleDelete = async (id: string) => {

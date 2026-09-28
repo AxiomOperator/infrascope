@@ -371,15 +371,17 @@ export default function DisksTable({ systemId }: { systemId?: string }) {
 	// Subscribe to updates
 	useEffect(() => {
 		let unsubscribe: (() => void) | undefined
+		let cancelled = false
 		const pbOptions = systemId
 			? { fields: SMART_DEVICE_FIELDS, filter: pb.filter("system = {:system}", { system: systemId }) }
 			: { fields: SMART_DEVICE_FIELDS }
 
 		;(async () => {
 			try {
-				unsubscribe = await pb.collection("smart_devices").subscribe(
+				const unsub = await pb.collection("smart_devices").subscribe(
 					"*",
 					(event) => {
+						if (cancelled) return
 						const record = event.record as SmartDeviceRecord
 						setSmartDevices((currentDevices) => {
 							const devices = currentDevices ?? []
@@ -406,12 +408,16 @@ export default function DisksTable({ systemId }: { systemId?: string }) {
 					},
 					pbOptions
 				)
+				// the effect may have been cleaned up while subscribing
+				if (cancelled) unsub()
+				else unsubscribe = unsub
 			} catch (error) {
 				console.error("Failed to subscribe to SMART device updates:", error)
 			}
 		})()
 
 		return () => {
+			cancelled = true
 			unsubscribe?.()
 		}
 	}, [systemId])

@@ -16,7 +16,7 @@ import {
 	$userSettings,
 	getUserChartTime,
 } from "@/lib/stores"
-import { chartTimeData, listen, parseSemVer } from "@/lib/utils"
+import { chartTimeData, compareSemVer, listen, parseSemVer } from "@/lib/utils"
 import type {
 	ChartData,
 	ContainerStatsRecord,
@@ -28,6 +28,8 @@ import type {
 } from "@/types"
 import { $router, navigate } from "../../router"
 import { appendData, cache, getStats, makeContainerData, makeContainerPoint } from "./chart-data"
+
+const SEMVER_0_13_0 = parseSemVer("0.13.0")
 
 export type SystemData = ReturnType<typeof useSystemData>
 
@@ -119,7 +121,7 @@ export function useSystemData(id: string) {
 
 	// hide 1m chart time if system agent version is less than 0.13.0
 	useEffect(() => {
-		if (parseSemVer(system?.info?.v) < parseSemVer("0.13.0")) {
+		if (system?.info?.v && compareSemVer(parseSemVer(system.info.v), SEMVER_0_13_0) < 0) {
 			$chartTime.set("1h")
 		}
 	}, [system?.info?.v])
@@ -142,11 +144,12 @@ export function useSystemData(id: string) {
 
 	// subscribe to realtime metrics if chart time is 1m
 	useEffect(() => {
-		let unsub = () => {}
+		let unsub: (() => void) | undefined
+		let cancelled = false
 		if (!system.id || chartTime !== "1m") {
 			return
 		}
-		if (system.status !== SystemStatus.Up || parseSemVer(system?.info?.v).minor < 13) {
+		if (system.status !== SystemStatus.Up || compareSemVer(parseSemVer(system?.info?.v), SEMVER_0_13_0) < 0) {
 			$chartTime.set("1h")
 			return
 		}
@@ -155,6 +158,7 @@ export function useSystemData(id: string) {
 			.subscribe(
 				`rt_metrics`,
 				(data: { container: ContainerStatsRecord[]; info: SystemInfo; stats: SystemStats }) => {
+					if (cancelled) return
 					const now = Date.now()
 					const statsPoint = { created: now, stats: data.stats } as SystemStatsRecord
 					const containerPoint =
@@ -176,9 +180,12 @@ export function useSystemData(id: string) {
 				{ query: { system: system.id } }
 			)
 			.then((us) => {
-				unsub = us
+				// the range or system may have changed while subscribing
+				if (cancelled) us()
+				else unsub = us
 			})
 		return () => {
+			cancelled = true
 			unsub?.()
 		}
 	}, [chartTime, system.id])

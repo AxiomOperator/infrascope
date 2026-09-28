@@ -76,6 +76,7 @@ export default function AlertsHistoryDataTable() {
 
 	useEffect(() => {
 		let unsubscribe: (() => void) | undefined
+		let cancelled = false
 		const pbOptions = {
 			expand: "system",
 			fields: "id,name,monitor_name,value,state,created,resolved,expand.system.name",
@@ -86,13 +87,16 @@ export default function AlertsHistoryDataTable() {
 				...pbOptions,
 				sort: "-created",
 			})
-			.then(({ items }) => setData(items))
+			.then(({ items }) => {
+				if (!cancelled) setData(items)
+			})
 
 		// Subscribe to changes
 		;(async () => {
-			unsubscribe = await pb.collection("alerts_history").subscribe(
+			const unsub = await pb.collection("alerts_history").subscribe(
 				"*",
 				(e) => {
+					if (cancelled) return
 					if (e.action === "create") {
 						setData((current) => [e.record as AlertsHistoryRecord, ...current])
 					}
@@ -105,9 +109,15 @@ export default function AlertsHistoryDataTable() {
 				},
 				pbOptions
 			)
+			// the component may have unmounted while subscribing
+			if (cancelled) unsub()
+			else unsubscribe = unsub
 		})()
 		// Unsubscribe on unmount
-		return () => unsubscribe?.()
+		return () => {
+			cancelled = true
+			unsubscribe?.()
+		}
 	}, [])
 
 	const table = useReactTable({

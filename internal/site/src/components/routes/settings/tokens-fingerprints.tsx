@@ -67,11 +67,13 @@ const SettingsFingerprintsPage = memo(() => {
 	// Subscribe to fingerprint updates
 	useEffect(() => {
 		let unsubscribe: (() => void) | undefined
+		let cancelled = false
 		;(async () => {
 			// subscribe to fingerprint updates
-			unsubscribe = await pb.collection("fingerprints").subscribe(
+			const unsub = await pb.collection("fingerprints").subscribe(
 				"*",
 				(res) => {
+					if (cancelled) return
 					setFingerprints((currentFingerprints) => {
 						if (res.action === "create") {
 							return sortFingerprints([...currentFingerprints, res.record as FingerprintRecord])
@@ -92,9 +94,15 @@ const SettingsFingerprintsPage = memo(() => {
 				},
 				pbFingerprintOptions
 			)
+			// the component may have unmounted while subscribing
+			if (cancelled) unsub()
+			else unsubscribe = unsub
 		})()
 		// unsubscribe on unmount
-		return () => unsubscribe?.()
+		return () => {
+			cancelled = true
+			unsubscribe?.()
+		}
 	}, [])
 
 	// Update token map whenever fingerprints change

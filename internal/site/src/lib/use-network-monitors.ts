@@ -106,6 +106,7 @@ export function useNetworkMonitors(props: UseNetworkMonitorsProps) {
 	// subscribe to updates
 	useEffect(() => {
 		let unsubscribe: (() => void) | undefined
+		let cancelled = false
 
 		function flushPendingMonitorEvents() {
 			monitorBatchTimeout.current = null
@@ -126,9 +127,10 @@ export function useNetworkMonitors(props: UseNetworkMonitorsProps) {
 
 		;(async () => {
 			try {
-				unsubscribe = await pb.collection<NetworkMonitorRecord>("network_monitors").subscribe(
+				const unsub = await pb.collection<NetworkMonitorRecord>("network_monitors").subscribe(
 					"*",
 					(event) => {
+						if (cancelled) return
 						pendingMonitorEvents.current.set(event.record.id, event)
 						if (!monitorBatchTimeout.current) {
 							monitorBatchTimeout.current = setTimeout(flushPendingMonitorEvents, 50)
@@ -136,12 +138,16 @@ export function useNetworkMonitors(props: UseNetworkMonitorsProps) {
 					},
 					pbOptions
 				)
+				// the effect may have been cleaned up while subscribing
+				if (cancelled) unsub()
+				else unsubscribe = unsub
 			} catch (error) {
 				console.error("Failed to subscribe to monitors", error)
 			}
 		})()
 
 		return () => {
+			cancelled = true
 			if (monitorBatchTimeout.current !== null) {
 				clearTimeout(monitorBatchTimeout.current)
 				monitorBatchTimeout.current = null
