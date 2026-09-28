@@ -541,7 +541,8 @@ func (e *Engine) Tick(now time.Time) {
 			st.p.Maintenance = inMaint
 			e.reconcile(st, nowMs, true)
 		}
-		// Push monitors have their own deadlines (push handling extends Tick).
+		// Push monitors never go stale: the hub monitor runner records a
+		// failed check for each missed push deadline instead.
 		if st.protocol == monitor.ProtocolPush {
 			continue
 		}

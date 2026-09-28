@@ -48,12 +48,13 @@ type Hub struct {
 
 // NewHub creates a new Hub instance with default configuration
 func NewHub(app core.App) *Hub {
-	hub := &Hub{App: app, hubMonitors: noopHubMonitorRunner{}}
+	hub := &Hub{App: app}
 	hub.AlertManager = alerts.NewAlertManager(hub)
 	hub.um = users.NewUserManager(hub)
 	hub.rm = records.NewRecordManager(hub)
 	hub.sm = systems.NewSystemManager(hub)
 	hub.uptime = uptime.New(app)
+	hub.hubMonitors = newHubMonitorRunner(app, hub.uptime)
 	hub.hb = heartbeat.New(app, utils.GetEnv)
 	if hub.hb != nil {
 		hub.hbStop = make(chan struct{})
@@ -104,6 +105,11 @@ func (h *Hub) StartHub() error {
 		}
 		// restore monitor status before systems deliver monitor results
 		if err := h.uptime.Load(); err != nil {
+			return err
+		}
+		// start hub monitors before the engine loop, so the engine's final
+		// flush on terminate follows the runner's last checks
+		if err := h.startHubMonitors(); err != nil {
 			return err
 		}
 		h.startUptimeEngine()

@@ -423,11 +423,23 @@ func createSystemdStatsRecords(app core.App, data []*systemd.Service, systemId s
 }
 
 func (sys *System) updateNetworkMonitorsRecords(app core.App, monitorResults map[string]monitor.Result, savedProbes map[string]int64) error {
+	return SaveMonitorResults(app, sys.Id, monitorResults, sys.lastSavedMonitorProbe, savedProbes)
+}
+
+// SaveMonitorResults stores default-interval monitor results of a system, or
+// of the hub when systemID is empty: the result fields of each
+// network_monitors record and one 1m network_monitor_stats row per monitor
+// with a new probe. lastSaved holds the LastProbeAt of the latest stats row
+// saved per monitor (read only; nil for none); the LastProbeAt of each row
+// saved now is added to savedProbes, which the caller should merge into
+// lastSaved once the surrounding transaction commits. Checks in the results
+// are ignored; the caller feeds them to the uptime engine.
+func SaveMonitorResults(app core.App, systemID string, monitorResults map[string]monitor.Result, lastSaved, savedProbes map[string]int64) error {
 	if len(monitorResults) == 0 {
 		return nil
 	}
 	var err error
-	systemId := sys.Id
+	systemId := systemID
 	const monitorCollectionName = "network_monitors"
 
 	// If realtime updates are active, we save via PocketBase records to trigger realtime events.
@@ -503,7 +515,7 @@ func (sys *System) updateNetworkMonitorsRecords(app core.App, monitorResults map
 
 	for monitorId, result := range monitorResults {
 		// Compare identity, not ordering, so agent clock changes don't stall writes.
-		if result.LastProbeAt == sys.lastSavedMonitorProbe[monitorId] {
+		if result.LastProbeAt == lastSaved[monitorId] {
 			continue
 		}
 		statsRecordData := map[string]any{

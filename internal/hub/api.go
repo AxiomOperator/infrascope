@@ -192,6 +192,10 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	apiAuth.POST("/test-heartbeat", h.testHeartbeat).BindFunc(requireAdminRole)
 	// get config.yml content
 	apiAuth.GET("/config-yaml", config.GetYamlConfig).BindFunc(requireAdminRole)
+	// push monitor checks (Uptime Kuma compatible) and push token regeneration
+	apiNoAuth.GET("/push/{token}", h.handlePush)
+	apiNoAuth.POST("/push/{token}", h.handlePush)
+	apiAuth.POST("/monitors/{id}/push-token", h.regeneratePushToken).BindFunc(excludeReadOnlyRole)
 	// handle agent websocket connection
 	apiNoAuth.GET("/agent-connect", h.handleAgentConnect)
 	// get or create universal tokens
