@@ -95,6 +95,35 @@ func TestCollectionRulesDefault(t *testing.T) {
 	assert.Equal(t, isUserInSystemUsersNotReadonly, *fingerprintsCollection.UpdateRule)
 	assert.Equal(t, isUserInSystemUsersNotReadonly, *fingerprintsCollection.DeleteRule)
 
+	// network_monitors collection
+	const isMonitorUser = `@request.auth.id != "" && ((system != "" && system.users.id ?= @request.auth.id) || (system = "" && users.id ?= @request.auth.id))`
+	const isMonitorUserNotReadonly = isMonitorUser + ` && @request.auth.role != "readonly"`
+	networkMonitorsCollection, err := hub.FindCollectionByNameOrId("network_monitors")
+	require.NoError(t, err, "Failed to find network_monitors collection")
+	assert.Equal(t, isMonitorUser, *networkMonitorsCollection.ListRule)
+	assert.Equal(t, isMonitorUser, *networkMonitorsCollection.ViewRule)
+	assert.Equal(t, isMonitorUserNotReadonly, *networkMonitorsCollection.CreateRule)
+	assert.Equal(t, isMonitorUserNotReadonly+` && (@request.body.system:changed = false || @request.body.system = "" || @request.body.system.users.id ?= @request.auth.id) && (@request.body.users:changed = false || @request.body.users.id ?= @request.auth.id)`, *networkMonitorsCollection.UpdateRule)
+	assert.Equal(t, isMonitorUserNotReadonly, *networkMonitorsCollection.DeleteRule)
+
+	// network_monitor_stats and monitor_events collections
+	const isMonitorDataUser = `@request.auth.id != "" && ((monitor.system != "" && monitor.system.users.id ?= @request.auth.id) || (monitor.system = "" && monitor.users.id ?= @request.auth.id))`
+	networkMonitorStatsCollection, err := hub.FindCollectionByNameOrId("network_monitor_stats")
+	require.NoError(t, err, "Failed to find network_monitor_stats collection")
+	assert.Equal(t, isMonitorDataUser, *networkMonitorStatsCollection.ListRule)
+	assert.Nil(t, networkMonitorStatsCollection.ViewRule)
+	assert.Nil(t, networkMonitorStatsCollection.CreateRule)
+	monitorEventsCollection, err := hub.FindCollectionByNameOrId("monitor_events")
+	require.NoError(t, err, "Failed to find monitor_events collection")
+	assert.Equal(t, isMonitorDataUser, *monitorEventsCollection.ListRule)
+	assert.Equal(t, isMonitorDataUser, *monitorEventsCollection.ViewRule)
+	assert.Nil(t, monitorEventsCollection.CreateRule)
+	assert.Nil(t, monitorEventsCollection.UpdateRule)
+	assert.Nil(t, monitorEventsCollection.DeleteRule)
+
+	// status_pages and monitor_maintenance collections
+	assertOwnerRules(t, hub)
+
 	// quiet_hours collection
 	quietHoursCollection, err := hub.FindCollectionByNameOrId("quiet_hours")
 	require.NoError(t, err, "Failed to find quiet_hours collection")
@@ -223,6 +252,27 @@ func TestCollectionRulesShareAllSystems(t *testing.T) {
 	assert.Equal(t, isUserNotReadonly, *fingerprintsCollection.UpdateRule)
 	assert.Equal(t, isUserNotReadonly, *fingerprintsCollection.DeleteRule)
 
+	// network_monitors collection
+	networkMonitorsCollection, err := hub.FindCollectionByNameOrId("network_monitors")
+	require.NoError(t, err, "Failed to find network_monitors collection")
+	assert.Equal(t, isUser, *networkMonitorsCollection.ListRule)
+	assert.Equal(t, isUser, *networkMonitorsCollection.ViewRule)
+	assert.Equal(t, isUserNotReadonly, *networkMonitorsCollection.CreateRule)
+	assert.Equal(t, isUserNotReadonly+` && (@request.body.users:changed = false || @request.body.users.id ?= @request.auth.id)`, *networkMonitorsCollection.UpdateRule)
+	assert.Equal(t, isUserNotReadonly, *networkMonitorsCollection.DeleteRule)
+
+	// network_monitor_stats and monitor_events collections
+	networkMonitorStatsCollection, err := hub.FindCollectionByNameOrId("network_monitor_stats")
+	require.NoError(t, err, "Failed to find network_monitor_stats collection")
+	assert.Equal(t, isUser, *networkMonitorStatsCollection.ListRule)
+	monitorEventsCollection, err := hub.FindCollectionByNameOrId("monitor_events")
+	require.NoError(t, err, "Failed to find monitor_events collection")
+	assert.Equal(t, isUser, *monitorEventsCollection.ListRule)
+	assert.Equal(t, isUser, *monitorEventsCollection.ViewRule)
+
+	// status_pages and monitor_maintenance collections
+	assertOwnerRules(t, hub)
+
 	// quiet_hours collection
 	quietHoursCollection, err := hub.FindCollectionByNameOrId("quiet_hours")
 	require.NoError(t, err, "Failed to find quiet_hours collection")
@@ -294,6 +344,22 @@ func TestCollectionRulesShareAllSystems(t *testing.T) {
 	assert.Equal(t, isUserMatchesUser, *userSettingsCollection.CreateRule)
 	assert.Equal(t, isUserMatchesUser, *userSettingsCollection.UpdateRule)
 	assert.Nil(t, userSettingsCollection.DeleteRule)
+}
+
+// assertOwnerRules checks the rules of user-owned collections, which ignore SHARE_ALL_SYSTEMS.
+func assertOwnerRules(t *testing.T, app core.App) {
+	t.Helper()
+	const isOwner = `@request.auth.id != "" && user = @request.auth.id`
+	const isOwnerNotReadonly = isOwner + ` && @request.auth.role != "readonly"`
+	for _, name := range []string{"status_pages", "monitor_maintenance"} {
+		collection, err := app.FindCollectionByNameOrId(name)
+		require.NoError(t, err, "Failed to find %s collection", name)
+		assert.Equal(t, isOwner, *collection.ListRule)
+		assert.Equal(t, isOwner, *collection.ViewRule)
+		assert.Equal(t, isOwnerNotReadonly, *collection.CreateRule)
+		assert.Equal(t, isOwnerNotReadonly+` && (@request.body.user:changed = false || @request.body.user = @request.auth.id)`, *collection.UpdateRule)
+		assert.Equal(t, isOwnerNotReadonly, *collection.DeleteRule)
+	}
 }
 
 func TestDisablePasswordAuth(t *testing.T) {
@@ -644,6 +710,326 @@ func TestApiCollectionsAuthRules(t *testing.T) {
 				systemsCount, _ := app.CountRecords("systems")
 				assert.EqualValues(t, 1, systemsCount)
 			},
+		},
+	}
+
+	for _, scenario := range scenarios {
+		scenario.Test(t)
+	}
+}
+
+func TestApiMonitorAuthRules(t *testing.T) {
+	hub, _ := beszelTests.NewTestHub(t.TempDir())
+	defer hub.Cleanup()
+	hub.StartHub()
+
+	user1, _ := beszelTests.CreateUser(hub, "user1@example.com", "password")
+	user1Token, _ := user1.NewAuthToken()
+	user2, _ := beszelTests.CreateUser(hub, "user2@example.com", "password")
+	user2Token, _ := user2.NewAuthToken()
+	user3, _ := beszelTests.CreateUser(hub, "user3@example.com", "password")
+	user3Token, _ := user3.NewAuthToken()
+	readonly, _ := beszelTests.CreateUserWithRole(hub, "readonly@example.com", "password", "readonly")
+	readonlyToken, _ := readonly.NewAuthToken()
+
+	system1, err := beszelTests.CreateRecord(hub, "systems", map[string]any{"name": "system1", "users": []string{user1.Id, readonly.Id}, "host": "127.0.0.1"})
+	require.NoError(t, err)
+	system2, err := beszelTests.CreateRecord(hub, "systems", map[string]any{"name": "system2", "users": []string{user2.Id}, "host": "127.0.0.2"})
+	require.NoError(t, err)
+
+	agentMonitor, err := beszelTests.CreateRecord(hub, "network_monitors", map[string]any{
+		"system": system1.Id, "target": "1.1.1.1", "protocol": "icmp", "interval": 60,
+	})
+	require.NoError(t, err)
+	agentMonitor2, err := beszelTests.CreateRecord(hub, "network_monitors", map[string]any{
+		"system": system1.Id, "target": "8.8.8.8", "protocol": "icmp", "interval": 60,
+	})
+	require.NoError(t, err)
+	hubMonitor, err := beszelTests.CreateRecord(hub, "network_monitors", map[string]any{
+		"users": []string{user1.Id, readonly.Id}, "target": "https://one.example.com", "protocol": "http", "interval": 60,
+	})
+	require.NoError(t, err)
+	user2HubMonitor, err := beszelTests.CreateRecord(hub, "network_monitors", map[string]any{
+		"users": []string{user2.Id}, "target": "https://two.example.com", "protocol": "http", "interval": 60,
+	})
+	require.NoError(t, err)
+	agentStats, err := beszelTests.CreateRecord(hub, "network_monitor_stats", map[string]any{
+		"system": system1.Id, "monitor": agentMonitor.Id, "type": "1m", "created": 1,
+	})
+	require.NoError(t, err)
+	hubEvent, err := beszelTests.CreateRecord(hub, "monitor_events", map[string]any{
+		"monitor": hubMonitor.Id, "status": "down", "start": 1,
+	})
+	require.NoError(t, err)
+	user1Page, err := beszelTests.CreateRecord(hub, "status_pages", map[string]any{"user": user1.Id, "slug": "user-one", "title": "One"})
+	require.NoError(t, err)
+	user2Page, err := beszelTests.CreateRecord(hub, "status_pages", map[string]any{"user": user2.Id, "slug": "user-two", "title": "Two"})
+	require.NoError(t, err)
+	user1Maintenance, err := beszelTests.CreateRecord(hub, "monitor_maintenance", map[string]any{
+		"user": user1.Id, "title": "Upgrade", "type": "one-time", "start": "2026-01-01 00:00:00.000Z",
+		"end": "2026-01-01 01:00:00.000Z", "monitors": []string{hubMonitor.Id},
+	})
+	require.NoError(t, err)
+
+	testAppFactory := func(t testing.TB) *pbTests.TestApp {
+		return hub.TestApp
+	}
+	auth := func(token string) map[string]string {
+		return map[string]string{"Authorization": token}
+	}
+	monitorURL := func(id string) string {
+		return "/api/collections/network_monitors/records/" + id
+	}
+	shareAllSystems := func(enabled bool) func(t testing.TB) {
+		return func(t testing.TB) {
+			value := ""
+			if enabled {
+				value = "true"
+			}
+			t.Setenv("SHARE_ALL_SYSTEMS", value)
+			require.NoError(t, hub.SetCollectionAuthSettings())
+		}
+	}
+	monitorField := func(t testing.TB, app *pbTests.TestApp, id, field string) any {
+		record, err := app.FindRecordById("network_monitors", id)
+		require.NoError(t, err)
+		return record.Get(field)
+	}
+	const monitorsURL = "/api/collections/network_monitors/records"
+
+	scenarios := []beszelTests.ApiScenario{
+		{
+			Name: "Members list agent monitors of their systems and hub monitors they belong to", Method: http.MethodGet,
+			URL: monitorsURL, Headers: auth(user1Token), ExpectedStatus: 200,
+			ExpectedContent:    []string{agentMonitor.Id, hubMonitor.Id},
+			NotExpectedContent: []string{user2HubMonitor.Id},
+			TestAppFactory:     testAppFactory,
+		},
+		{
+			Name: "Non-members do not list other users' monitors", Method: http.MethodGet,
+			URL: monitorsURL, Headers: auth(user2Token), ExpectedStatus: 200,
+			ExpectedContent:    []string{user2HubMonitor.Id},
+			NotExpectedContent: []string{agentMonitor.Id, hubMonitor.Id},
+			TestAppFactory:     testAppFactory,
+		},
+		{
+			Name: "Non-members cannot view an agent monitor", Method: http.MethodGet,
+			URL: monitorURL(agentMonitor.Id), Headers: auth(user2Token), ExpectedStatus: 404,
+			ExpectedContent: []string{"resource wasn't found"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Non-members cannot view a hub monitor", Method: http.MethodGet,
+			URL: monitorURL(hubMonitor.Id), Headers: auth(user2Token), ExpectedStatus: 404,
+			ExpectedContent: []string{"resource wasn't found"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Readonly members can view monitors", Method: http.MethodGet,
+			URL: monitorURL(hubMonitor.Id), Headers: auth(readonlyToken), ExpectedStatus: 200,
+			ExpectedContent: []string{hubMonitor.Id}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Readonly members cannot create monitors", Method: http.MethodPost,
+			URL: monitorsURL, Headers: auth(readonlyToken), ExpectedStatus: 400,
+			Body:            strings.NewReader(fmt.Sprintf(`{"system":%q,"target":"8.8.8.8","protocol":"icmp","interval":60}`, system1.Id)),
+			ExpectedContent: []string{"Failed to create record"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Readonly members cannot update hub monitors", Method: http.MethodPatch,
+			URL: monitorURL(hubMonitor.Id), Headers: auth(readonlyToken), ExpectedStatus: 404,
+			Body:            strings.NewReader(`{"name":"renamed"}`),
+			ExpectedContent: []string{"resource wasn't found"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Readonly members cannot delete agent monitors", Method: http.MethodDelete,
+			URL: monitorURL(agentMonitor.Id), Headers: auth(readonlyToken), ExpectedStatus: 404,
+			ExpectedContent: []string{"resource wasn't found"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Users cannot create monitors on another user's system", Method: http.MethodPost,
+			URL: monitorsURL, Headers: auth(user1Token), ExpectedStatus: 400,
+			Body:            strings.NewReader(fmt.Sprintf(`{"system":%q,"target":"8.8.8.8","protocol":"icmp","interval":60}`, system2.Id)),
+			ExpectedContent: []string{"Failed to create record"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Users cannot create hub monitors for other users only", Method: http.MethodPost,
+			URL: monitorsURL, Headers: auth(user1Token), ExpectedStatus: 400,
+			Body:            strings.NewReader(fmt.Sprintf(`{"users":[%q],"target":"https://x.example.com","protocol":"http","interval":60}`, user2.Id)),
+			ExpectedContent: []string{"Failed to create record"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Users can create hub monitors they belong to", Method: http.MethodPost,
+			URL: monitorsURL, Headers: auth(user1Token), ExpectedStatus: 200,
+			Body:            strings.NewReader(fmt.Sprintf(`{"users":[%q],"target":"https://x.example.com","protocol":"http","interval":60}`, user1.Id)),
+			ExpectedContent: []string{`"target":"https://x.example.com"`, `"status":"unknown"`}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Members list stats of their monitors", Method: http.MethodGet,
+			URL: "/api/collections/network_monitor_stats/records", Headers: auth(user1Token), ExpectedStatus: 200,
+			ExpectedContent: []string{agentStats.Id}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Non-members do not list stats of other monitors", Method: http.MethodGet,
+			URL: "/api/collections/network_monitor_stats/records", Headers: auth(user2Token), ExpectedStatus: 200,
+			ExpectedContent: []string{`"totalItems":0`}, NotExpectedContent: []string{agentStats.Id}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Hub monitor users can view its events", Method: http.MethodGet,
+			URL: "/api/collections/monitor_events/records/" + hubEvent.Id, Headers: auth(readonlyToken), ExpectedStatus: 200,
+			ExpectedContent: []string{hubEvent.Id}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Other users cannot list hub monitor events", Method: http.MethodGet,
+			URL: "/api/collections/monitor_events/records", Headers: auth(user2Token), ExpectedStatus: 200,
+			ExpectedContent: []string{`"totalItems":0`}, NotExpectedContent: []string{hubEvent.Id}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Users cannot move a hub monitor to another user's system", Method: http.MethodPatch,
+			URL: monitorURL(hubMonitor.Id), Headers: auth(user1Token), ExpectedStatus: 404,
+			Body:            strings.NewReader(fmt.Sprintf(`{"system":%q}`, system2.Id)),
+			ExpectedContent: []string{"resource wasn't found"}, TestAppFactory: testAppFactory,
+			AfterTestFunc: func(t testing.TB, app *pbTests.TestApp, res *http.Response) {
+				assert.Equal(t, "", monitorField(t, app, hubMonitor.Id, "system"))
+			},
+		},
+		{
+			Name: "Users cannot remove themselves when changing hub monitor users", Method: http.MethodPatch,
+			URL: monitorURL(hubMonitor.Id), Headers: auth(user1Token), ExpectedStatus: 404,
+			Body:            strings.NewReader(fmt.Sprintf(`{"users":[%q]}`, user2.Id)),
+			ExpectedContent: []string{"resource wasn't found"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Users cannot add themselves to another user's hub monitor", Method: http.MethodPatch,
+			URL: monitorURL(user2HubMonitor.Id), Headers: auth(user1Token), ExpectedStatus: 404,
+			Body:            strings.NewReader(fmt.Sprintf(`{"users+":[%q]}`, user1.Id)),
+			ExpectedContent: []string{"resource wasn't found"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Hub monitor users can add users", Method: http.MethodPatch,
+			URL: monitorURL(hubMonitor.Id), Headers: auth(user1Token), ExpectedStatus: 200,
+			Body:            strings.NewReader(fmt.Sprintf(`{"users+":[%q]}`, user2.Id)),
+			ExpectedContent: []string{user2.Id}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Added users can view the hub monitor", Method: http.MethodGet,
+			URL: monitorURL(hubMonitor.Id), Headers: auth(user2Token), ExpectedStatus: 200,
+			ExpectedContent: []string{hubMonitor.Id}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Members can move an agent monitor to the hub", Method: http.MethodPatch,
+			URL: monitorURL(agentMonitor.Id), Headers: auth(user1Token), ExpectedStatus: 200,
+			Body:           strings.NewReader(fmt.Sprintf(`{"system":"","users":[%q]}`, user1.Id)),
+			TestAppFactory: testAppFactory, ExpectedContent: []string{agentMonitor.Id},
+			AfterTestFunc: func(t testing.TB, app *pbTests.TestApp, res *http.Response) {
+				assert.Equal(t, "", monitorField(t, app, agentMonitor.Id, "system"))
+			},
+		},
+		{
+			Name: "Moving a monitor to the hub requires the requester in its users", Method: http.MethodPatch,
+			URL: monitorURL(agentMonitor2.Id), Headers: auth(user1Token), ExpectedStatus: 404,
+			Body:            strings.NewReader(fmt.Sprintf(`{"system":"","users":[%q]}`, user2.Id)),
+			ExpectedContent: []string{"resource wasn't found"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Moving a monitor to the hub requires users", Method: http.MethodPatch,
+			URL: monitorURL(agentMonitor2.Id), Headers: auth(user1Token), ExpectedStatus: 400,
+			Body:            strings.NewReader(`{"system":""}`),
+			ExpectedContent: []string{"at least one user"}, TestAppFactory: testAppFactory,
+			AfterTestFunc: func(t testing.TB, app *pbTests.TestApp, res *http.Response) {
+				assert.Equal(t, system1.Id, monitorField(t, app, agentMonitor2.Id, "system"))
+			},
+		},
+		{
+			Name: "Users cannot delete another user's hub monitor", Method: http.MethodDelete,
+			URL: monitorURL(user2HubMonitor.Id), Headers: auth(user1Token), ExpectedStatus: 404,
+			ExpectedContent: []string{"resource wasn't found"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "SHARE_ALL_SYSTEMS lets any user list all monitors", Method: http.MethodGet,
+			URL: monitorsURL, Headers: auth(user3Token), ExpectedStatus: 200,
+			ExpectedContent: []string{agentMonitor.Id, hubMonitor.Id, user2HubMonitor.Id}, TestAppFactory: testAppFactory,
+			BeforeTestFunc: func(t testing.TB, app *pbTests.TestApp, e *core.ServeEvent) { shareAllSystems(true)(t) },
+			AfterTestFunc:  func(t testing.TB, app *pbTests.TestApp, res *http.Response) { shareAllSystems(false)(t) },
+		},
+		{
+			Name: "SHARE_ALL_SYSTEMS lets any user edit a hub monitor", Method: http.MethodPatch,
+			URL: monitorURL(user2HubMonitor.Id), Headers: auth(user3Token), ExpectedStatus: 200,
+			Body:            strings.NewReader(`{"name":"shared"}`),
+			ExpectedContent: []string{`"name":"shared"`}, TestAppFactory: testAppFactory,
+			BeforeTestFunc: func(t testing.TB, app *pbTests.TestApp, e *core.ServeEvent) { shareAllSystems(true)(t) },
+			AfterTestFunc:  func(t testing.TB, app *pbTests.TestApp, res *http.Response) { shareAllSystems(false)(t) },
+		},
+		{
+			Name: "SHARE_ALL_SYSTEMS does not let readonly users delete monitors", Method: http.MethodDelete,
+			URL: monitorURL(user2HubMonitor.Id), Headers: auth(readonlyToken), ExpectedStatus: 404,
+			ExpectedContent: []string{"resource wasn't found"}, TestAppFactory: testAppFactory,
+			BeforeTestFunc: func(t testing.TB, app *pbTests.TestApp, e *core.ServeEvent) { shareAllSystems(true)(t) },
+			AfterTestFunc:  func(t testing.TB, app *pbTests.TestApp, res *http.Response) { shareAllSystems(false)(t) },
+		},
+		{
+			Name: "Hub monitor users can delete it", Method: http.MethodDelete,
+			URL: monitorURL(user2HubMonitor.Id), Headers: auth(user2Token), ExpectedStatus: 204,
+			TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Users list only their status pages", Method: http.MethodGet,
+			URL: "/api/collections/status_pages/records", Headers: auth(user1Token), ExpectedStatus: 200,
+			ExpectedContent: []string{user1Page.Id}, NotExpectedContent: []string{user2Page.Id}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Users cannot view another user's status page", Method: http.MethodGet,
+			URL: "/api/collections/status_pages/records/" + user2Page.Id, Headers: auth(user1Token), ExpectedStatus: 404,
+			ExpectedContent: []string{"resource wasn't found"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Users cannot create status pages for another user", Method: http.MethodPost,
+			URL: "/api/collections/status_pages/records", Headers: auth(user1Token), ExpectedStatus: 400,
+			Body:            strings.NewReader(fmt.Sprintf(`{"user":%q,"slug":"other","title":"Other"}`, user2.Id)),
+			ExpectedContent: []string{"Failed to create record"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Users cannot add inaccessible monitors to a status page", Method: http.MethodPost,
+			URL: "/api/collections/status_pages/records", Headers: auth(user3Token), ExpectedStatus: 400,
+			Body:            strings.NewReader(fmt.Sprintf(`{"user":%q,"slug":"stolen","title":"Stolen","monitors":[%q]}`, user3.Id, hubMonitor.Id)),
+			ExpectedContent: []string{"do not have access to all selected monitors"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Users can create status pages with their monitors", Method: http.MethodPost,
+			URL: "/api/collections/status_pages/records", Headers: auth(user1Token), ExpectedStatus: 200,
+			Body:            strings.NewReader(fmt.Sprintf(`{"user":%q,"slug":"status","title":"Status","monitors":[%q]}`, user1.Id, hubMonitor.Id)),
+			ExpectedContent: []string{`"slug":"status"`}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Status page slugs are unique", Method: http.MethodPost,
+			URL: "/api/collections/status_pages/records", Headers: auth(user2Token), ExpectedStatus: 400,
+			Body:            strings.NewReader(fmt.Sprintf(`{"user":%q,"slug":"status","title":"Status"}`, user2.Id)),
+			ExpectedContent: []string{"Failed to create record"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Users cannot give their status page to another user", Method: http.MethodPatch,
+			URL: "/api/collections/status_pages/records/" + user1Page.Id, Headers: auth(user1Token), ExpectedStatus: 404,
+			Body:            strings.NewReader(fmt.Sprintf(`{"user":%q}`, user2.Id)),
+			ExpectedContent: []string{"resource wasn't found"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Readonly users cannot create status pages", Method: http.MethodPost,
+			URL: "/api/collections/status_pages/records", Headers: auth(readonlyToken), ExpectedStatus: 400,
+			Body:            strings.NewReader(fmt.Sprintf(`{"user":%q,"slug":"readonly","title":"Readonly"}`, readonly.Id)),
+			ExpectedContent: []string{"Failed to create record"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Users list only their maintenance windows", Method: http.MethodGet,
+			URL: "/api/collections/monitor_maintenance/records", Headers: auth(user2Token), ExpectedStatus: 200,
+			ExpectedContent: []string{`"totalItems":0`}, NotExpectedContent: []string{user1Maintenance.Id}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Users cannot delete another user's maintenance window", Method: http.MethodDelete,
+			URL: "/api/collections/monitor_maintenance/records/" + user1Maintenance.Id, Headers: auth(user2Token), ExpectedStatus: 404,
+			ExpectedContent: []string{"resource wasn't found"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Users can delete their maintenance window", Method: http.MethodDelete,
+			URL: "/api/collections/monitor_maintenance/records/" + user1Maintenance.Id, Headers: auth(user1Token), ExpectedStatus: 204,
+			TestAppFactory: testAppFactory,
 		},
 	}
 

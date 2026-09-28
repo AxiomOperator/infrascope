@@ -2,14 +2,120 @@ package systems
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/blang/semver"
 	"github.com/henrygd/beszel"
 	"github.com/henrygd/beszel/internal/common"
 	"github.com/henrygd/beszel/internal/entities/monitor"
+	"github.com/pocketbase/pocketbase/core"
 )
+
+// MonitorHTTPFields are the non-secret HTTP options stored in the network_monitors "http" field.
+type MonitorHTTPFields struct {
+	Method        string   `json:"method,omitzero"`
+	AcceptedCodes []string `json:"acceptedCodes,omitzero"`
+	MaxRedirects  int8     `json:"maxRedirects,omitzero"`
+	IgnoreTLS     bool     `json:"ignoreTLS,omitzero"`
+	Keyword       string   `json:"keyword,omitzero"`
+	KeywordInvert bool     `json:"keywordInvert,omitzero"`
+	JSONPath      string   `json:"jsonPath,omitzero"`
+	JSONExpected  string   `json:"jsonExpected,omitzero"`
+}
+
+// MonitorHTTPSecrets are the HTTP options stored in the network_monitors
+// "httpSecrets" field, which is only shown to users who can edit the monitor.
+type MonitorHTTPSecrets struct {
+	Headers   [][2]string `json:"headers,omitzero"`
+	Body      string      `json:"body,omitzero"`
+	BasicUser string      `json:"basicUser,omitzero"`
+	BasicPass string      `json:"basicPass,omitzero"`
+}
+
+// SplitHTTPOptions returns the stored field values of options.
+func SplitHTTPOptions(options *monitor.HTTPOptions) (MonitorHTTPFields, MonitorHTTPSecrets) {
+	if options == nil {
+		return MonitorHTTPFields{}, MonitorHTTPSecrets{}
+	}
+	return MonitorHTTPFields{
+			Method:        options.Method,
+			AcceptedCodes: options.AcceptedCodes,
+			MaxRedirects:  options.MaxRedirects,
+			IgnoreTLS:     options.IgnoreTLS,
+			Keyword:       options.Keyword,
+			KeywordInvert: options.KeywordInvert,
+			JSONPath:      options.JSONPath,
+			JSONExpected:  options.JSONExpected,
+		}, MonitorHTTPSecrets{
+			Headers:   options.Headers,
+			Body:      options.Body,
+			BasicUser: options.BasicUser,
+			BasicPass: options.BasicPass,
+		}
+}
+
+// MonitorConfigFromRecord builds the probe config of a network_monitors record.
+// HTTP options are only set for http monitors with non-default options. It
+// fails when the stored HTTP options are not valid JSON of the expected shape.
+func MonitorConfigFromRecord(record *core.Record) (monitor.Config, error) {
+	config := monitor.Config{
+		ID:            record.Id,
+		Target:        record.GetString("target"),
+		Protocol:      record.GetString("protocol"),
+		Port:          uint16(record.GetInt("port")),
+		Interval:      uint16(record.GetInt("interval")),
+		Server:        record.GetString("server"),
+		Timeout:       uint16(record.GetInt("timeout")),
+		RetryInterval: uint16(record.GetInt("retryInterval")),
+	}
+	if config.Protocol != "http" {
+		return config, nil
+	}
+	var fields MonitorHTTPFields
+	var secrets MonitorHTTPSecrets
+	if err := unmarshalJSONField(record, "http", &fields); err != nil {
+		return config, fmt.Errorf("invalid http options: %w", err)
+	}
+	if err := unmarshalJSONField(record, "httpSecrets", &secrets); err != nil {
+		return config, fmt.Errorf("invalid http secrets: %w", err)
+	}
+	options := monitor.HTTPOptions{
+		Method:        fields.Method,
+		Headers:       secrets.Headers,
+		Body:          secrets.Body,
+		AcceptedCodes: fields.AcceptedCodes,
+		MaxRedirects:  fields.MaxRedirects,
+		IgnoreTLS:     fields.IgnoreTLS,
+		Keyword:       fields.Keyword,
+		KeywordInvert: fields.KeywordInvert,
+		JSONPath:      fields.JSONPath,
+		JSONExpected:  fields.JSONExpected,
+		BasicUser:     secrets.BasicUser,
+		BasicPass:     secrets.BasicPass,
+	}
+	if len(options.Headers) == 0 {
+		options.Headers = nil
+	}
+	if len(options.AcceptedCodes) == 0 {
+		options.AcceptedCodes = nil
+	}
+	if !reflect.ValueOf(options).IsZero() {
+		config.HTTP = &options
+	}
+	return config, nil
+}
+
+// unmarshalJSONField decodes a JSON field, treating an empty or null value as unset.
+func unmarshalJSONField(record *core.Record, field string, dest any) error {
+	raw := record.GetString(field)
+	if raw == "" || raw == "null" {
+		return nil
+	}
+	return json.Unmarshal([]byte(raw), dest)
+}
 
 // syncPendingNetworkMonitors runs on WebSocket connect and after successful stats
 // fetches. Failed syncs retry on the next update without taking the system down.

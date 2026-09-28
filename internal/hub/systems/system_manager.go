@@ -377,13 +377,26 @@ func (sm *SystemManager) resetFailedSmartFetchState(systemID string) {
 }
 
 // GetMonitorConfigsForSystem returns all enabled monitor configs for a system.
+// Monitors with malformed HTTP options are skipped rather than probed with defaults.
 func (sm *SystemManager) GetMonitorConfigsForSystem(systemID string) ([]monitor.Config, error) {
-	var configs []monitor.Config
-	err := sm.hub.DB().
-		NewQuery("SELECT id, target, protocol, port, interval, server FROM network_monitors WHERE system = {:system} AND enabled = true").
-		Bind(dbx.Params{"system": systemID}).
-		All(&configs)
-	return configs, err
+	records, err := sm.hub.FindAllRecords("network_monitors", dbx.HashExp{"system": systemID, "enabled": true})
+	if err != nil {
+		return nil, err
+	}
+	configs := make([]monitor.Config, 0, len(records))
+	for _, record := range records {
+		// Push monitors are hub-only; the hooks never assign them a system.
+		if record.GetString("protocol") == monitor.ProtocolPush {
+			continue
+		}
+		config, err := MonitorConfigFromRecord(record)
+		if err != nil {
+			sm.hub.Logger().Warn("skipping monitor with invalid config", "system", systemID, "monitor", record.Id, "err", err)
+			continue
+		}
+		configs = append(configs, config)
+	}
+	return configs, nil
 }
 
 // resetFailedZfsFetchState clears only failed ZFS cooldown entries so a fresh

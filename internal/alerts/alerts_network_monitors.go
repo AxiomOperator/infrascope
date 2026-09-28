@@ -46,18 +46,36 @@ func (am *AlertManager) bindNetworkMonitorAlertEvents() {
 	}
 	am.hub.OnRecordCreateRequest("alerts").BindFunc(protectState)
 	am.hub.OnRecordUpdateRequest("alerts").BindFunc(protectState)
-	cleanup := func(e *core.RecordEvent) error {
+	// Loss alerts belong to a system, so hub monitors (no system) have none.
+	cleanup := func(app core.App, systemID string) error {
+		if systemID == "" {
+			return nil
+		}
+		return am.evaluateNetworkMonitorAlerts(app, systemID, nil)
+	}
+	am.hub.OnRecordAfterDeleteSuccess("network_monitors").BindFunc(func(e *core.RecordEvent) error {
 		if err := e.Next(); err != nil {
 			return err
 		}
-		return am.evaluateNetworkMonitorAlerts(e.App, e.Record.GetString("system"), nil)
-	}
-	am.hub.OnRecordAfterDeleteSuccess("network_monitors").BindFunc(cleanup)
+		return cleanup(e.App, e.Record.GetString("system"))
+	})
 	am.hub.OnRecordAfterUpdateSuccess("network_monitors").BindFunc(func(e *core.RecordEvent) error {
-		if e.Record.GetBool("enabled") || !e.Record.Original().GetBool("enabled") {
-			return e.Next()
+		original := e.Record.Original()
+		oldSystem, newSystem := original.GetString("system"), e.Record.GetString("system")
+		disabled := !e.Record.GetBool("enabled") && original.GetBool("enabled")
+		if err := e.Next(); err != nil {
+			return err
 		}
-		return cleanup(e)
+		// Moving a monitor closes its incidents on the old system.
+		if oldSystem != newSystem {
+			if err := cleanup(e.App, oldSystem); err != nil {
+				return err
+			}
+		}
+		if disabled {
+			return cleanup(e.App, newSystem)
+		}
+		return nil
 	})
 }
 

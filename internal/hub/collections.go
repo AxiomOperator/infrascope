@@ -65,8 +65,9 @@ func setCollectionAuthSettings(app core.App) error {
 		systemsReadRule = authenticatedRule
 		systemScopedReadRule = authenticatedRule
 	}
-	systemsWriteRule := systemsReadRule + " && @request.auth.role != \"readonly\""
-	systemScopedWriteRule := systemScopedReadRule + " && @request.auth.role != \"readonly\""
+	notReadonlyRule := " && @request.auth.role != \"readonly\""
+	systemsWriteRule := systemsReadRule + notReadonlyRule
+	systemScopedWriteRule := systemScopedReadRule + notReadonlyRule
 
 	// Update rules are checked against the stored record, so moving a record to
 	// another system needs its own membership check on the submitted system.
@@ -76,7 +77,6 @@ func setCollectionAuthSettings(app core.App) error {
 		systemMembershipRule = ""
 		systemMoveRule = ""
 	}
-	systemScopedUpdateRule := systemScopedWriteRule + systemMoveRule
 
 	if err := applyCollectionRules(app, []string{"systems"}, collectionRules{
 		list:   &systemsReadRule,
@@ -88,7 +88,7 @@ func setCollectionAuthSettings(app core.App) error {
 		return err
 	}
 
-	if err := applyCollectionRules(app, []string{"containers", "container_stats", "system_stats", "systemd_services", "network_monitor_stats"}, collectionRules{
+	if err := applyCollectionRules(app, []string{"containers", "container_stats", "system_stats", "systemd_services"}, collectionRules{
 		list: &systemScopedReadRule,
 	}); err != nil {
 		return err
@@ -118,12 +118,51 @@ func setCollectionAuthSettings(app core.App) error {
 		return err
 	}
 
+	// Agent monitors follow their system's users. Hub monitors (no system) have their own users.
+	monitorReadRule := authenticatedRule + ` && ((system != "" && system.users.id ?= @request.auth.id) || (system = "" && users.id ?= @request.auth.id))`
+	// Monitor data follows the monitor's access.
+	monitorDataReadRule := authenticatedRule + ` && ((monitor.system != "" && monitor.system.users.id ?= @request.auth.id) || (monitor.system = "" && monitor.users.id ?= @request.auth.id))`
+	// A monitor can move to a system the requester is a member of, or to the
+	// hub, where the hooks require the requester to stay in its users.
+	monitorMoveRule := ` && (@request.body.system:changed = false || @request.body.system = "" || @request.body.system.users.id ?= @request.auth.id)`
+	if shareAllSystems == "true" {
+		monitorReadRule = authenticatedRule
+		monitorDataReadRule = authenticatedRule
+		monitorMoveRule = ""
+	}
+	monitorWriteRule := monitorReadRule + notReadonlyRule
+	monitorUpdateRule := monitorWriteRule + monitorMoveRule + ` && (@request.body.users:changed = false || @request.body.users.id ?= @request.auth.id)`
 	if err := applyCollectionRules(app, []string{"network_monitors"}, collectionRules{
-		list:   &systemScopedReadRule,
-		view:   &systemScopedReadRule,
-		create: &systemScopedWriteRule,
-		update: &systemScopedUpdateRule,
-		delete: &systemScopedWriteRule,
+		list:   &monitorReadRule,
+		view:   &monitorReadRule,
+		create: &monitorWriteRule,
+		update: &monitorUpdateRule,
+		delete: &monitorWriteRule,
+	}); err != nil {
+		return err
+	}
+	if err := applyCollectionRules(app, []string{"network_monitor_stats"}, collectionRules{
+		list: &monitorDataReadRule,
+	}); err != nil {
+		return err
+	}
+	if err := applyCollectionRules(app, []string{"monitor_events"}, collectionRules{
+		list: &monitorDataReadRule,
+		view: &monitorDataReadRule,
+	}); err != nil {
+		return err
+	}
+
+	// Status pages and maintenance windows belong to a user.
+	ownerRule := authenticatedRule + " && user = @request.auth.id"
+	ownerWriteRule := ownerRule + notReadonlyRule
+	ownerUpdateRule := ownerWriteRule + " && (@request.body.user:changed = false || @request.body.user = @request.auth.id)"
+	if err := applyCollectionRules(app, []string{"status_pages", "monitor_maintenance"}, collectionRules{
+		list:   &ownerRule,
+		view:   &ownerRule,
+		create: &ownerWriteRule,
+		update: &ownerUpdateRule,
+		delete: &ownerWriteRule,
 	}); err != nil {
 		return err
 	}

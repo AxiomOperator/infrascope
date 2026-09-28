@@ -668,11 +668,20 @@ export interface UpdateInfo {
 	url: string // url to new version
 }
 
+export type MonitorProtocol = "icmp" | "tcp" | "http" | "dns" | "push"
+
+export type MonitorStatus = "up" | "down" | "pending" | "maintenance" | "paused" | "unknown"
+
 export interface NetworkMonitorRecord {
 	id: string
+	/** Agent system that runs the monitor; empty for hub and push monitors. */
 	system: string
+	/** Users with access to a hub monitor; empty for agent monitors, which follow the system's users. */
+	users: string[]
+	name: string
+	/** Empty for push monitors. */
 	target: string
-	protocol: "icmp" | "tcp" | "http" | "dns"
+	protocol: MonitorProtocol
 	port: number
 	server: string
 	res: number
@@ -682,9 +691,92 @@ export interface NetworkMonitorRecord {
 	loss: number
 	loss1h: number
 	interval: number
+	/** Probe timeout in seconds; 0 uses the protocol default. */
+	timeout: number
+	retries: number
+	/** Probe interval in seconds while failing; 0 uses interval. */
+	retryInterval: number
+	http?: MonitorHTTPOptions | null
+	/** Only returned to users who can edit the monitor. */
+	httpSecrets?: MonitorHTTPSecrets | null
+	notify: boolean
+	certExpiryDays: number
+	/** Push URL token; only returned to users who can edit the monitor. */
+	pushToken?: string
 	enabled: boolean
 	/** Latest TLS certificate details, reported for HTTPS targets. */
 	certInfo?: MonitorCertInfo | null
+	status: MonitorStatus | ""
+	statusChanged: string
+	/** Latest check as a Unix timestamp in milliseconds. */
+	lastCheck: number
+	lastError: string
+	lastStatusCode: number
+	recent: unknown
+	uptime: unknown
+	created: string
+	updated: string
+}
+
+/** Non-secret HTTP options of an http monitor. */
+export interface MonitorHTTPOptions {
+	method?: "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS"
+	/** Status codes ("301") or inclusive ranges ("200-299"); empty accepts 200-399. */
+	acceptedCodes?: string[]
+	/** 0 follows up to 10 redirects; -1 evaluates the redirect response itself. */
+	maxRedirects?: number
+	ignoreTLS?: boolean
+	keyword?: string
+	keywordInvert?: boolean
+	jsonPath?: string
+	jsonExpected?: string
+}
+
+/** HTTP options of an http monitor that may contain credentials. */
+export interface MonitorHTTPSecrets {
+	headers?: [string, string][]
+	body?: string
+	basicUser?: string
+	basicPass?: string
+}
+
+export interface MonitorEventRecord {
+	id: string
+	monitor: string
+	status: "up" | "down" | "maintenance" | "unknown" | "paused"
+	/** Unix timestamp in milliseconds. */
+	start: number
+	/** Unix timestamp in milliseconds; 0 while the event is open. */
+	end: number
+	error: string
+	statusCode: number
+}
+
+export interface StatusPageRecord {
+	id: string
+	user: string
+	slug: string
+	title: string
+	description: string
+	monitors: string[]
+	public: boolean
+	showTargets: boolean
+	showResponseTimes: boolean
+	created: string
+	updated: string
+}
+
+export interface MaintenanceRecord {
+	id: string
+	user: string
+	title: string
+	description: string
+	type: "one-time" | "daily"
+	start: string
+	end: string
+	monitors: string[]
+	showOnStatusPages: boolean
+	created: string
 	updated: string
 }
 

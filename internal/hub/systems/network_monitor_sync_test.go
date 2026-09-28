@@ -192,6 +192,61 @@ func TestGetMonitorConfigsForSystemIncludesServer(t *testing.T) {
 	require.Equal(t, "1.1.1.1", configs[0].Server, "reconnect sync must keep the custom DNS server")
 }
 
+func TestGetMonitorConfigsForSystemFullConfig(t *testing.T) {
+	sys, app := newTestSystemWithHub(t)
+	collection, err := app.FindCachedCollectionByNameOrId("network_monitors")
+	require.NoError(t, err)
+	save := func(data map[string]any) *core.Record {
+		record := core.NewRecord(collection)
+		record.Load(data)
+		require.NoError(t, app.SaveNoValidate(record))
+		return record
+	}
+	httpMonitor := save(map[string]any{
+		"system": sys.Id, "target": "https://example.com", "protocol": "http", "interval": 60, "enabled": true,
+		"timeout": 20, "retryInterval": 15,
+		"http":        map[string]any{"method": "POST", "acceptedCodes": []string{"200-299"}, "maxRedirects": -1, "keyword": "ok"},
+		"httpSecrets": map[string]any{"headers": [][2]string{{"X-Token", "secret"}}, "body": "{}", "basicUser": "u", "basicPass": "p"},
+	})
+	// malformed options are skipped instead of probing with defaults
+	save(map[string]any{
+		"system": sys.Id, "target": "https://bad.example.com", "protocol": "http", "interval": 60, "enabled": true,
+		"http": `{"maxRedirects":"many"}`,
+	})
+	// push monitors never run on agents
+	save(map[string]any{"system": sys.Id, "protocol": "push", "interval": 60, "enabled": true})
+	// hub monitors belong to no system
+	save(map[string]any{"target": "https://hub.example.com", "protocol": "http", "interval": 60, "enabled": true})
+
+	configs, err := sys.manager.GetMonitorConfigsForSystem(sys.Id)
+	require.NoError(t, err)
+	require.Equal(t, []monitor.Config{{
+		ID: httpMonitor.Id, Target: "https://example.com", Protocol: "http", Interval: 60, Timeout: 20, RetryInterval: 15,
+		HTTP: &monitor.HTTPOptions{
+			Method: "POST", Headers: [][2]string{{"X-Token", "secret"}}, Body: "{}", AcceptedCodes: []string{"200-299"},
+			MaxRedirects: -1, Keyword: "ok", BasicUser: "u", BasicPass: "p",
+		},
+	}}, configs)
+}
+
+func TestMonitorConfigFromRecordOmitsUnusedHTTPOptions(t *testing.T) {
+	collection := core.NewBaseCollection("network_monitors")
+	collection.Fields.Add(
+		&core.TextField{Name: "protocol"}, &core.JSONField{Name: "http"}, &core.JSONField{Name: "httpSecrets"},
+	)
+	record := core.NewRecord(collection)
+	record.Load(map[string]any{"protocol": "http", "http": map[string]any{"acceptedCodes": []string{}}, "httpSecrets": nil})
+	config, err := MonitorConfigFromRecord(record)
+	require.NoError(t, err)
+	require.Nil(t, config.HTTP, "default options must not be sent")
+
+	record.Set("protocol", "tcp")
+	record.Set("http", map[string]any{"keyword": "ok"})
+	config, err = MonitorConfigFromRecord(record)
+	require.NoError(t, err)
+	require.Nil(t, config.HTTP, "only http monitors have http options")
+}
+
 func TestGetMonitorConfigsForSystemQueryError(t *testing.T) {
 	sys, app := newTestSystemWithHub(t)
 	_, err := app.DB().NewQuery("DROP TABLE network_monitors").Execute()

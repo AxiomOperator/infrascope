@@ -36,11 +36,13 @@ type Hub struct {
 	pubKey string
 	signer ssh.Signer
 	appURL string
+	// hubMonitors runs monitors that have no system.
+	hubMonitors hubMonitorRunner
 }
 
 // NewHub creates a new Hub instance with default configuration
 func NewHub(app core.App) *Hub {
-	hub := &Hub{App: app}
+	hub := &Hub{App: app, hubMonitors: noopHubMonitorRunner{}}
 	hub.AlertManager = alerts.NewAlertManager(hub)
 	hub.um = users.NewUserManager(hub)
 	hub.rm = records.NewRecordManager(hub)
