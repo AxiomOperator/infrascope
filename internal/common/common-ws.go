@@ -1,6 +1,8 @@
 package common
 
 import (
+	"encoding/hex"
+
 	"github.com/fxamacker/cbor/v2"
 	"github.com/henrygd/beszel/internal/entities/smart"
 	"github.com/henrygd/beszel/internal/entities/system"
@@ -50,6 +52,32 @@ type AgentResponse struct {
 	// Data is the generic response payload for new endpoints (0.18+)
 	Data          cbor.RawMessage `cbor:"7,keyasint,omitempty,omitzero"`
 	SmartComplete bool            `cbor:"8,keyasint,omitempty,omitzero"`
+}
+
+// HubAuthNonceHeader is the request header carrying the agent's per-connection
+// nonce, which the hub includes in the signature that proves its identity.
+const HubAuthNonceHeader = "X-Nonce"
+
+// HubAuthNonceSize is the length of the hub auth nonce in bytes (hex encoded on the wire).
+const HubAuthNonceSize = 32
+
+// IsValidHubAuthNonce reports whether nonce is a hex-encoded HubAuthNonceSize-byte value.
+func IsValidHubAuthNonce(nonce string) bool {
+	if len(nonce) != HubAuthNonceSize*2 {
+		return false
+	}
+	_, err := hex.DecodeString(nonce)
+	return err == nil
+}
+
+// HubAuthChallenge returns the message the hub signs to prove its identity to
+// the agent. With a nonce the signature is bound to a single connection and
+// can't be replayed. Without one (older agents) it covers only the token.
+func HubAuthChallenge(token, nonce string) []byte {
+	if nonce == "" {
+		return []byte(token)
+	}
+	return []byte("beszel-hub-auth-v2\x00" + token + "\x00" + nonce)
 }
 
 type FingerprintRequest struct {

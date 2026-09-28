@@ -46,12 +46,13 @@ func (h *fingerprintHandler) Handle(agentResponse common.AgentResponse) error {
 }
 
 // GetFingerprint authenticates with the agent using SSH signature and returns the agent's fingerprint.
-func (ws *WsConn) GetFingerprint(ctx context.Context, token string, signer ssh.Signer, needSysInfo bool) (common.FingerprintResponse, error) {
+// nonce is the agent's per-connection nonce, or empty for older agents that don't send one.
+func (ws *WsConn) GetFingerprint(ctx context.Context, token, nonce string, signer ssh.Signer, needSysInfo bool) (common.FingerprintResponse, error) {
 	if !ws.IsConnected() {
 		return common.FingerprintResponse{}, gws.ErrConnClosed
 	}
 
-	challenge := []byte(token)
+	challenge := common.HubAuthChallenge(token, nonce)
 	signature, err := signer.Sign(nil, challenge)
 	if err != nil {
 		return common.FingerprintResponse{}, err

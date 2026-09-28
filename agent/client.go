@@ -1,8 +1,10 @@
 package agent
 
 import (
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -11,7 +13,9 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/henrygd/beszel"
@@ -28,6 +32,9 @@ const (
 	// Keep the connection alive long enough for a slow collection cycle to
 	// finish before the hub considers the agent disconnected.
 	wsDeadline = 120 * time.Second
+	// hubNonceAuthFileName marks that a hub has signed a per-connection nonce.
+	// From then on the agent refuses the replayable token-only signature.
+	hubNonceAuthFileName = "hub-nonce-auth"
 )
 
 // errNoHubURL is returned when HUB_URL is unset. This is not a failure
@@ -59,7 +66,9 @@ type WebSocketClient struct {
 	fingerprint        string                              // System fingerprint for identification
 	hubRequest         *common.HubRequest[cbor.RawMessage] // Reusable request structure for message parsing
 	lastConnectAttempt time.Time                           // Timestamp of last connection attempt
-	hubVerified        bool                                // Whether the hub has been cryptographically verified
+	hubVerified        atomic.Bool                         // Whether the hub on the current connection has been cryptographically verified
+	nonce              string                              // Random per-connection value the hub must sign
+	nonceAuthSeen      atomic.Bool                         // Whether a hub has signed a nonce, so token-only signatures are refused
 	tlsConfig          *tls.Config                         // Optional TLS configuration with custom CA certificates
 }
 
@@ -203,7 +212,17 @@ func (client *WebSocketClient) Connect() (err error) {
 	// make sure previous connection is closed
 	client.Close()
 
-	client.Conn, _, err = gws.NewClient(client, client.getOptions())
+	// every connection must prove the hub's identity again
+	client.hubVerified.Store(false)
+	nonce := make([]byte, common.HubAuthNonceSize)
+	if _, err := rand.Read(nonce); err != nil {
+		return err
+	}
+	client.nonce = hex.EncodeToString(nonce)
+	options := client.getOptions()
+	options.RequestHeader.Set(common.HubAuthNonceHeader, client.nonce)
+
+	client.Conn, _, err = gws.NewClient(client, options)
 	if err != nil {
 		return err
 	}
@@ -266,10 +285,11 @@ func (client *WebSocketClient) handleAuthChallenge(msg *common.HubRequest[cbor.R
 	}
 
 	if err := client.verifySignature(authRequest.Signature); err != nil {
+		client.hubVerified.Store(false)
 		return err
 	}
 
-	client.hubVerified = true
+	client.hubVerified.Store(true)
 	client.agent.connectionManager.eventChan <- WebSocketConnect
 
 	response := &common.FingerprintResponse{
@@ -286,18 +306,62 @@ func (client *WebSocketClient) handleAuthChallenge(msg *common.HubRequest[cbor.R
 	return client.sendResponse(response, requestID)
 }
 
-// verifySignature verifies the signature of the token using the public keys.
-func (client *WebSocketClient) verifySignature(signature []byte) (err error) {
+// verifySignature verifies the hub's signature using the public keys. It expects
+// a signature over the token and this connection's nonce. Older hubs sign only
+// the token, which is accepted with a warning until a hub has signed a nonce.
+func (client *WebSocketClient) verifySignature(signature []byte) error {
+	if client.nonce != "" && client.verifyChallenge(common.HubAuthChallenge(client.token, client.nonce), signature) {
+		client.markNonceAuthSeen()
+		return nil
+	}
+	if !client.verifyChallenge(common.HubAuthChallenge(client.token, ""), signature) {
+		return errors.New("invalid signature - check KEY value")
+	}
+	if client.hasSeenNonceAuth() {
+		return fmt.Errorf("hub signature is not bound to this connection and may be replayed; if the hub was downgraded, delete %s", filepath.Join(client.agent.dataDir, hubNonceAuthFileName))
+	}
+	slog.Warn("Hub signature is not bound to this connection; update the hub to prevent replayed handshakes")
+	return nil
+}
+
+// verifyChallenge reports whether signature is a valid signature of challenge by any of the agent's keys.
+func (client *WebSocketClient) verifyChallenge(challenge, signature []byte) bool {
 	for _, pubKey := range client.agent.keys {
 		sig := ssh.Signature{
 			Format: pubKey.Type(),
 			Blob:   signature,
 		}
-		if err = pubKey.Verify([]byte(client.token), &sig); err == nil {
-			return nil
+		if pubKey.Verify(challenge, &sig) == nil {
+			return true
 		}
 	}
-	return errors.New("invalid signature - check KEY value")
+	return false
+}
+
+// hasSeenNonceAuth reports whether a hub has previously signed a nonce, in this process or a past one.
+func (client *WebSocketClient) hasSeenNonceAuth() bool {
+	if client.nonceAuthSeen.Load() {
+		return true
+	}
+	if client.agent.dataDir == "" {
+		return false
+	}
+	if _, err := os.Stat(filepath.Join(client.agent.dataDir, hubNonceAuthFileName)); err == nil {
+		client.nonceAuthSeen.Store(true)
+		return true
+	}
+	return false
+}
+
+// markNonceAuthSeen records that the hub signs nonces, so later token-only signatures are refused.
+func (client *WebSocketClient) markNonceAuthSeen() {
+	if client.nonceAuthSeen.Swap(true) || client.agent.dataDir == "" {
+		return
+	}
+	markerPath := filepath.Join(client.agent.dataDir, hubNonceAuthFileName)
+	if err := os.WriteFile(markerPath, nil, 0o600); err != nil {
+		slog.Warn("Failed to save hub nonce auth marker", "path", markerPath, "err", err)
+	}
 }
 
 // Close closes the WebSocket connection gracefully.
@@ -315,7 +379,7 @@ func (client *WebSocketClient) handleHubRequest(msg *common.HubRequest[cbor.RawM
 		Agent:        client.agent,
 		Request:      msg,
 		RequestID:    requestID,
-		HubVerified:  client.hubVerified,
+		HubVerified:  client.hubVerified.Load(),
 		SendResponse: client.sendResponse,
 	}
 	return client.agent.handlerRegistry.Handle(ctx)

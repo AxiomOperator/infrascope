@@ -122,7 +122,13 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, fpRecords []ws.Fing
 		return err
 	}
 
-	agentFingerprint, err := wsConn.GetFingerprint(context.Background(), acr.token, signer, acr.isUniversalToken)
+	// older agents don't send a nonce; sign the token alone for them
+	nonce := acr.req.Header.Get(common.HubAuthNonceHeader)
+	if !common.IsValidHubAuthNonce(nonce) {
+		nonce = ""
+	}
+
+	agentFingerprint, err := wsConn.GetFingerprint(context.Background(), acr.token, nonce, signer, acr.isUniversalToken)
 	if err != nil {
 		return err
 	}

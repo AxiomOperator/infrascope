@@ -427,6 +427,51 @@ func TestWebSocketClient_VerifySignature(t *testing.T) {
 	}
 }
 
+// TestWebSocketClient_VerifySignatureNonce tests that hub signatures are bound to the connection nonce
+func TestWebSocketClient_VerifySignatureNonce(t *testing.T) {
+	agent := createTestAgent(t)
+
+	_, privKey, err := ed25519.GenerateKey(nil)
+	require.NoError(t, err)
+	pubKey, err := ssh.NewPublicKey(privKey.Public().(ed25519.PublicKey))
+	require.NoError(t, err)
+	agent.keys = []ssh.PublicKey{pubKey}
+
+	t.Setenv("BESZEL_AGENT_HUB_URL", "http://localhost:8080")
+	t.Setenv("BESZEL_AGENT_TOKEN", "test-token")
+
+	client, err := newWebSocketClient(agent)
+	require.NoError(t, err)
+
+	nonceA := strings.Repeat("a", common.HubAuthNonceSize*2)
+	nonceB := strings.Repeat("b", common.HubAuthNonceSize*2)
+	legacySig := ed25519.Sign(privKey, common.HubAuthChallenge("test-token", ""))
+	sigA := ed25519.Sign(privKey, common.HubAuthChallenge("test-token", nonceA))
+
+	// an older hub that signs only the token is accepted before any hub has signed a nonce
+	client.nonce = nonceA
+	require.NoError(t, client.verifySignature(legacySig))
+
+	// a signature from another connection is rejected
+	client.nonce = nonceB
+	assert.Error(t, client.verifySignature(sigA))
+
+	// a signature over this connection's nonce is accepted and remembered
+	client.nonce = nonceA
+	require.NoError(t, client.verifySignature(sigA))
+	assert.FileExists(t, filepath.Join(agent.dataDir, hubNonceAuthFileName))
+
+	// once a hub has signed a nonce, token-only signatures are refused
+	client.nonce = nonceB
+	assert.Error(t, client.verifySignature(legacySig))
+
+	// the marker persists across agent restarts
+	restarted, err := newWebSocketClient(agent)
+	require.NoError(t, err)
+	restarted.nonce = nonceB
+	assert.Error(t, restarted.verifySignature(legacySig))
+}
+
 // TestWebSocketClient_HandleHubRequest tests hub request routing (basic verification logic)
 func TestWebSocketClient_HandleHubRequest(t *testing.T) {
 	agent := createTestAgent(t)
@@ -462,7 +507,7 @@ func TestWebSocketClient_HandleHubRequest(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client.hubVerified = tc.hubVerified
+			client.hubVerified.Store(tc.hubVerified)
 
 			// Create minimal request
 			hubRequest := &common.HubRequest[cbor.RawMessage]{

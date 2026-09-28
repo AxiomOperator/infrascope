@@ -991,6 +991,11 @@ func TestAgentWebSocketIntegration(t *testing.T) {
 				assert.Equal(c, tc.expectSystemStatus, status, "System status should match expected value")
 			}, 5*time.Second, 20*time.Millisecond)
 
+			// the agent records that the hub signed its per-connection nonce
+			if tc.expectConnection {
+				assert.FileExists(t, filepath.Join(agentDataDir, "hub-nonce-auth"), "hub should sign the agent's connection nonce")
+			}
+
 			t.Logf("%s - System status: %s, Fingerprint: %s", tc.description, status, finalFingerprint)
 		})
 	}
