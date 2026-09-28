@@ -5,6 +5,7 @@ package hub_test
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	beszelTests "github.com/henrygd/beszel/internal/tests"
@@ -47,8 +48,8 @@ func TestCollectionRulesDefault(t *testing.T) {
 	require.NoError(t, err, "Failed to find alerts collection")
 	assert.Equal(t, isUserMatchesUser, *alertsCollection.ListRule)
 	assert.Nil(t, alertsCollection.ViewRule)
-	assert.Equal(t, isUserMatchesUser, *alertsCollection.CreateRule)
-	assert.Equal(t, isUserMatchesUser, *alertsCollection.UpdateRule)
+	assert.Equal(t, isUserMatchesUser+` && system.users.id ?= @request.auth.id`, *alertsCollection.CreateRule)
+	assert.Equal(t, isUserMatchesUser+` && (@request.body.user:changed = false || @request.body.user = @request.auth.id) && (@request.body.system:changed = false || @request.body.system.users.id ?= @request.auth.id)`, *alertsCollection.UpdateRule)
 	assert.Equal(t, isUserMatchesUser, *alertsCollection.DeleteRule)
 	alertNames := alertsCollection.Fields.GetByName("name").(*core.SelectField).Values
 	for _, name := range []string{"CPUIOWait", "CPUSteal"} {
@@ -183,7 +184,7 @@ func TestCollectionRulesShareAllSystems(t *testing.T) {
 	assert.Equal(t, isUserMatchesUser, *alertsCollection.ListRule)
 	assert.Nil(t, alertsCollection.ViewRule)
 	assert.Equal(t, isUserMatchesUser, *alertsCollection.CreateRule)
-	assert.Equal(t, isUserMatchesUser, *alertsCollection.UpdateRule)
+	assert.Equal(t, isUserMatchesUser+` && (@request.body.user:changed = false || @request.body.user = @request.auth.id)`, *alertsCollection.UpdateRule)
 	assert.Equal(t, isUserMatchesUser, *alertsCollection.DeleteRule)
 
 	// alerts_history collection
@@ -371,6 +372,10 @@ func TestApiCollectionsAuthRules(t *testing.T) {
 		"name": "CPU", "system": userTwoSystem.Id, "user": user2.Id, "value": 80,
 	})
 
+	userOneMonitor, _ := beszelTests.CreateRecord(hub, "network_monitors", map[string]any{
+		"system": userOneSystem.Id, "target": "1.1.1.1", "protocol": "icmp", "interval": 60,
+	})
+
 	userRecords, _ := hub.CountRecords("users")
 	assert.EqualValues(t, 3, userRecords, "all users should be created")
 
@@ -405,6 +410,89 @@ func TestApiCollectionsAuthRules(t *testing.T) {
 			ExpectedContent:    []string{"Only superusers"},
 			NotExpectedContent: []string{userTwoAlert.Id},
 			TestAppFactory:     testAppFactory,
+		},
+		{
+			Name:   "Users can create alerts on their own systems",
+			Method: http.MethodPost,
+			URL:    "/api/collections/alerts/records",
+			Headers: map[string]string{
+				"Authorization": user1Token,
+			},
+			Body:            strings.NewReader(fmt.Sprintf(`{"name":"Memory","system":%q,"user":%q,"value":80}`, userOneSystem.Id, user1.Id)),
+			ExpectedStatus:  200,
+			ExpectedContent: []string{`"name":"Memory"`},
+			TestAppFactory:  testAppFactory,
+		},
+		{
+			Name:   "Users cannot create alerts on another user's system",
+			Method: http.MethodPost,
+			URL:    "/api/collections/alerts/records",
+			Headers: map[string]string{
+				"Authorization": user1Token,
+			},
+			Body:            strings.NewReader(fmt.Sprintf(`{"name":"Memory","system":%q,"user":%q,"value":80}`, userTwoSystem.Id, user1.Id)),
+			ExpectedStatus:  400,
+			ExpectedContent: []string{"Failed to create record"},
+			TestAppFactory:  testAppFactory,
+		},
+		{
+			Name:   "Users cannot move their alert to another user's system",
+			Method: http.MethodPatch,
+			URL:    fmt.Sprintf("/api/collections/alerts/records/%s", userOneAlert.Id),
+			Headers: map[string]string{
+				"Authorization": user1Token,
+			},
+			Body:            strings.NewReader(fmt.Sprintf(`{"system":%q}`, userTwoSystem.Id)),
+			ExpectedStatus:  404,
+			ExpectedContent: []string{"resource wasn't found"},
+			TestAppFactory:  testAppFactory,
+			AfterTestFunc: func(t testing.TB, app *pbTests.TestApp, res *http.Response) {
+				alert, err := app.FindRecordById("alerts", userOneAlert.Id)
+				require.NoError(t, err)
+				assert.Equal(t, userOneSystem.Id, alert.GetString("system"))
+			},
+		},
+		{
+			Name:   "Users cannot give their alert to another user",
+			Method: http.MethodPatch,
+			URL:    fmt.Sprintf("/api/collections/alerts/records/%s", userOneAlert.Id),
+			Headers: map[string]string{
+				"Authorization": user1Token,
+			},
+			Body:            strings.NewReader(fmt.Sprintf(`{"user":%q}`, user2.Id)),
+			ExpectedStatus:  404,
+			ExpectedContent: []string{"resource wasn't found"},
+			TestAppFactory:  testAppFactory,
+		},
+		{
+			Name:   "Users can update their alert on the same system",
+			Method: http.MethodPatch,
+			URL:    fmt.Sprintf("/api/collections/alerts/records/%s", userOneAlert.Id),
+			Headers: map[string]string{
+				"Authorization": user1Token,
+			},
+			Body:            strings.NewReader(fmt.Sprintf(`{"system":%q,"value":90}`, userOneSystem.Id)),
+			ExpectedStatus:  200,
+			ExpectedContent: []string{`"value":90`},
+			TestAppFactory:  testAppFactory,
+		},
+		{
+			Name:   "Users cannot move a network monitor to another user's system",
+			Method: http.MethodPatch,
+			URL:    fmt.Sprintf("/api/collections/network_monitors/records/%s", userOneMonitor.Id),
+			Headers: map[string]string{
+				"Authorization": user1Token,
+			},
+			Body:            strings.NewReader(fmt.Sprintf(`{"system":%q}`, userTwoSystem.Id)),
+			ExpectedStatus:  404,
+			ExpectedContent: []string{"resource wasn't found"},
+			TestAppFactory:  testAppFactory,
+			AfterTestFunc: func(t testing.TB, app *pbTests.TestApp, res *http.Response) {
+				monitors, err := app.FindAllRecords("network_monitors")
+				require.NoError(t, err)
+				require.Len(t, monitors, 1)
+				assert.Equal(t, userOneSystem.Id, monitors[0].GetString("system"))
+			},
 		},
 		{
 			Name:               "Unauthorized user cannot list systems",

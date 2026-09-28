@@ -68,6 +68,16 @@ func setCollectionAuthSettings(app core.App) error {
 	systemsWriteRule := systemsReadRule + " && @request.auth.role != \"readonly\""
 	systemScopedWriteRule := systemScopedReadRule + " && @request.auth.role != \"readonly\""
 
+	// Update rules are checked against the stored record, so moving a record to
+	// another system needs its own membership check on the submitted system.
+	systemMembershipRule := " && system.users.id ?= @request.auth.id"
+	systemMoveRule := " && (@request.body.system:changed = false || @request.body.system.users.id ?= @request.auth.id)"
+	if shareAllSystems == "true" {
+		systemMembershipRule = ""
+		systemMoveRule = ""
+	}
+	systemScopedUpdateRule := systemScopedWriteRule + systemMoveRule
+
 	if err := applyCollectionRules(app, []string{"systems"}, collectionRules{
 		list:   &systemsReadRule,
 		view:   &systemsReadRule,
@@ -112,8 +122,21 @@ func setCollectionAuthSettings(app core.App) error {
 		list:   &systemScopedReadRule,
 		view:   &systemScopedReadRule,
 		create: &systemScopedWriteRule,
-		update: &systemScopedWriteRule,
+		update: &systemScopedUpdateRule,
 		delete: &systemScopedWriteRule,
+	}); err != nil {
+		return err
+	}
+
+	// Alerts belong to a user, and can only target systems that user can access.
+	alertsOwnerRule := authenticatedRule + " && user = @request.auth.id"
+	alertsCreateRule := alertsOwnerRule + systemMembershipRule
+	alertsUpdateRule := alertsOwnerRule + " && (@request.body.user:changed = false || @request.body.user = @request.auth.id)" + systemMoveRule
+	if err := applyCollectionRules(app, []string{"alerts"}, collectionRules{
+		list:   &alertsOwnerRule,
+		create: &alertsCreateRule,
+		update: &alertsUpdateRule,
+		delete: &alertsOwnerRule,
 	}); err != nil {
 		return err
 	}

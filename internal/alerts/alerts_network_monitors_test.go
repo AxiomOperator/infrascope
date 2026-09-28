@@ -248,7 +248,8 @@ func TestNetworkMonitorAlertAPI(t *testing.T) {
 		{name: "negative threshold", value: -1, status: 400},
 		{name: "unreachable threshold", value: 100, status: 400},
 		{name: "bulk inaccessible system", value: 5, denied: true, status: 200},
-		{name: "direct inaccessible system", value: 5, direct: true, denied: true, status: 403},
+		// the collection create rule rejects this before the hook's access check runs
+		{name: "direct inaccessible system", value: 5, direct: true, denied: true, status: 400},
 		{name: "direct invalid threshold", value: -1, direct: true, status: 400},
 		{name: "direct private state", value: 5, direct: true, status: 200},
 		{name: "patch preserves state", value: 10, direct: true, patch: true, status: 200},
