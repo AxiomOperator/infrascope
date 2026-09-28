@@ -2,6 +2,7 @@ package systems
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -357,8 +358,10 @@ func createSystemDetailsRecord(app core.App, data *system.Details, systemId stri
 		"updated":  time.Now().UTC(),
 	}
 	result, err := app.DB().Update(collectionName, params, dbx.HashExp{"id": systemId}).Execute()
-	rowsAffected, _ := result.RowsAffected()
-	if err != nil || rowsAffected == 0 {
+	if err != nil {
+		return err
+	}
+	if rowsAffected, _ := result.RowsAffected(); rowsAffected == 0 {
 		_, err = app.DB().Insert(collectionName, params).Execute()
 	}
 	return err
@@ -564,14 +567,15 @@ func createContainerRecords(app core.App, data []*container.Stats, systemId stri
 }
 
 // getRecord retrieves the system record from the database.
-// If the record is not found, it removes the system from the manager.
+// If the record is not found, it removes the system from the manager. Other
+// errors (e.g. a locked database) are returned so the next update can retry.
 func (sys *System) getRecord(app core.App) (*core.Record, error) {
 	record, err := app.FindRecordById("systems", sys.Id)
-	if err != nil || record == nil {
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && record == nil) {
 		_ = sys.manager.RemoveSystem(sys.Id)
-		if err == nil {
-			err = fmt.Errorf("system record %s not found", sys.Id)
-		}
+		return nil, fmt.Errorf("system record %s not found", sys.Id)
+	}
+	if err != nil {
 		return nil, err
 	}
 	return record, nil
