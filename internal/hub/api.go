@@ -195,6 +195,7 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	// push monitor checks (Uptime Kuma compatible) and push token regeneration
 	apiNoAuth.GET("/push/{token}", h.handlePush)
 	apiNoAuth.POST("/push/{token}", h.handlePush)
+	apiNoAuth.GET("/status-pages/{slug}", h.handleStatusPage)
 	apiAuth.POST("/monitors/{id}/push-token", h.regeneratePushToken).BindFunc(excludeReadOnlyRole)
 	// handle agent websocket connection
 	apiNoAuth.GET("/agent-connect", h.handleAgentConnect)

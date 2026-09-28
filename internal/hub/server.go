@@ -45,8 +45,8 @@ func isAppRoute(urlPath, basePath string) bool {
 	case "", "/containers", "/smart", "/monitors", "/settings", "/forgot-password", "/request-otp":
 		return true
 	}
-	// routes with a single required (/system/:id) or optional (/settings/:name?) param
-	for _, prefix := range [...]string{"/system/", "/settings/"} {
+	// routes with a single required (/system/:id, /status/:slug) or optional (/settings/:name?) param
+	for _, prefix := range [...]string{"/system/", "/settings/", "/status/"} {
 		if param, ok := strings.CutPrefix(urlPath, prefix); ok {
 			return param != "" && !strings.Contains(param, "/")
 		}

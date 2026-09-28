@@ -48,6 +48,8 @@ type Hub struct {
 	maintenance *maintenanceWindows
 	// monitorNotices delivers the engine's status changes to the alert manager.
 	monitorNotices *transitionQueue
+	// statusPages caches and rate limits public status page requests.
+	statusPages *statusPages
 }
 
 // NewHub creates a new Hub instance with default configuration
@@ -64,6 +66,7 @@ func NewHub(app core.App) *Hub {
 		uptime.WithMaintenanceCheck(hub.maintenance.Active),
 	)
 	hub.hubMonitors = newHubMonitorRunner(app, hub.uptime)
+	hub.statusPages = newStatusPages()
 	hub.hb = heartbeat.New(app, utils.GetEnv)
 	if hub.hb != nil {
 		hub.hbStop = make(chan struct{})

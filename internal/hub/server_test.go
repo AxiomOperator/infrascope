@@ -27,6 +27,8 @@ func TestIsAppRoute(t *testing.T) {
 		{"/system/abc123/", "/", true},
 		{"/settings", "/", true},
 		{"/settings/general", "/", true},
+		{"/status/my-page", "/", true},
+		{"/status/my-page/", "/", true},
 
 		// unknown paths
 		{"/.env", "/", false},
@@ -38,6 +40,10 @@ func TestIsAppRoute(t *testing.T) {
 		{"/system/abc/def", "/", false},
 		{"/settings/general/extra", "/", false},
 		{"/containersx", "/", false},
+		{"/status", "/", false},
+		{"/status/", "/", false},
+		{"/status/a/b", "/", false},
+		{"/statusx/a", "/", false},
 
 		// base path, prefix not stripped by proxy
 		{"/beszel", "/beszel/", true},
@@ -46,6 +52,9 @@ func TestIsAppRoute(t *testing.T) {
 		{"/beszel/system/abc123", "/beszel/", true},
 		{"/beszel/.env", "/beszel/", false},
 		{"/beszelx", "/beszel/", false},
+		{"/beszel/status/my-page", "/beszel/", true},
+		{"/beszel/status/", "/beszel/", false},
+		{"/status/my-page", "/beszel/", true},
 
 		// base path, prefix stripped by proxy
 		{"/", "/beszel/", true},

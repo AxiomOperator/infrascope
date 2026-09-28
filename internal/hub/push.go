@@ -31,25 +31,19 @@ const (
 type pushLimiter struct {
 	mu       sync.Mutex
 	monitors *expirymap.ExpiryMap[bool]
-	ips      *expirymap.ExpiryMap[pushWindow]
-}
-
-// pushWindow counts unknown-token requests of a client IP until reset.
-type pushWindow struct {
-	count int
-	reset time.Time
+	ips      *windowLimiter
 }
 
 func newPushLimiter() *pushLimiter {
 	return &pushLimiter{
 		monitors: expirymap.New[bool](time.Minute),
-		ips:      expirymap.New[pushWindow](time.Minute),
+		ips:      newWindowLimiter(pushUnknownLimit, pushUnknownWindow),
 	}
 }
 
 func (l *pushLimiter) stop() {
 	l.monitors.StopCleaner()
-	l.ips.StopCleaner()
+	l.ips.stop()
 }
 
 // allowMonitor reports whether a push for the monitor is accepted now. Only
@@ -66,23 +60,12 @@ func (l *pushLimiter) allowMonitor(id string) bool {
 
 // ipBlocked reports whether the IP sent too many unknown-token requests.
 func (l *pushLimiter) ipBlocked(ip string) bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	window, ok := l.ips.GetOk(ip)
-	return ok && window.count >= pushUnknownLimit
+	return l.ips.blocked(ip)
 }
 
 // unknownToken counts an unknown-token request of the IP.
 func (l *pushLimiter) unknownToken(ip string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	now := time.Now()
-	window, ok := l.ips.GetOk(ip)
-	if !ok {
-		window = pushWindow{reset: now.Add(pushUnknownWindow)}
-	}
-	window.count++
-	l.ips.Set(ip, window, window.reset.Sub(now))
+	l.ips.add(ip)
 }
 
 // pushResponse is the JSON body of push responses (Uptime Kuma compatible).

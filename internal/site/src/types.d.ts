@@ -818,7 +818,7 @@ export interface PublicStatusPageMonitor {
 }
 
 export interface PublicStatusPageDay {
-	/** Local day of the hub, YYYY-MM-DD. */
+	/** UTC date, YYYY-MM-DD. */
 	d: string
 	up: number | null
 	st: "up" | "down" | "maint" | "none"
