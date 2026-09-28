@@ -7,8 +7,10 @@ import {
 	BellIcon,
 	FileSlidersIcon,
 	FingerprintIcon,
+	GlobeIcon,
 	HeartPulseIcon,
 	SettingsIcon,
+	WrenchIcon,
 } from "lucide-react"
 import { lazy, useEffect } from "react"
 import { $router } from "@/components/router.tsx"
@@ -26,6 +28,8 @@ const configYamlSettingsImport = () => import("./config-yaml.tsx")
 const fingerprintsSettingsImport = () => import("./tokens-fingerprints.tsx")
 const alertsHistoryDataTableSettingsImport = () => import("./alerts-history-data-table.tsx")
 const heartbeatSettingsImport = () => import("./heartbeat.tsx")
+const maintenanceSettingsImport = () => import("./maintenance.tsx")
+const statusPagesSettingsImport = () => import("./status-pages.tsx")
 
 const GeneralSettings = lazy(generalSettingsImport)
 const NotificationsSettings = lazy(notificationsSettingsImport)
@@ -33,6 +37,8 @@ const ConfigYamlSettings = lazy(configYamlSettingsImport)
 const FingerprintsSettings = lazy(fingerprintsSettingsImport)
 const AlertsHistoryDataTableSettings = lazy(alertsHistoryDataTableSettingsImport)
 const HeartbeatSettings = lazy(heartbeatSettingsImport)
+const MaintenanceSettings = lazy(maintenanceSettingsImport)
+const StatusPagesSettings = lazy(statusPagesSettingsImport)
 
 export async function saveSettings(newSettings: Partial<UserSettings>) {
 	try {
@@ -78,6 +84,18 @@ export default function SettingsLayout() {
 			href: getPagePath($router, "settings", { name: "alert-history" }),
 			icon: AlertOctagonIcon,
 			preload: alertsHistoryDataTableSettingsImport,
+		},
+		{
+			title: t`Maintenance`,
+			href: getPagePath($router, "settings", { name: "maintenance" }),
+			icon: WrenchIcon,
+			preload: maintenanceSettingsImport,
+		},
+		{
+			title: t`Status Pages`,
+			href: getPagePath($router, "settings", { name: "status-pages" }),
+			icon: GlobeIcon,
+			preload: statusPagesSettingsImport,
 		},
 		{
 			title: t`Heartbeat`,
@@ -148,5 +166,9 @@ function SettingsContent({ name }: { name: string }) {
 			return <AlertsHistoryDataTableSettings />
 		case "heartbeat":
 			return <HeartbeatSettings />
+		case "maintenance":
+			return <MaintenanceSettings />
+		case "status-pages":
+			return <StatusPagesSettings />
 	}
 }

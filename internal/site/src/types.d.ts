@@ -793,6 +793,47 @@ export interface MaintenanceRecord {
 	updated: string
 }
 
+/** Public status page returned by GET /api/beszel/status-pages/:slug. */
+export interface PublicStatusPage {
+	title: string
+	description: string
+	/** Unix timestamp in milliseconds. */
+	updated: number
+	overall: "up" | "degraded" | "down" | "maintenance" | "unknown"
+	showResponseTimes: boolean
+	monitors: PublicStatusPageMonitor[]
+	maintenance: PublicStatusPageMaintenance[]
+}
+
+export interface PublicStatusPageMonitor {
+	name: string
+	status: MonitorStatus
+	uptime: { d1: number | null; d7: number | null; d30: number | null }
+	/** Daily uptime, oldest first. */
+	days: PublicStatusPageDay[]
+	/** Current response time in ms; only when the page shows response times. */
+	res?: number
+	/** Only when the page shows targets. */
+	target?: string
+}
+
+export interface PublicStatusPageDay {
+	/** Local day of the hub, YYYY-MM-DD. */
+	d: string
+	up: number | null
+	st: "up" | "down" | "maint" | "none"
+}
+
+export interface PublicStatusPageMaintenance {
+	title: string
+	description: string
+	/** ISO date. */
+	start: string
+	/** ISO date. */
+	end: string
+	active: boolean
+}
+
 /** Leaf TLS certificate details reported by the agent. Timestamps are Unix milliseconds. */
 export interface MonitorCertInfo {
 	expires: number

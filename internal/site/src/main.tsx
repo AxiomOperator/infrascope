@@ -32,6 +32,7 @@ const Containers = lazy(() => import("@/components/routes/containers.tsx"))
 const Smart = lazy(() => import("@/components/routes/smart.tsx"))
 const Monitors = lazy(() => import("@/components/routes/monitors.tsx"))
 const SystemDetail = lazy(() => import("@/components/routes/system.tsx"))
+const StatusPage = lazy(() => import("@/components/routes/status-page.tsx"))
 const CopyToClipboardDialog = lazy(() => import("@/components/copy-to-clipboard.tsx"))
 const ActiveAlerts = lazy(() => import("@/components/active-alerts.tsx").then((m) => ({ default: m.ActiveAlerts })))
 
@@ -89,6 +90,7 @@ const App = memo(() => {
 })
 
 const Layout = () => {
+	const page = useStore($router)
 	const authenticated = useStore($authenticated)
 	const copyContent = useStore($copyContent)
 	const direction = useStore($direction)
@@ -97,6 +99,17 @@ const Layout = () => {
 	useEffect(() => {
 		document.documentElement.dir = direction
 	}, [direction])
+
+	// public status pages render without the app shell or any authenticated requests
+	if (page?.route === "status_page") {
+		return (
+			<DirectionProvider dir={direction}>
+				<Suspense>
+					<StatusPage slug={page.params.slug} />
+				</Suspense>
+			</DirectionProvider>
+		)
+	}
 
 	return (
 		<DirectionProvider dir={direction}>
