@@ -12,6 +12,8 @@ export default memo(() => {
 	const { monitors, isLoading } = useNetworkMonitors({})
 	const systems = useStore($allSystemsById)
 	const visibleMonitors = monitors.filter((monitor) => {
+		// hub monitors have no system
+		if (!monitor.system) return true
 		const system = systems[monitor.system]
 		return !system || supportsNetworkMonitors(system)
 	})

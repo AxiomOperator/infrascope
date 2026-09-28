@@ -1,6 +1,8 @@
-import { alertInfo } from "@/lib/alerts"
+import { alertInfo, monitorAlertInfo } from "@/lib/alerts"
+import { getMonitorName } from "@/lib/network-monitor-utils"
 import { $alerts, $allSystemsById } from "@/lib/stores"
-import type { AlertRecord } from "@/types"
+import { useDownMonitors } from "@/lib/use-network-monitors"
+import type { AlertRecord, NetworkMonitorRecord } from "@/types"
 import { Plural, Trans } from "@lingui/react/macro"
 import { useStore } from "@nanostores/react"
 import { getPagePath } from "@nanostores/router"
@@ -44,11 +46,25 @@ function AlertLabel({ alert, systemName }: { alert: AlertRecord; systemName?: st
 	)
 }
 
-/** Banner showing the number of triggered alerts, with a sheet listing them. */
+function MonitorDownLabel({ monitor }: { monitor: NetworkMonitorRecord }) {
+	return (
+		<>
+			{getMonitorName(monitor)} <span className="opacity-60 font-normal">·</span> {monitorAlertInfo.MonitorDown.name()}
+		</>
+	)
+}
+
+function MonitorDownDesc({ monitor }: { monitor: NetworkMonitorRecord }) {
+	return monitor.lastError || monitorAlertInfo.MonitorDown.triggeredDesc?.()
+}
+
+/** Banner showing the number of triggered alerts and down monitors, with a sheet listing them. */
 export const ActiveAlerts = ({ className }: { className?: string }) => {
 	const alerts = useStore($alerts)
 	const systems = useStore($allSystemsById)
 	const [open, setOpen] = useState(false)
+	const downMonitors = useDownMonitors()
+	const downMonitorsKey = downMonitors.map((m) => `${m.id}${m.name}${m.lastError}`).join("")
 
 	const { activeAlerts, systemCount, alertsKey } = useMemo(() => {
 		const activeAlerts: AlertRecord[] = []
@@ -70,12 +86,31 @@ export const ActiveAlerts = ({ className }: { className?: string }) => {
 	}, [alerts])
 
 	return useMemo(() => {
-		const alertCount = activeAlerts.length
+		const monitorCount = downMonitors.length
+		const alertCount = activeAlerts.length + monitorCount
 		if (alertCount === 0) {
 			return null
 		}
 		// name the alert directly in the banner when there is only one
 		const [firstAlert] = activeAlerts
+		const [firstMonitor] = downMonitors
+		const monitorsHref = getPagePath($router, "monitors")
+		let description: React.ReactNode
+		if (alertCount === 1) {
+			description = firstAlert ? <AlertTriggeredDesc alert={firstAlert} /> : <MonitorDownDesc monitor={firstMonitor} />
+		} else if (!monitorCount) {
+			description = <Plural value={systemCount} one="Across # system" other="Across # systems" />
+		} else if (!systemCount) {
+			description = <Plural value={monitorCount} one="# monitor is down" other="# monitors are down" />
+		} else {
+			description = (
+				<>
+					<Plural value={systemCount} one="Across # system" other="Across # systems" />
+					{" · "}
+					<Plural value={monitorCount} one="# monitor is down" other="# monitors are down" />
+				</>
+			)
+		}
 		return (
 			<AlertBannerSheet
 				open={open}
@@ -83,24 +118,32 @@ export const ActiveAlerts = ({ className }: { className?: string }) => {
 				className={className}
 				title={
 					alertCount === 1 ? (
-						<AlertLabel alert={firstAlert} systemName={systems[firstAlert.system]?.name} />
+						firstAlert ? (
+							<AlertLabel alert={firstAlert} systemName={systems[firstAlert.system]?.name} />
+						) : (
+							<MonitorDownLabel monitor={firstMonitor} />
+						)
 					) : (
 						<Plural value={alertCount} one="# active alert" other="# active alerts" />
 					)
 				}
-				description={
-					alertCount === 1 ? (
-						<AlertTriggeredDesc alert={firstAlert} />
-					) : (
-						<Plural value={systemCount} one="Across # system" other="Across # systems" />
-					)
-				}
+				description={description}
 				buttonLabel={<Trans>View alerts</Trans>}
 				sheetTitle={<Trans>Active Alerts</Trans>}
 				sheetDescription={
 					<Plural value={alertCount} one="# alert is currently triggered" other="# alerts are currently triggered" />
 				}
 			>
+				{downMonitors.map((monitor) => (
+					<AlertBannerSheetItem
+						key={monitor.id}
+						href={monitorsHref}
+						onClick={() => setOpen(false)}
+						icon={monitorAlertInfo.MonitorDown.icon}
+						title={<MonitorDownLabel monitor={monitor} />}
+						description={<MonitorDownDesc monitor={monitor} />}
+					/>
+				))}
 				{activeAlerts.map((alert) => {
 					const info = alertInfo[alert.name as keyof typeof alertInfo]
 					const system = systems[alert.system]
@@ -117,5 +160,5 @@ export const ActiveAlerts = ({ className }: { className?: string }) => {
 				})}
 			</AlertBannerSheet>
 		)
-	}, [alertsKey, systemCount, systems, open, className])
+	}, [alertsKey, downMonitorsKey, systemCount, systems, open, className])
 }

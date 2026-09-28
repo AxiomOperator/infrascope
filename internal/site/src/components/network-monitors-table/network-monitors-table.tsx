@@ -1,4 +1,15 @@
-import { getCertDaysLeft, getCertExpiryLevel, getMonitorTarget } from "@/lib/network-monitor-utils"
+import {
+	formatDurationMs,
+	formatRelativeTime,
+	formatUptime,
+	getCertDaysLeft,
+	getCertExpiryLevel,
+	getMonitorName,
+	getMonitorStatus,
+	getMonitorTarget,
+	getMonitorUptime,
+	isHubMonitor,
+} from "@/lib/network-monitor-utils"
 import { t } from "@lingui/core/macro"
 import { Trans } from "@lingui/react/macro"
 import {
@@ -30,6 +41,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { subscribeKeys } from "nanostores"
 import { getMonitorColumns } from "@/components/network-monitors-table/network-monitors-columns"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/components/ui/use-toast"
@@ -45,6 +57,7 @@ import {
 	ArrowLeftRightIcon,
 	ArrowUpDownIcon,
 	ArrowUpIcon,
+	CircleAlertIcon,
 	EthernetPortIcon,
 	EyeIcon,
 	GlobeIcon,
@@ -68,11 +81,18 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import ChartTimeSelect from "@/components/charts/chart-time-select"
 import { LossChart, AvgMinMaxResponseChart } from "@/components/routes/system/charts/monitors-charts"
 import { useNetworkMonitorStats } from "@/lib/use-network-monitors"
+import { getDailyUptime, useMonitorEvents, useMonitorIncidents } from "@/lib/use-monitor-events"
+import { MonitorStatusBadge } from "./monitor-status-badge"
+import { MonitorPushUrl } from "./monitor-push-url"
+import { DailyUptimeBar } from "./daily-uptime-bar"
 import { useStore } from "@nanostores/react"
 import { atom } from "nanostores"
 import { Separator } from "../ui/separator"
 import { $router, Link } from "../router"
 import { getPagePath } from "@nanostores/router"
+
+/** Columns hidden until the user changes visibility, to keep the table narrow. */
+const defaultColumnVisibility: VisibilityState = { res1h: false, max1h: false, min1h: false }
 
 export default function NetworkMonitorsTableNew({
 	systemId,
@@ -94,7 +114,10 @@ export default function NetworkMonitorsTableNew({
 	)
 	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
 	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
-		() => $userSettings.get().monitorCols ?? JSON.parse(localStorage.getItem("besz-monitor-cols") || "{}")
+		() =>
+			$userSettings.get().monitorCols ??
+			JSON.parse(localStorage.getItem("besz-monitor-cols") || "null") ??
+			defaultColumnVisibility
 	)
 	const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
 	const [globalFilter, setGlobalFilter] = useState("")
@@ -151,8 +174,9 @@ export default function NetworkMonitorsTableNew({
 	const longestTarget = useMemo(() => {
 		let longestTarget = ""
 		for (const p of monitors) {
-			if (isVisuallyLonger(getMonitorTarget(p), longestTarget)) {
-				longestTarget = getMonitorTarget(p)
+			const name = getMonitorName(p)
+			if (isVisuallyLonger(name, longestTarget)) {
+				longestTarget = name
 			}
 		}
 		return longestTarget
@@ -166,10 +190,11 @@ export default function NetworkMonitorsTableNew({
 			return
 		}
 		const systemIds = new Set(monitors.map((m) => m.system))
+		const hubName = t`Hub`
 		return $allSystemsById.subscribe((systems) => {
 			let longest = ""
 			for (const id of systemIds) {
-				const name = systems[id]?.name ?? ""
+				const name = id ? (systems[id]?.name ?? "") : hubName
 				if (isVisuallyLonger(name, longest)) {
 					longest = name
 				}
@@ -315,8 +340,9 @@ export default function NetworkMonitorsTableNew({
 			const value = (filterValue as string).trim()
 			if (!value) return true
 			const monitor = row.original
-			const systemName = $allSystemsById.get()[monitor.system]?.name ?? ""
-			const searchString = `${getMonitorTarget(monitor)}${monitor.protocol}${systemName}`.toLocaleLowerCase()
+			const systemName = monitor.system ? ($allSystemsById.get()[monitor.system]?.name ?? "") : t`Hub`
+			const searchString =
+				`${monitor.name} ${getMonitorTarget(monitor)} ${monitor.protocol} ${systemName} ${getMonitorStatus(monitor)}`.toLocaleLowerCase()
 			return matchesFilterGroups(searchString, parseFilterGroups(value))
 		},
 	})
@@ -334,7 +360,7 @@ export default function NetworkMonitorsTableNew({
 							<Trans>Network Monitors</Trans>
 						</CardTitle>
 						<div className="text-sm text-muted-foreground flex items-center flex-wrap">
-							<Trans>Response time monitoring from agents.</Trans>
+							<Trans>Uptime and response time monitoring from the hub and agents.</Trans>
 						</div>
 					</div>
 					<div className="md-lg:ms-auto flex items-center gap-2">
@@ -702,6 +728,7 @@ function NetworkMonitorSheetContent({
 	const chartTime = useStore(chartTimeStore)
 	const direction = useStore($direction)
 	const system = useStore($allSystemsById)[monitor.system]
+	const isHub = isHubMonitor(monitor)
 
 	const monitorStats = useNetworkMonitorStats({
 		systemId: monitor.system,
@@ -720,18 +747,35 @@ function NetworkMonitorSheetContent({
 		[system?.info?.v, direction, chartTime]
 	)
 	const hasMonitorStats = monitorStats.some((record) => record.stats?.[monitor.id] != null)
-	const monitorLabel = getMonitorTarget(monitor)
+	const monitorName = getMonitorName(monitor)
+	const target = monitor.name ? getMonitorTarget(monitor) : ""
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
 			<SheetContent className="w-full sm:max-w-220 overflow-auto p-4 sm:p-6">
 				<SheetHeader className="mb-0 border-b p-0 pb-4">
-					<SheetTitle>{monitorLabel}</SheetTitle>
+					<SheetTitle className="flex flex-wrap items-center gap-x-3 gap-y-1 pe-6">
+						<span className="break-all">{monitorName}</span>
+						<MonitorStatusBadge monitor={monitor} />
+					</SheetTitle>
 					<SheetDescription className="flex flex-wrap items-center gap-x-2 gap-y-1">
+						{target && (
+							<>
+								<GlobeIcon className="size-3.5 text-muted-foreground" />
+								<span className="break-all">{target}</span>
+								<Separator orientation="vertical" className="h-2.5 bg-muted-foreground opacity-70" />
+							</>
+						)}
 						<ServerIcon className="size-3.5 text-muted-foreground" />
-						<Link className="hover:underline" href={getPagePath($router, "system", { id: system?.id ?? "" })}>
-							{system?.name ?? ""}
-						</Link>
+						{isHub ? (
+							<span>
+								<Trans>Hub</Trans>
+							</span>
+						) : (
+							<Link className="hover:underline" href={getPagePath($router, "system", { id: system?.id ?? "" })}>
+								{system?.name ?? ""}
+							</Link>
+						)}
 						<Separator orientation="vertical" className="h-2.5 bg-muted-foreground opacity-70" />
 						<ArrowLeftRightIcon className="size-3.5 text-muted-foreground -me-0.5" />
 						{monitor.protocol.toUpperCase()}
@@ -753,10 +797,18 @@ function NetworkMonitorSheetContent({
 					</SheetDescription>
 				</SheetHeader>
 				<div className="grid gap-4">
+					<MonitorOverview monitor={monitor} />
+					{monitor.protocol === "push" && monitor.pushToken && (
+						<Card className="p-4">
+							<MonitorPushUrl monitorId={monitor.id} pushToken={monitor.pushToken} />
+						</Card>
+					)}
+					<MonitorHistory monitor={monitor} enabled={open} />
 					<ChartTimeSelect
 						className="bg-card"
 						agentVersion={chartData.agentVersion}
 						chartTimeStore={chartTimeStore}
+						// realtime stats are streamed by agents only
 						allowRealtime={false}
 					/>
 					<AvgMinMaxResponseChart
@@ -776,5 +828,155 @@ function NetworkMonitorSheetContent({
 				</div>
 			</SheetContent>
 		</Sheet>
+	)
+}
+
+function StatTile({ label, children, title }: { label: React.ReactNode; children: React.ReactNode; title?: string }) {
+	return (
+		<div className="rounded-lg border bg-card px-3 py-2.5 min-w-0">
+			<div className="text-xs text-muted-foreground">{label}</div>
+			<div className="mt-0.5 font-medium tabular-nums truncate" title={title}>
+				{children}
+			</div>
+		</div>
+	)
+}
+
+/** Last check, uptime and the latest error of a monitor. */
+function MonitorOverview({ monitor }: { monitor: NetworkMonitorRecord }) {
+	const uptime = getMonitorUptime(monitor)
+	const status = getMonitorStatus(monitor)
+	const showError = (status === "down" || status === "pending") && (monitor.lastError || monitor.lastStatusCode > 0)
+	return (
+		<div className="grid gap-3">
+			<div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+				<StatTile
+					label={<Trans>Last check</Trans>}
+					title={monitor.lastCheck ? formatShortDate(new Date(monitor.lastCheck).toISOString()) : undefined}
+				>
+					{monitor.lastCheck ? formatRelativeTime(monitor.lastCheck) : "—"}
+				</StatTile>
+				<StatTile label={<Trans>Uptime 24h</Trans>}>{formatUptime(uptime.d1)}</StatTile>
+				<StatTile label={<Trans>Uptime 7d</Trans>}>{formatUptime(uptime.d7)}</StatTile>
+				<StatTile label={<Trans>Uptime 30d</Trans>}>{formatUptime(uptime.d30)}</StatTile>
+			</div>
+			{showError && (
+				<div className="flex gap-2 rounded-lg border border-red-500/40 bg-red-500/5 p-3 text-sm">
+					<CircleAlertIcon className="size-4 shrink-0 mt-0.5 text-red-500" />
+					<div className="min-w-0">
+						<p className="font-medium">
+							<Trans>Last error</Trans>
+							{monitor.lastStatusCode > 0 && (
+								<span className="ms-2 font-normal text-muted-foreground tabular-nums">
+									<Trans>Status code {monitor.lastStatusCode}</Trans>
+								</span>
+							)}
+						</p>
+						{monitor.lastError && <p className="text-muted-foreground break-words">{monitor.lastError}</p>}
+					</div>
+				</div>
+			)}
+		</div>
+	)
+}
+
+const INCIDENTS_PAGE = 5
+
+/** Daily uptime bar and incidents of the last 30 days. */
+function MonitorHistory({ monitor, enabled }: { monitor: NetworkMonitorRecord; enabled: boolean }) {
+	const { events, isLoading } = useMonitorEvents({
+		monitorId: monitor.id,
+		enabled,
+		refreshKey: `${monitor.status}${monitor.statusChanged}`,
+	})
+	const days = useMemo(() => getDailyUptime(events), [events])
+	const incidents = useMonitorIncidents(events)
+	const [visibleIncidents, setVisibleIncidents] = useState(INCIDENTS_PAGE)
+	const now = Date.now()
+
+	const totals = days.reduce(
+		(acc, day) => {
+			acc.up += day.upMs
+			acc.down += day.downMs
+			return acc
+		},
+		{ up: 0, down: 0 }
+	)
+	const overall = totals.up + totals.down > 0 ? (totals.up / (totals.up + totals.down)) * 100 : null
+
+	return (
+		<Card className="p-4 grid gap-4">
+			<div className="grid gap-2">
+				<div className="flex items-center justify-between gap-2 text-sm">
+					<span className="font-medium">
+						<Trans>Last 30 days</Trans>
+					</span>
+					<span className="tabular-nums text-muted-foreground">
+						{isLoading && !events.length ? (
+							<LoaderCircleIcon className="size-4 animate-spin" />
+						) : (
+							<Trans>{formatUptime(overall)} uptime</Trans>
+						)}
+					</span>
+				</div>
+				<DailyUptimeBar days={days} className="h-8" />
+				<div className="flex justify-between text-xs text-muted-foreground">
+					<span>
+						<Trans>30 days ago</Trans>
+					</span>
+					<span>
+						<Trans>Today</Trans>
+					</span>
+				</div>
+			</div>
+			<div className="grid gap-2">
+				<div className="text-sm font-medium">
+					<Trans>Incidents</Trans>
+				</div>
+				{incidents.length === 0 ? (
+					<p className="text-sm text-muted-foreground">
+						{isLoading ? <Trans>Loading...</Trans> : <Trans>No incidents in the last 30 days.</Trans>}
+					</p>
+				) : (
+					<ul className="grid divide-y rounded-md border text-sm">
+						{incidents.slice(0, visibleIncidents).map((incident) => (
+							<li key={incident.id} className="grid gap-0.5 px-3 py-2">
+								<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+									<span className="size-2 shrink-0 rounded-full bg-red-500" />
+									<span className="tabular-nums">{formatShortDate(new Date(incident.start).toISOString())}</span>
+									<span className="text-muted-foreground">·</span>
+									{incident.end ? (
+										<span className="tabular-nums text-muted-foreground">
+											{formatDurationMs(incident.end - incident.start)}
+										</span>
+									) : (
+										<Badge className="bg-red-500/15! text-red-600 dark:text-red-400">
+											<Trans>Ongoing</Trans> · {formatDurationMs(now - incident.start)}
+										</Badge>
+									)}
+									{incident.statusCode > 0 && (
+										<span className="ms-auto tabular-nums text-muted-foreground">
+											<Trans>Status code {incident.statusCode}</Trans>
+										</span>
+									)}
+								</div>
+								{incident.error && <p className="ps-4 text-muted-foreground break-words">{incident.error}</p>}
+							</li>
+						))}
+					</ul>
+				)}
+				{incidents.length > visibleIncidents && (
+					<Button
+						variant="ghost"
+						size="sm"
+						className="justify-self-start"
+						onClick={() => setVisibleIncidents((count) => count + INCIDENTS_PAGE * 2)}
+					>
+						<Trans>Show more</Trans>
+						<span className="ms-1 text-muted-foreground tabular-nums">({incidents.length - visibleIncidents})</span>
+					</Button>
+				)}
+			</div>
+		</Card>
 	)
 }

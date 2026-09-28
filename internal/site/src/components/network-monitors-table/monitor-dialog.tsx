@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Trans, useLingui } from "@lingui/react/macro"
 import { useStore } from "@nanostores/react"
+import { ChevronDownIcon, ListIcon, PlusIcon, TriangleAlertIcon } from "lucide-react"
 import { pb } from "@/lib/api"
 import {
 	Dialog,
@@ -10,363 +11,41 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog"
-import {
-	DropdownMenu,
-	DropdownMenuCheckboxItem,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { ChevronDownIcon, ListIcon, PlusIcon, SearchIcon, ServerIcon } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { $systems } from "@/lib/stores"
-import { cn, supportsNetworkMonitors } from "@/lib/utils"
+import { $allSystemsById, $systems } from "@/lib/stores"
+import { supportsNetworkMonitors } from "@/lib/utils"
+import { needsAgentUpdateForMonitorOptions } from "@/lib/network-monitor-utils"
 import type { NetworkMonitorRecord } from "@/types"
-import * as v from "valibot"
+import {
+	buildMonitorPayload,
+	defaultInterval,
+	getErrorMessage,
+	type HttpFormState,
+	httpFormFromMonitor,
+	httpPayloadFromForm,
+	hubMinInterval,
+	isHttpsTarget,
+	type MonitorProtocol,
+} from "./monitor-form-utils"
+import { hasCustomHttpOptions, MonitorHttpOptions, SwitchField } from "./monitor-http-options"
+import { MonitorPushUrl } from "./monitor-push-url"
+import { MonitorBulkAddSheet } from "./monitor-bulk-add-sheet"
+import { SystemMultiSelect } from "./system-multi-select"
 
-type MonitorProtocol = "icmp" | "tcp" | "http" | "dns"
-
-type MonitorValues = {
-	system: string
-	target: string
-	protocol: MonitorProtocol
-	port: number
-	server: string
-	interval: string
-}
-
-type NormalizedMonitorValues = Omit<MonitorValues, "system" | "interval"> & {
-	interval: number
-}
-
-type BulkMonitorLineSource = Pick<NetworkMonitorRecord, "target" | "protocol" | "port" | "interval" | "server">
-
-const defaultInterval = 30
-
-const MonitorProtocolSchema = v.picklist(["icmp", "tcp", "http", "dns"])
-
-const MonitorIntervalSchema = v.pipe(v.string(), v.toNumber(), v.minValue(1), v.maxValue(3600))
-
-// Both the single-monitor form and the bulk importer flow through this schema so
-// defaults and HTTP target normalization stay in one place.
-const NormalizedMonitorValuesSchema = v.pipe(
-	v.object({
-		target: v.pipe(v.string(), v.trim(), v.nonEmpty("target is required")),
-		protocol: MonitorProtocolSchema,
-		port: v.number(),
-		server: v.pipe(v.string(), v.trim()),
-		interval: MonitorIntervalSchema,
-	}),
-	v.transform((input): NormalizedMonitorValues => {
-		let { protocol, port } = input
-		let httpTarget = input.target
-		if (protocol === "icmp" || protocol === "http" || protocol === "dns") {
-			if (protocol === "http") {
-				httpTarget = normalizeHttpTarget(input.target, port)
-			}
-			port = 0
-		} else if (protocol === "tcp" && !port) {
-			port = 443
-		}
-		return {
-			// HTTP monitors may be entered as bare hostnames, so normalize them to a
-			// scheme-bearing URL before the payload is sent to PocketBase.
-			target: protocol === "http" ? httpTarget : input.target,
-			protocol,
-			port,
-			// Only DNS monitors use a custom server; clear it for other protocols.
-			server: protocol === "dns" ? input.server : "",
-			interval: input.interval,
-		}
-	}),
-	v.forward(
-		v.check((input) => {
-			if (input.protocol === "icmp" || input.protocol === "http" || input.protocol === "dns") {
-				return input.port === 0
-			}
-
-			return Number.isInteger(input.port) && input.port >= 1 && input.port <= 65535
-		}, "Port must be between 1 and 65535"),
-		["port"]
-	)
-)
-
-// Bulk parsing only trims raw CSV fields. Inference, defaults, and protocol-
-// specific validation still go through the shared normalization schema above.
-const BulkMonitorSchema = v.object({
-	target: v.pipe(v.string(), v.trim(), v.nonEmpty("target is required")),
-	protocol: v.optional(v.pipe(v.string(), v.trim())),
-	port: v.optional(v.pipe(v.string(), v.trim())),
-	interval: v.optional(v.pipe(v.string(), v.trim())),
-	server: v.optional(v.pipe(v.string(), v.trim())),
-})
-
-function normalizeHttpTarget(target: string, port = 0) {
-	const useExplicitPort = port > 0 && port !== 80 && port !== 443
-	const hasOriginOnlyTarget = /^https?:\/\/[^/?#]+$/i.test(target)
-	if (!/^https?:\/\//i.test(target)) {
-		const scheme = port === 80 ? "http" : "https"
-		return `${scheme}://${target}${useExplicitPort ? `:${port}` : ""}`
-	}
-
-	let parsedUrl: URL
-	try {
-		parsedUrl = new URL(target)
-	} catch {
-		return target
-	}
-
-	if (!parsedUrl.port && useExplicitPort) {
-		parsedUrl.port = `${port}`
-	}
-
-	// avoid converting "http://localhost:8090" to "http://localhost:8090/" - keep the original formatting if the URL is just an origin
-	if (hasOriginOnlyTarget && parsedUrl.pathname === "/" && !parsedUrl.search && !parsedUrl.hash) {
-		return parsedUrl.origin
-	}
-
-	return parsedUrl.toString()
-}
-
-function trimTrailingEmptyFields(fields: string[]) {
-	let lastValueIndex = fields.length - 1
-	while (lastValueIndex > 0 && !fields[lastValueIndex]) {
-		lastValueIndex--
-	}
-	return fields.slice(0, lastValueIndex + 1)
-}
-
-function buildMonitorPayload(values: MonitorValues, enabled = true) {
-	const normalizedValues = v.safeParse(NormalizedMonitorValuesSchema, values)
-	if (!normalizedValues.success) {
-		throw new Error(normalizedValues.issues[0]?.message || "Invalid monitor")
-	}
-
-	const payload = {
-		system: values.system,
-		enabled,
-		...normalizedValues.output,
-	}
-
-	return payload
-}
-
-type MonitorIdentity = Pick<MonitorValues, "system" | "target" | "protocol" | "port" | "server">
-function getMonitorIdentityKey({ system, target, protocol, port, server }: MonitorIdentity) {
-	return `${system}${target}${protocol}${port}${protocol === "dns" ? server : ""}`
-}
-
-function parseBulkMonitorLine(line: string, lineNumber: number, system: string) {
-	const [rawTarget = "", rawProtocol = "", rawPort = "", rawInterval = "", rawServer = ""] = line.split(",")
-	const parsed = v.safeParse(BulkMonitorSchema, {
-		target: rawTarget,
-		protocol: rawProtocol,
-		port: rawPort,
-		interval: rawInterval,
-		server: rawServer,
-	})
-	if (!parsed.success) {
-		throw new Error(`Line ${lineNumber}: ${parsed.issues[0]?.message || "invalid monitor entry"}`)
-	}
-	const protocol = (parsed.output.protocol?.toLowerCase() ||
-		(/^https?:\/\//i.test(parsed.output.target) ? "http" : "icmp")) as MonitorProtocol
-
-	return buildMonitorPayload({
-		system,
-		target: parsed.output.target,
-		protocol,
-		port: parsed.output.port ? Number(parsed.output.port) : 0,
-		server: parsed.output.server || "",
-		interval: parsed.output.interval || `${defaultInterval}`,
-	})
-}
-
-export function formatBulkMonitorLine(monitor: BulkMonitorLineSource) {
-	const port = monitor.protocol !== "tcp" || monitor.port === 443 ? "" : `${monitor.port}`
-	const interval = monitor.interval === defaultInterval ? "" : `${monitor.interval}`
-	const server = monitor.protocol !== "dns" ? "" : monitor.server
-	return trimTrailingEmptyFields([monitor.target, monitor.protocol, port, interval, server]).join(",")
-}
-
-function SystemMultiSelect({
-	id,
-	selectedSystemIds,
-	onChange,
-	disabled,
-	className,
-}: {
-	id: string
-	selectedSystemIds: Set<string>
-	onChange: (ids: Set<string>) => void
-	disabled?: boolean
-	className?: string
-}) {
-	const systems = useStore($systems)
-	const { t } = useLingui()
-	const [search, setSearch] = useState("")
-	const searchRef = useRef<HTMLInputElement>(null)
-	const focusSearchOnMount = useCallback((node: HTMLInputElement | null) => {
-		searchRef.current = node
-		if (!node) return
-		// Focus after the menu has completed its own initial focus handling.
-		const frame = requestAnimationFrame(() => node.focus())
-		return () => cancelAnimationFrame(frame)
-	}, [])
-	const contentRef = useRef<HTMLDivElement>(null)
-	const query = search.trim().toLocaleLowerCase()
-	const filteredSystems = systems.filter(
-		(system) => supportsNetworkMonitors(system) && system.name.toLocaleLowerCase().includes(query)
-	)
-	const allSelected = filteredSystems.every((system) => selectedSystemIds.has(system.id))
-	const anySelected = filteredSystems.some((system) => selectedSystemIds.has(system.id))
-
-	const selectFiltered = (selected: boolean) => {
-		const next = new Set(selectedSystemIds)
-		for (const system of filteredSystems) {
-			if (selected) next.add(system.id)
-			else next.delete(system.id)
-		}
-		onChange(next)
-	}
-	return (
-		<DropdownMenu onOpenChange={() => setSearch("")}>
-			<DropdownMenuTrigger asChild>
-				<Button
-					id={id}
-					disabled={disabled}
-					type="button"
-					variant="outline"
-					className={cn("relative w-full min-w-0 ps-10 pe-10 justify-start font-normal text-start", className)}
-				>
-					<ServerIcon className="size-3.5 absolute start-4 top-1/2 -translate-y-1/2 opacity-85" />
-					<span className="truncate">
-						{selectedSystemIds.size === 0
-							? t`Select systems`
-							: selectedSystemIds.size === 1
-								? systems.find((s) => selectedSystemIds.has(s.id))?.name
-								: t`${selectedSystemIds.size} selected`}
-					</span>
-					<ChevronDownIcon className="size-4 absolute end-4 top-1/2 -translate-y-1/2 opacity-50" />
-				</Button>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent
-				ref={contentRef}
-				onKeyDown={(event) => {
-					if (event.key === "Tab") {
-						event.preventDefault()
-						searchRef.current?.focus()
-					}
-				}}
-				align="start"
-				className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-[min(20rem,var(--radix-dropdown-menu-content-available-height))] flex flex-col overflow-hidden"
-			>
-				<div className="shrink-0 border-b mb-1">
-					<div className="flex items-center gap-2 px-2.5">
-						<SearchIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-						<Input
-							ref={focusSearchOnMount}
-							value={search}
-							onChange={(event) => setSearch(event.target.value)}
-							placeholder={t`Search systems`}
-							aria-label={t`Search systems`}
-							className="h-10 min-w-0 rounded-none border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-							onKeyDown={(event) => {
-								if (event.key === "Escape") return
-								// Keep menu typeahead and form submission from consuming search input.
-								event.stopPropagation()
-								if (event.key === "Enter") event.preventDefault()
-								if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Tab") {
-									event.preventDefault()
-									const items = contentRef.current?.querySelectorAll<HTMLElement>(
-										'[role^="menuitem"]:not([data-disabled])'
-									)
-									const index = event.key === "ArrowUp" || event.shiftKey ? (items?.length ?? 1) - 1 : 0
-									items?.[index]?.focus()
-								}
-							}}
-						/>
-					</div>
-					<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-1 pb-1">
-						<div className="flex items-center">
-							<DropdownMenuItem
-								className="px-1.5 py-1 text-xs text-muted-foreground"
-								disabled={!filteredSystems.length || allSelected}
-								onSelect={(event) => {
-									event.preventDefault()
-									selectFiltered(true)
-								}}
-							>
-								{query ? <Trans>Select matches</Trans> : <Trans>Select all</Trans>}
-							</DropdownMenuItem>
-							<span aria-hidden="true" className="text-xs text-muted-foreground/50">
-								·
-							</span>
-							<DropdownMenuItem
-								className="px-1.5 py-1 text-xs text-muted-foreground"
-								disabled={!anySelected}
-								onSelect={(event) => {
-									event.preventDefault()
-									selectFiltered(false)
-								}}
-							>
-								{query ? <Trans>Clear matches</Trans> : <Trans>Clear all</Trans>}
-							</DropdownMenuItem>
-						</div>
-						<span className="px-1.5 text-xs tabular-nums text-muted-foreground">
-							{t`${selectedSystemIds.size} selected`}
-						</span>
-					</div>
-				</div>
-				<div className="min-h-0 overflow-y-auto">
-					{filteredSystems.length === 0 && (
-						<output className="block px-2.5 py-3 text-sm text-muted-foreground">
-							<Trans>No systems found.</Trans>
-						</output>
-					)}
-					{filteredSystems.map((sys) => (
-						<DropdownMenuCheckboxItem
-							key={sys.id}
-							checked={selectedSystemIds.has(sys.id)}
-							onSelect={(event) => event.preventDefault()}
-							onCheckedChange={(checked) => {
-								const next = new Set(selectedSystemIds)
-								if (checked) next.add(sys.id)
-								else next.delete(sys.id)
-								onChange(next)
-							}}
-							className="group min-w-0 gap-2.5 py-2 ps-2.5"
-							indicatorClassName="static size-4 shrink-0 rounded border border-input group-data-[state=checked]:border-primary group-data-[state=checked]:bg-primary group-data-[state=checked]:text-primary-foreground [&_svg]:size-3"
-						>
-							<span className="truncate">{sys.name}</span>
-						</DropdownMenuCheckboxItem>
-					))}
-				</div>
-			</DropdownMenuContent>
-		</DropdownMenu>
-	)
-}
+type RunsOn = "hub" | "agent"
 
 export function AddMonitorDialog({ systemId, monitors }: { systemId?: string; monitors: NetworkMonitorRecord[] }) {
 	const [open, setOpen] = useState(false)
 	const [bulkOpen, setBulkOpen] = useState(false)
-	const [bulkInput, setBulkInput] = useState("")
-	const [bulkLoading, setBulkLoading] = useState(false)
 	const [bulkSelectedSystemIds, setBulkSelectedSystemIds] = useState<Set<string>>(new Set())
-	const bulkFormRef = useRef<HTMLFormElement>(null)
-	const { toast } = useToast()
 	const { t } = useLingui()
 	const systems = useStore($systems)
 	const hasEligibleSystems = systemId ? true : systems.some(supportsNetworkMonitors)
-
-	const resetBulkForm = () => {
-		setBulkInput("")
-	}
 
 	const openBulkAdd = (selectedSystemIds?: Set<string>) => {
 		if (!systemId && selectedSystemIds) {
@@ -381,79 +60,10 @@ export function AddMonitorDialog({ systemId, monitors }: { systemId?: string; mo
 		setOpen(true)
 	}
 
-	async function handleBulkSubmit(e: React.FormEvent) {
-		e.preventDefault()
-		setBulkLoading(true)
-		let closedForSubmit = false
-
-		try {
-			const targetSystems = systemId ? [systemId] : Array.from(bulkSelectedSystemIds)
-			if (!targetSystems.length) {
-				throw new Error("Select at least one system.")
-			}
-			const rawLines = bulkInput.split(/\r?\n/).filter((line) => line.trim())
-			if (!rawLines.length) {
-				throw new Error("Enter at least one monitor.")
-			}
-
-			let totalCreated = 0
-			closedForSubmit = true
-
-			for (const system of targetSystems) {
-				const payloads = rawLines.map((line, index) => parseBulkMonitorLine(line, index + 1, system))
-				const existingMonitorKeys = new Set(
-					monitors.filter((monitor) => monitor.system === system).map((monitor) => getMonitorIdentityKey(monitor))
-				)
-				const newPayloads: typeof payloads = []
-
-				for (const payload of payloads) {
-					const monitorKey = getMonitorIdentityKey(payload)
-					if (existingMonitorKeys.has(monitorKey)) {
-						continue
-					}
-					existingMonitorKeys.add(monitorKey)
-					newPayloads.push(payload)
-				}
-
-				if (!newPayloads.length) continue
-
-				let batch = pb.createBatch()
-				let inBatch = 0
-				for (const payload of newPayloads) {
-					batch.collection("network_monitors").create(payload)
-					inBatch++
-					if (inBatch > 20) {
-						await batch.send()
-						batch = pb.createBatch()
-						inBatch = 0
-					}
-				}
-				if (inBatch) {
-					await batch.send()
-				}
-				totalCreated += newPayloads.length
-			}
-
-			if (!totalCreated) {
-				throw new Error("No new monitors. All entries already exist.")
-			}
-
-			resetBulkForm()
-			toast({ title: t`Monitors created`, description: `${totalCreated} monitor(s) added.` })
-		} catch (err: unknown) {
-			if (closedForSubmit) {
-				setBulkOpen(true)
-			}
-			toast({ variant: "destructive", title: t`Error`, description: (err as Error)?.message })
-		} finally {
-			setBulkLoading(false)
-		}
-	}
-
 	return (
 		<>
 			<div className="flex gap-0 rounded-lg">
-				<Button variant="outline" onClick={openAdd} className="rounded-e-none grow" disabled={!hasEligibleSystems}>
+				<Button variant="outline" onClick={openAdd} className="rounded-e-none grow">
 					<PlusIcon className="size-4 me-1" />
 					<span className="sm:hidden">
 						<Trans>Add</Trans>
@@ -482,85 +92,22 @@ export function AddMonitorDialog({ systemId, monitors }: { systemId?: string; mo
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</div>
-			<Dialog
-				open={open}
-				onOpenChange={(nextOpen) => {
-					setOpen(nextOpen)
-				}}
-			>
-				<MonitorDialogContent open={open} setOpen={setOpen} systemId={systemId} onOpenBulkAdd={openBulkAdd} />
+			<Dialog open={open} onOpenChange={setOpen}>
+				<MonitorDialogContent
+					open={open}
+					setOpen={setOpen}
+					systemId={systemId}
+					onOpenBulkAdd={hasEligibleSystems ? openBulkAdd : undefined}
+				/>
 			</Dialog>
-
-			<Sheet
+			<MonitorBulkAddSheet
 				open={bulkOpen}
-				onOpenChange={(nextOpen) => {
-					setBulkOpen(nextOpen)
-					if (!nextOpen) {
-						resetBulkForm()
-					}
-				}}
-			>
-				<SheetContent className="w-full sm:max-w-xl gap-0">
-					<SheetHeader className="border-b">
-						<SheetTitle>
-							<Trans>Bulk Add {{ foo: t`Network Monitors` }}</Trans>
-						</SheetTitle>
-						<SheetDescription>
-							<Trans>target[,protocol[,port[,interval[,server]]]]</Trans>
-						</SheetDescription>
-					</SheetHeader>
-					<form ref={bulkFormRef} onSubmit={handleBulkSubmit} className="flex h-full flex-col overflow-hidden">
-						<div className="flex-1 flex flex-col space-y-4 overflow-auto p-4">
-							{!systemId && (
-								<div className="grid gap-2">
-									<Label htmlFor="bulk-monitor-systems" className="sr-only">
-										<Trans>Systems</Trans>
-									</Label>
-									<SystemMultiSelect
-										id="bulk-monitor-systems"
-										selectedSystemIds={bulkSelectedSystemIds}
-										onChange={setBulkSelectedSystemIds}
-										disabled={bulkLoading}
-										className="bg-card"
-									/>
-								</div>
-							)}
-							<div className="grow flex flex-col gap-2">
-								<Label htmlFor="bulk-monitors" className="sr-only">
-									Entries
-								</Label>
-								<Textarea
-									id="bulk-monitors"
-									value={bulkInput}
-									onChange={(e) => setBulkInput(e.target.value)}
-									onKeyDown={(e) => {
-										if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-											e.preventDefault()
-											bulkFormRef.current?.requestSubmit()
-										}
-									}}
-									className="font-mono grow text-sm bg-card"
-									placeholder={[
-										"1.1.1.1",
-										"example.com,tcp",
-										"https://example.com,http,,60",
-										"example.com,dns,,,1.1.1.1",
-									].join("\n")}
-									required
-								/>
-								<p className="text-xs text-muted-foreground">
-									<Trans>target[,protocol[,port[,interval[,server]]]]</Trans>
-								</p>
-							</div>
-						</div>
-						<SheetFooter className="border-t">
-							<Button type="submit" disabled={bulkLoading || (!systemId && !bulkSelectedSystemIds.size)}>
-								<Trans>Add {{ foo: t`Network Monitors` }}</Trans>
-							</Button>
-						</SheetFooter>
-					</form>
-				</SheetContent>
-			</Sheet>
+				setOpen={setBulkOpen}
+				systemId={systemId}
+				monitors={monitors}
+				selectedSystemIds={bulkSelectedSystemIds}
+				setSelectedSystemIds={setBulkSelectedSystemIds}
+			/>
 		</>
 	)
 }
@@ -588,6 +135,12 @@ export function EditMonitorDialog({
 	)
 }
 
+/** Initial runner of the form: the monitor's, else the current system's page, else the hub. */
+function initialRunsOn(monitor?: NetworkMonitorRecord, systemId?: string): RunsOn {
+	if (monitor) return monitor.system ? "agent" : "hub"
+	return systemId ? "agent" : "hub"
+}
+
 function MonitorDialogContent({
 	open,
 	setOpen,
@@ -601,18 +154,32 @@ function MonitorDialogContent({
 	monitor?: NetworkMonitorRecord
 	onOpenBulkAdd?: (selectedSystemIds: Set<string>) => void
 }) {
+	const [runsOn, setRunsOn] = useState<RunsOn>(() => initialRunsOn(monitor, systemId))
+	const [name, setName] = useState(monitor?.name ?? "")
 	const [protocol, setProtocol] = useState<MonitorProtocol>(monitor?.protocol ?? "icmp")
 	const [target, setTarget] = useState(monitor?.target ?? "")
 	const [port, setPort] = useState(monitor?.protocol === "tcp" && monitor.port ? String(monitor.port) : "")
 	const [server, setServer] = useState(monitor?.protocol === "dns" ? (monitor.server ?? "") : "")
 	const [monitorInterval, setMonitorInterval] = useState(String(monitor?.interval ?? defaultInterval))
+	const [timeout, setTimeoutValue] = useState(monitor?.timeout ? String(monitor.timeout) : "")
+	const [retries, setRetries] = useState(String(monitor?.retries ?? 1))
+	const [retryInterval, setRetryInterval] = useState(monitor?.retryInterval ? String(monitor.retryInterval) : "")
+	const [notify, setNotify] = useState(monitor?.notify ?? true)
+	const [certExpiryDays, setCertExpiryDays] = useState(String(monitor?.certExpiryDays ?? 0))
+	const [httpForm, setHttpForm] = useState<HttpFormState>(() => httpFormFromMonitor(monitor))
 	const [loading, setLoading] = useState(false)
 	const [selectedSystemId, setSelectedSystemId] = useState(monitor?.system ?? "")
 	const [selectedSystemIds, setSelectedSystemIds] = useState<Set<string>>(new Set())
+	const [createdPushMonitor, setCreatedPushMonitor] = useState<NetworkMonitorRecord | null>(null)
 	const systems = useStore($systems)
+	const allSystems = useStore($allSystemsById)
 	const { toast } = useToast()
 	const { t } = useLingui()
 	const isEditing = !!monitor
+	const isHub = runsOn === "hub"
+	const isPush = protocol === "push"
+	// Secret HTTP options are omitted from responses for users who can't see them.
+	const secretsHidden = isEditing && !("httpSecrets" in monitor)
 
 	// When the dialog is opened, initialize form fields with monitor values (if editing) or defaults (if adding).
 	useEffect(() => {
@@ -620,25 +187,64 @@ function MonitorDialogContent({
 			return
 		}
 
+		setRunsOn(initialRunsOn(monitor, systemId))
+		setName(monitor?.name ?? "")
 		setProtocol(monitor?.protocol ?? "icmp")
 		setTarget(monitor?.target ?? "")
 		setPort(monitor?.protocol === "tcp" && monitor.port ? String(monitor.port) : "")
 		setServer(monitor?.protocol === "dns" ? (monitor.server ?? "") : "")
 		setMonitorInterval(String(monitor?.interval ?? defaultInterval))
+		setTimeoutValue(monitor?.timeout ? String(monitor.timeout) : "")
+		setRetries(String(monitor?.retries ?? 1))
+		setRetryInterval(monitor?.retryInterval ? String(monitor.retryInterval) : "")
+		setNotify(monitor?.notify ?? true)
+		setCertExpiryDays(String(monitor?.certExpiryDays ?? 0))
+		setHttpForm(httpFormFromMonitor(monitor))
 		setSelectedSystemId(monitor?.system ?? "")
 		setSelectedSystemIds(new Set())
+		setCreatedPushMonitor(null)
 		setLoading(false)
 	}, [open, monitor])
+
+	const changeRunsOn = (value: RunsOn) => {
+		setRunsOn(value)
+		// push monitors only run on the hub
+		if (value === "agent" && protocol === "push") {
+			setProtocol("icmp")
+		}
+	}
+
+	const agentSystemIds = isHub
+		? []
+		: systemId
+			? [systemId]
+			: isEditing
+				? [selectedSystemId].filter(Boolean)
+				: Array.from(selectedSystemIds)
+	const usesNewAgentOptions =
+		Number(timeout) > 0 ||
+		Number(retryInterval) > 0 ||
+		(protocol === "http" &&
+			(hasCustomHttpOptions(httpForm) || (secretsHidden && !!monitor?.http && Object.keys(monitor.http).length > 0)))
+	const outdatedAgents = usesNewAgentOptions
+		? agentSystemIds.filter((id) => allSystems[id] && needsAgentUpdateForMonitorOptions(allSystems[id].info?.v))
+		: []
+	const showCertExpiry = protocol === "http" && isHttpsTarget(target)
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault()
 		setLoading(true)
 
-		const targetSystems = systemId ? [systemId] : monitor ? [selectedSystemId] : Array.from(selectedSystemIds)
+		const targetSystems = isHub ? [""] : agentSystemIds
 		const remainingSystemIds = new Set(targetSystems)
 		try {
-			if (!targetSystems.length || !targetSystems[0]) throw new Error("Select at least one system.")
-			const payload = buildMonitorPayload(
+			if (!targetSystems.length || (!isHub && !targetSystems[0])) {
+				throw new Error(t`Select at least one system.`)
+			}
+			if (isHub && Number(monitorInterval) < hubMinInterval) {
+				throw new Error(t`Hub monitors must use an interval of at least ${hubMinInterval} seconds.`)
+			}
+			const basePayload = buildMonitorPayload(
 				{
 					system: targetSystems[0],
 					target,
@@ -649,42 +255,116 @@ function MonitorDialogContent({
 				},
 				monitor ? monitor.enabled : true
 			)
-			if (monitor) {
-				await pb.collection("network_monitors").update(monitor.id, payload)
+			const payload: Record<string, unknown> = {
+				...basePayload,
+				name: name.trim(),
+				timeout: isPush ? 0 : Number(timeout) || 0,
+				retries: Number(retries) || 0,
+				retryInterval: isPush ? 0 : Number(retryInterval) || 0,
+				notify,
+				certExpiryDays: protocol === "http" && isHttpsTarget(basePayload.target) ? Number(certExpiryDays) || 0 : 0,
+			}
+			if (protocol === "http") {
+				const { http, httpSecrets } = httpPayloadFromForm(httpForm)
+				payload.http = http
+				// don't wipe secrets this user can't see
+				if (!secretsHidden) payload.httpSecrets = httpSecrets
 			} else {
-				for (const system of targetSystems) {
-					await pb.collection("network_monitors").create({ ...payload, system })
-					remainingSystemIds.delete(system)
+				payload.http = null
+				if (!secretsHidden) payload.httpSecrets = null
+			}
+			if (isHub) {
+				// hub monitors need owners; keep existing owners when editing a hub monitor
+				if (!monitor || monitor.system || !monitor.users?.length) {
+					const userId = pb.authStore.record?.id
+					payload.users = userId ? [userId] : []
 				}
 			}
-			setOpen(false)
+
+			if (monitor) {
+				await pb.collection("network_monitors").update(monitor.id, payload)
+				setOpen(false)
+				return
+			}
+			let createdPush: NetworkMonitorRecord | null = null
+			for (const system of targetSystems) {
+				const record = await pb.collection<NetworkMonitorRecord>("network_monitors").create({ ...payload, system })
+				remainingSystemIds.delete(system)
+				if (record.protocol === "push") createdPush = record
+			}
+			if (createdPush) {
+				// keep the dialog open to show the push URL
+				setCreatedPushMonitor(createdPush)
+			} else {
+				setOpen(false)
+			}
 		} catch (err: unknown) {
-			if (!monitor && !systemId) {
+			if (!monitor && !isHub && !systemId) {
 				// Retain only unfinished systems so retrying cannot duplicate successful creates.
 				setSelectedSystemIds(remainingSystemIds)
 			}
-			toast({ variant: "destructive", title: t`Error`, description: (err as Error)?.message })
+			toast({ variant: "destructive", title: t`Error`, description: getErrorMessage(err) })
 		} finally {
 			setLoading(false)
 		}
 	}
 
+	if (createdPushMonitor) {
+		return (
+			<DialogContent className="max-w-lg">
+				<DialogHeader>
+					<DialogTitle>
+						<Trans>Monitor created</Trans>
+					</DialogTitle>
+					<DialogDescription>
+						<Trans>Send heartbeats to this URL from your service, cron job or script.</Trans>
+					</DialogDescription>
+				</DialogHeader>
+				<MonitorPushUrl monitorId={createdPushMonitor.id} pushToken={createdPushMonitor.pushToken} />
+				<DialogFooter>
+					<Button type="button" onClick={() => setOpen(false)}>
+						<Trans>Done</Trans>
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		)
+	}
+
+	const systemName = systemId ? allSystems[systemId]?.name : ""
+
 	return (
-		<DialogContent className="max-w-md">
+		<DialogContent className="max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto">
 			<DialogHeader>
 				<DialogTitle>
-					{isEditing ? (
-						<Trans>Edit {{ foo: t`Network Monitor` }}</Trans>
-					) : (
-						<Trans>Add {{ foo: t`Network Monitor` }}</Trans>
-					)}
+					{isEditing ? <Trans>Edit {{ foo: t`Monitor` }}</Trans> : <Trans>Add {{ foo: t`Monitor` }}</Trans>}
 				</DialogTitle>
 				<DialogDescription>
-					<Trans>Configure response monitoring from this agent.</Trans>
+					<Trans>Check the availability and response time of a service from the hub or an agent.</Trans>
 				</DialogDescription>
 			</DialogHeader>
 			<form onSubmit={handleSubmit} className="grid gap-4 tabular-nums">
-				{!systemId && !isEditing && (
+				<div className="grid gap-2">
+					<Label htmlFor="monitor-runs-on">
+						<Trans>Runs on</Trans>
+					</Label>
+					<Select value={runsOn} onValueChange={(value) => changeRunsOn(value as RunsOn)}>
+						<SelectTrigger id="monitor-runs-on">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="hub">
+								<Trans>Hub</Trans>
+							</SelectItem>
+							<SelectItem value="agent">{systemId ? systemName || t`This system` : t`Agent`}</SelectItem>
+						</SelectContent>
+					</Select>
+					{isHub && !isEditing && (
+						<p className="text-xs text-muted-foreground">
+							<Trans>The hub checks the target itself. Only you can see this monitor.</Trans>
+						</p>
+					)}
+				</div>
+				{!isHub && !systemId && !isEditing && (
 					<div className="grid gap-2">
 						<Label htmlFor="monitor-systems">
 							<Trans>Systems</Trans>
@@ -697,13 +377,13 @@ function MonitorDialogContent({
 						/>
 					</div>
 				)}
-				{!systemId && isEditing && (
+				{!isHub && !systemId && isEditing && (
 					<div className="grid gap-2">
-						<Label>
+						<Label htmlFor="monitor-system">
 							<Trans>System</Trans>
 						</Label>
 						<Select value={selectedSystemId} onValueChange={setSelectedSystemId} required>
-							<SelectTrigger>
+							<SelectTrigger id="monitor-system">
 								<SelectValue placeholder={t`Select a system`} />
 							</SelectTrigger>
 							<SelectContent>
@@ -718,79 +398,207 @@ function MonitorDialogContent({
 						</Select>
 					</div>
 				)}
-				<div className="grid gap-2">
-					<Label>
-						<Trans>Target</Trans>
-					</Label>
-					<Input
-						value={target}
-						onChange={(e) => setTarget(e.target.value)}
-						placeholder={protocol === "http" ? "http://localhost:8090" : protocol === "dns" ? "example.com" : "1.1.1.1"}
-						required
-					/>
+				<div className="grid grid-cols-2 gap-3">
+					<div className={isPush || protocol !== "tcp" ? "col-span-2 grid gap-2" : "grid gap-2"}>
+						<Label htmlFor="monitor-protocol">
+							<Trans>Protocol</Trans>
+						</Label>
+						<Select value={protocol} onValueChange={(value) => setProtocol(value as MonitorProtocol)}>
+							<SelectTrigger id="monitor-protocol">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="icmp">ICMP</SelectItem>
+								<SelectItem value="tcp">TCP</SelectItem>
+								<SelectItem value="http">HTTP</SelectItem>
+								<SelectItem value="dns">DNS</SelectItem>
+								{isHub && <SelectItem value="push">Push</SelectItem>}
+							</SelectContent>
+						</Select>
+					</div>
+					{protocol === "tcp" && (
+						<div className="grid gap-2">
+							<Label htmlFor="monitor-port">
+								<Trans>Port</Trans>
+							</Label>
+							<Input
+								id="monitor-port"
+								type="number"
+								value={port}
+								onChange={(e) => setPort(e.target.value)}
+								placeholder="443"
+								min={1}
+								max={65535}
+							/>
+						</div>
+					)}
 				</div>
-				<div className="grid gap-2">
-					<Label>
-						<Trans>Protocol</Trans>
-					</Label>
-
-					<Select value={protocol} onValueChange={(value) => setProtocol(value as MonitorProtocol)}>
-						<SelectTrigger>
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="icmp">ICMP</SelectItem>
-							<SelectItem value="tcp">TCP</SelectItem>
-							<SelectItem value="http">HTTP</SelectItem>
-							<SelectItem value="dns">DNS</SelectItem>
-						</SelectContent>
-					</Select>
-				</div>
-				{protocol === "tcp" && (
+				{isPush ? (
+					<p className="-mt-2 text-xs text-muted-foreground">
+						<Trans>Push monitors wait for heartbeats sent to a unique URL and go down when none arrives in time.</Trans>
+					</p>
+				) : (
 					<div className="grid gap-2">
-						<Label>
-							<Trans>Port</Trans>
+						<Label htmlFor="monitor-target">
+							<Trans>Target</Trans>
 						</Label>
 						<Input
-							type="number"
-							value={port}
-							onChange={(e) => setPort(e.target.value)}
-							placeholder="443"
-							min={1}
-							max={65535}
+							id="monitor-target"
+							value={target}
+							onChange={(e) => setTarget(e.target.value)}
+							placeholder={
+								protocol === "http" ? "http://localhost:8090" : protocol === "dns" ? "example.com" : "1.1.1.1"
+							}
+							required
 						/>
 					</div>
 				)}
 				{protocol === "dns" && (
 					<div className="grid gap-2">
-						<Label>
+						<Label htmlFor="monitor-dns-server">
 							<Trans>DNS Server</Trans>
 						</Label>
 						<Input
+							id="monitor-dns-server"
 							value={server}
 							onChange={(e) => setServer(e.target.value)}
 							placeholder="1.1.1.1"
 						/>
 						<p className="text-xs text-muted-foreground">
-							<Trans>Optional. Defaults to the agent's system resolver.</Trans>
+							<Trans>Optional. Defaults to the system resolver.</Trans>
 						</p>
 					</div>
 				)}
 				<div className="grid gap-2">
-					<Label>
-						<Trans>Interval (seconds)</Trans>
+					<Label htmlFor="monitor-name">
+						<Trans>Name</Trans>
 					</Label>
 					<Input
-						type="number"
-						value={monitorInterval}
-						onChange={(e) => setMonitorInterval(e.target.value)}
-						min={1}
-						max={3600}
-						required
+						id="monitor-name"
+						value={name}
+						onChange={(e) => setName(e.target.value)}
+						placeholder={isPush ? t`Push monitor` : target.trim() || t`Optional`}
+						maxLength={100}
 					/>
 				</div>
+				<div className="grid grid-cols-2 gap-3">
+					<div className="grid gap-2">
+						<Label htmlFor="monitor-interval">
+							{isPush ? <Trans>Heartbeat interval (s)</Trans> : <Trans>Interval (seconds)</Trans>}
+						</Label>
+						<Input
+							id="monitor-interval"
+							type="number"
+							value={monitorInterval}
+							onChange={(e) => setMonitorInterval(e.target.value)}
+							min={isHub ? hubMinInterval : 1}
+							max={3600}
+							required
+						/>
+					</div>
+					{!isPush && (
+						<div className="grid gap-2">
+							<Label htmlFor="monitor-timeout">
+								<Trans>Timeout (seconds)</Trans>
+							</Label>
+							<Input
+								id="monitor-timeout"
+								type="number"
+								value={timeout}
+								onChange={(e) => setTimeoutValue(e.target.value)}
+								placeholder={t`Default`}
+								min={0}
+								max={60}
+							/>
+						</div>
+					)}
+					<div className="grid gap-2">
+						<Label htmlFor="monitor-retries">
+							<Trans>Retries</Trans>
+						</Label>
+						<Input
+							id="monitor-retries"
+							type="number"
+							value={retries}
+							onChange={(e) => setRetries(e.target.value)}
+							min={0}
+							max={10}
+						/>
+					</div>
+					{!isPush && (
+						<div className="grid gap-2">
+							<Label htmlFor="monitor-retry-interval">
+								<Trans>Retry interval (s)</Trans>
+							</Label>
+							<Input
+								id="monitor-retry-interval"
+								type="number"
+								value={retryInterval}
+								onChange={(e) => setRetryInterval(e.target.value)}
+								placeholder={t`Same as interval`}
+								min={0}
+								max={3600}
+							/>
+						</div>
+					)}
+				</div>
+				<p className="-mt-2 text-xs text-muted-foreground">
+					<Trans>Failed checks are retried this many times before the monitor is marked down.</Trans>
+				</p>
+				{showCertExpiry && (
+					<div className="grid gap-2">
+						<Label htmlFor="monitor-cert-days">
+							<Trans>Certificate expiry notification (days)</Trans>
+						</Label>
+						<Input
+							id="monitor-cert-days"
+							type="number"
+							value={certExpiryDays}
+							onChange={(e) => setCertExpiryDays(e.target.value)}
+							min={0}
+							max={365}
+						/>
+						<p className="text-xs text-muted-foreground">
+							<Trans>Notify when the certificate expires within this many days. 0 disables it.</Trans>
+						</p>
+					</div>
+				)}
+				{protocol === "http" && (
+					<MonitorHttpOptions
+						value={httpForm}
+						onChange={setHttpForm}
+						secretsHidden={secretsHidden}
+						disabled={loading}
+					/>
+				)}
+				<SwitchField
+					id="monitor-notify"
+					checked={notify}
+					onCheckedChange={setNotify}
+					label={<Trans>Notifications</Trans>}
+					description={<Trans>Send notifications when this monitor goes down or recovers.</Trans>}
+				/>
+				{isEditing && isPush && monitor.protocol === "push" && (
+					<MonitorPushUrl monitorId={monitor.id} pushToken={monitor.pushToken} />
+				)}
+				{outdatedAgents.length > 0 && (
+					<div className="flex gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
+						<TriangleAlertIcon className="size-4 shrink-0 mt-0.5" />
+						<div>
+							<p className="font-medium">
+								<Trans>Agent update required for these options</Trans>
+							</p>
+							<p className="text-xs opacity-90">
+								<Trans>
+									HTTP options, timeouts and retry intervals need agent version 0.21.0 or newer:{" "}
+									{outdatedAgents.map((id) => allSystems[id]?.name).join(", ")}
+								</Trans>
+							</p>
+						</div>
+					</div>
+				)}
 				<DialogFooter>
-					{!isEditing && onOpenBulkAdd && (
+					{!isEditing && !isHub && onOpenBulkAdd && (
 						<Button
 							type="button"
 							variant="outline"
@@ -804,13 +612,9 @@ function MonitorDialogContent({
 					)}
 					<Button
 						type="submit"
-						disabled={loading || (!systemId && (isEditing ? !selectedSystemId : !selectedSystemIds.size))}
+						disabled={loading || (!isHub && !systemId && (isEditing ? !selectedSystemId : !selectedSystemIds.size))}
 					>
-						{isEditing ? (
-							<Trans>Save {{ foo: t`Monitor` }}</Trans>
-						) : (
-							<Trans>Add {{ foo: t`Monitor` }}</Trans>
-						)}
+						{isEditing ? <Trans>Save {{ foo: t`Monitor` }}</Trans> : <Trans>Add {{ foo: t`Monitor` }}</Trans>}
 					</Button>
 				</DialogFooter>
 			</form>

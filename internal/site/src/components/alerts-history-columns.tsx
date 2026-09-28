@@ -1,11 +1,24 @@
 import { t } from "@lingui/core/macro"
-import { Trans } from "@lingui/react/macro"
+import { Plural, Trans } from "@lingui/react/macro"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { alertInfo } from "@/lib/alerts"
+import { getAlertInfo } from "@/lib/alerts"
 import { cn, formatDuration, formatShortDate, toFixedFloat } from "@/lib/utils"
 import type { AlertsHistoryRecord } from "@/types"
+
+/** Name of the monitor of a monitor alert, if any. */
+export function getAlertMonitorName(record: AlertsHistoryRecord): string {
+	const monitor = record.expand?.monitor as { name?: string; target?: string } | undefined
+	return record.monitor_name || monitor?.name || monitor?.target || ""
+}
+
+/** Display name of an alert history record, e.g. "Monitor down: API". */
+export function getAlertHistoryName(record: AlertsHistoryRecord): string {
+	const label = getAlertInfo(record.name)?.name().replace("cpu", "CPU") || record.name
+	const monitorName = getAlertMonitorName(record)
+	return monitorName ? `${label}: ${monitorName}` : label
+}
 
 export const alertsHistoryColumns: ColumnDef<AlertsHistoryRecord>[] = [
 	{
@@ -16,9 +29,13 @@ export const alertsHistoryColumns: ColumnDef<AlertsHistoryRecord>[] = [
 				<Trans>System</Trans>
 			</Button>
 		),
-		cell: ({ row }) => (
-			<div className="ps-2 max-w-60 truncate">{row.original.expand?.system?.name || row.original.system}</div>
-		),
+		cell: ({ row }) => {
+			const name = row.original.expand?.system?.name || row.original.system
+			if (!name) {
+				return <div className="ps-2 text-muted-foreground">—</div>
+			}
+			return <div className="ps-2 max-w-60 truncate">{name}</div>
+		},
 		filterFn: (row, _, filterValue) => {
 			const display = row.original.expand?.system?.name || row.original.system || ""
 			return display.toLowerCase().includes(filterValue.toLowerCase())
@@ -27,12 +44,7 @@ export const alertsHistoryColumns: ColumnDef<AlertsHistoryRecord>[] = [
 	{
 		// accessorKey: "name",
 		id: "name",
-		accessorFn: (record) => {
-			const name = record.name
-			const info = alertInfo[name]
-			const label = info?.name().replace("cpu", "CPU") || name
-			return record.monitor_name ? `${label}: ${record.monitor_name}` : label
-		},
+		accessorFn: getAlertHistoryName,
 		header: ({ column }) => (
 			<Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
 				<Trans>Name</Trans>
@@ -40,7 +52,7 @@ export const alertsHistoryColumns: ColumnDef<AlertsHistoryRecord>[] = [
 		),
 		cell: ({ getValue, row }) => {
 			const name = getValue() as string
-			const info = alertInfo[row.original.name]
+			const info = getAlertInfo(row.original.name)
 			const Icon = info?.icon
 
 			return (
@@ -61,11 +73,19 @@ export const alertsHistoryColumns: ColumnDef<AlertsHistoryRecord>[] = [
 		),
 		cell({ row, getValue }) {
 			const name = row.original.name
-			const info = alertInfo[name]
+			const info = getAlertInfo(name)
+			if (name === "MonitorCert") {
+				const days = Math.round(getValue() as number)
+				return (
+					<span className="tabular-nums ps-2.5">
+						<Plural value={days} one="# day" other="# days" />
+					</span>
+				)
+			}
 			if (info?.triggeredDesc) {
 				return <span className="ps-2">{info.triggeredDesc()}</span>
 			}
-			if (name === "Status") {
+			if (name === "Status" || name === "MonitorDown") {
 				return <span className="ps-2">{t`Down`}</span>
 			}
 			const value = getValue() as number

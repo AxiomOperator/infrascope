@@ -1,5 +1,5 @@
 import { t } from "@lingui/core/macro"
-import { ContainerIcon, CpuIcon, HardDriveIcon, MemoryStickIcon, NetworkIcon, ServerCrashIcon, ServerIcon } from "lucide-react"
+import { ActivityIcon, ContainerIcon, CpuIcon, HardDriveIcon, MemoryStickIcon, NetworkIcon, ServerCrashIcon, ServerIcon, ShieldAlertIcon } from "lucide-react"
 import type { RecordSubscription } from "pocketbase"
 import { EthernetIcon, GpuIcon } from "@/components/ui/icons"
 import { $alerts } from "@/lib/stores"
@@ -138,6 +138,31 @@ export const alertInfo: Record<string, AlertInfo> = {
     noThreshold: true,
   },
 } as const
+
+/**
+ * Alerts raised by monitors with notifications enabled. They are not user-configurable,
+ * so they're kept out of alertInfo, which lists the configurable system alerts.
+ */
+export const monitorAlertInfo: Record<string, AlertInfo> = {
+  MonitorDown: {
+    name: () => t`Monitor down`,
+    unit: "",
+    icon: ActivityIcon,
+    desc: () => t`Triggers when a monitor goes down`,
+    triggeredDesc: () => t`Monitor is down`,
+  },
+  MonitorCert: {
+    name: () => t`Certificate expiring`,
+    unit: "",
+    icon: ShieldAlertIcon,
+    desc: () => t`Triggers when a monitored certificate is about to expire`,
+  },
+}
+
+/** Info of any alert name, including monitor alerts, for display (e.g. alert history). */
+export function getAlertInfo(name: string): AlertInfo | undefined {
+  return alertInfo[name] ?? monitorAlertInfo[name]
+}
 
 /** Helper to manage user alerts */
 export const alertManager = (() => {

@@ -39,11 +39,11 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/components/ui/use-toast"
-import { alertInfo } from "@/lib/alerts"
+import { getAlertInfo } from "@/lib/alerts"
 import { pb } from "@/lib/api"
 import { cn, formatDuration, formatShortDate, useBrowserStorage } from "@/lib/utils"
 import type { AlertsHistoryRecord } from "@/types"
-import { alertsHistoryColumns } from "../../alerts-history-columns"
+import { alertsHistoryColumns, getAlertHistoryName } from "../../alerts-history-columns"
 
 const SectionIntro = memo(() => {
 	return (
@@ -78,8 +78,9 @@ export default function AlertsHistoryDataTable() {
 		let unsubscribe: (() => void) | undefined
 		let cancelled = false
 		const pbOptions = {
-			expand: "system",
-			fields: "id,name,monitor_name,value,state,created,resolved,expand.system.name",
+			expand: "system,monitor",
+			fields:
+				"id,name,system,monitor,monitor_name,value,state,created,resolved,expand.system.name,expand.monitor.name,expand.monitor.target",
 		}
 		// Initial load
 		pb.collection<AlertsHistoryRecord>("alerts_history")
@@ -209,8 +210,8 @@ export default function AlertsHistoryDataTable() {
 		if (!selectedRows.length) return
 		const cells: Record<string, (record: AlertsHistoryRecord) => string> = {
 			system: (record) => record.expand?.system?.name || record.system,
-			name: (record) => [alertInfo[record.name]?.name() || record.name, record.monitor_name].filter(Boolean).join(": "),
-			value: (record) => record.value + (alertInfo[record.name]?.unit ?? ""),
+			name: getAlertHistoryName,
+			value: (record) => record.value + (getAlertInfo(record.name)?.unit ?? ""),
 			state: (record) => (record.resolved ? t`Resolved` : t`Active`),
 			created: (record) => formatShortDate(record.created),
 			resolved: (record) => (record.resolved ? formatShortDate(record.resolved) : ""),

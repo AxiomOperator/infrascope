@@ -338,6 +338,8 @@ export interface AlertRecord extends RecordModel {
 
 export interface AlertsHistoryRecord extends RecordModel {
 	monitor_name?: string
+	/** Monitor of MonitorDown and MonitorCert alerts; system is empty for these. */
+	monitor?: string
 	alert: string
 	user: string
 	system: string
@@ -712,10 +714,21 @@ export interface NetworkMonitorRecord {
 	lastCheck: number
 	lastError: string
 	lastStatusCode: number
-	recent: unknown
-	uptime: unknown
+	/** Latest checks, oldest first: [unix seconds, state (0 down, 1 up, 2 pending), response ms (-1 on failure)]. */
+	recent?: MonitorRecentCheck[] | null
+	uptime?: MonitorUptime | null
 	created: string
 	updated: string
+}
+
+/** A recent check: [unix seconds, state (0 down, 1 up, 2 pending), response ms (-1 on failure)]. */
+export type MonitorRecentCheck = [number, number, number]
+
+/** Uptime percentages over the last 1, 7 and 30 days; null without data. */
+export interface MonitorUptime {
+	d1?: number | null
+	d7?: number | null
+	d30?: number | null
 }
 
 /** Non-secret HTTP options of an http monitor. */

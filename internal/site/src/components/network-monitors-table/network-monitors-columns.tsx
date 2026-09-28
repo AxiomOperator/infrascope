@@ -2,7 +2,6 @@ import type { CellContext, Column, ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { cn, copyToClipboard, decimalString, formatMicroseconds, hourWithSeconds } from "@/lib/utils"
 import {
-	GlobeIcon,
 	TimerIcon,
 	WifiOffIcon,
 	Trash2Icon,
@@ -17,6 +16,10 @@ import {
 	CopyIcon,
 	CopyPlusIcon,
 	ShieldCheckIcon,
+	ActivityIcon,
+	CircleDotIcon,
+	PercentIcon,
+	TagIcon,
 } from "lucide-react"
 import { t } from "@lingui/core/macro"
 import type { NetworkMonitorRecord, SystemRecord } from "@/types"
@@ -37,10 +40,22 @@ import { useStore } from "@nanostores/react"
 import { SystemStatus } from "@/lib/enums"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useMemo } from "react"
-import { formatBulkMonitorLine } from "@/components/network-monitors-table/monitor-dialog"
+import { formatBulkMonitorLine } from "@/components/network-monitors-table/monitor-form-utils"
 import { Badge } from "../ui/badge"
-import { getCertDaysLeft, getCertExpiryLevel, getMonitorTarget } from "@/lib/network-monitor-utils"
+import {
+	formatUptime,
+	getCertDaysLeft,
+	getCertExpiryLevel,
+	getMonitorName,
+	getMonitorRecent,
+	getMonitorStatus,
+	getMonitorTarget,
+	getMonitorUptime,
+	monitorStatusBgColors,
+} from "@/lib/network-monitor-utils"
 import { pb } from "@/lib/api"
+import { MonitorStatusBadge } from "./monitor-status-badge"
+import { MonitorStatusBar } from "./status-bar"
 
 const certExpiryDotColors = { ok: "bg-green-500", warning: "bg-yellow-500", critical: "bg-red-500" }
 
@@ -55,6 +70,7 @@ const protocolColors: Record<string, string> = {
 	tcp: "bg-purple-500/15! text-purple-600 dark:text-purple-400",
 	http: "bg-green-500/15! text-green-700 dark:text-green-400",
 	dns: "bg-amber-500/15! text-amber-600 dark:text-amber-400",
+	push: "bg-cyan-500/15! text-cyan-700 dark:text-cyan-400",
 }
 
 const SYSTEM_STATUS_COLORS = {
@@ -65,10 +81,13 @@ const SYSTEM_STATUS_COLORS = {
 } as const
 
 /**
- * A monitor is considered muted if it's disabled or if its associated system is not up.
+ * A monitor is considered muted if it's disabled or if its agent system is not up.
+ * Hub monitors don't depend on a system.
  */
 const isMuted = (record: NetworkMonitorRecord, systemRecord: SystemRecord | undefined) =>
-	!record.enabled || systemRecord?.status !== SystemStatus.Up
+	!record.enabled || (!!record.system && systemRecord?.status !== SystemStatus.Up)
+
+const statusOrder: Record<string, number> = { down: 0, pending: 1, unknown: 2, maintenance: 3, up: 4, paused: 5 }
 
 export function getMonitorColumns(
 	longestTarget = "",
@@ -113,25 +132,32 @@ export function getMonitorColumns(
 			accessorFn: (record) => record.system,
 			sortingFn: (a, b) => {
 				const allSystems = $allSystemsById.get()
-				const systemNameA = allSystems[a.original.system]?.name ?? ""
-				const systemNameB = allSystems[b.original.system]?.name ?? ""
+				// hub monitors sort before agent monitors
+				const systemNameA = a.original.system ? (allSystems[a.original.system]?.name ?? "") : ""
+				const systemNameB = b.original.system ? (allSystems[b.original.system]?.name ?? "") : ""
 				const primary = systemNameA.localeCompare(systemNameB)
 				if (primary !== 0) {
 					return primary
 				}
-				return a.original.target.localeCompare(b.original.target)
+				return getMonitorName(a.original).localeCompare(getMonitorName(b.original))
 			},
 			header: ({ column }) => <HeaderButton column={column} name={t`System`} Icon={ServerIcon} />,
 			cell: ({ getValue }) => {
-				const system = useStore($allSystemsById)[getValue() as string] as SystemRecord | undefined
+				const systemId = getValue() as string
+				const system = useStore($allSystemsById)[systemId] as SystemRecord | undefined
 				const longestSystemName = useStore($longestSystemName)
-				const name = system?.name
+				const name = systemId ? system?.name : t`Hub`
 				const status = system?.status as SystemStatus // undefined val is fine but makes lsp mad
 
 				return useMemo(
 					() => (
 						<div className="ms-1.5 max-w-44 flex gap-2 items-center tabular-nums">
-							<span className={cn("shrink-0 size-2 rounded-full", SYSTEM_STATUS_COLORS[status])} />
+							<span
+								className={cn(
+									"shrink-0 size-2 rounded-full",
+									systemId ? SYSTEM_STATUS_COLORS[status] : "bg-primary/40"
+								)}
+							/>
 							<div className="relative w-fit min-w-0 max-w-full">
 								<span className="invisible block whitespace-nowrap" aria-hidden="true">
 									{longestSystemName}
@@ -140,28 +166,27 @@ export function getMonitorColumns(
 							</div>
 						</div>
 					),
-					[status, name, longestSystemName]
+					[status, name, longestSystemName, systemId]
 				)
 			},
 		},
 		{
+			// id kept as "target" so saved sort and visibility settings still apply
 			id: "target",
-			meta: { label: t`Target` },
-			sortingFn: (a, b) => a.original.target.localeCompare(b.original.target),
-			accessorFn: (record) => getMonitorTarget(record),
-			header: ({ column }) => <HeaderButton column={column} name={t`Target`} Icon={GlobeIcon} />,
+			meta: { label: t`Name` },
+			sortingFn: (a, b) => getMonitorName(a.original).localeCompare(getMonitorName(b.original)),
+			accessorFn: (record) => getMonitorName(record),
+			header: ({ column }) => <HeaderButton column={column} name={t`Name`} Icon={TagIcon} />,
 			cell: ({ row, getValue }) => {
 				const monitor = row.original
-				const { status } = useStore($allSystemsById)[monitor.system] || {}
+				const { status: systemStatus } = useStore($allSystemsById)[monitor.system] || {}
 
-				let color = "bg-green-500"
-				if (!monitor.enabled || status === SystemStatus.Paused) {
-					color = "bg-primary/40"
-				} else if (status === SystemStatus.Down || status === SystemStatus.Pending) {
-					color = "bg-yellow-500"
-				} else if (monitor.updated && !monitor.res) {
-					color = "bg-red-500"
+				let color = monitorStatusBgColors[getMonitorStatus(monitor)]
+				// agent monitors can't report while their system is unreachable
+				if (monitor.enabled && monitor.system && systemStatus !== SystemStatus.Up) {
+					color = systemStatus === SystemStatus.Paused ? monitorStatusBgColors.paused : "bg-yellow-500"
 				}
+				const target = monitor.name ? getMonitorTarget(monitor) : ""
 				return (
 					<div className="ms-1.5 max-w-64 flex gap-2 items-center tabular-nums">
 						<span className={cn("shrink-0 size-2 rounded-full", color)} />
@@ -170,10 +195,43 @@ export function getMonitorColumns(
 								{longestTarget}
 							</span>
 							<span className="absolute inset-0 truncate">{getValue() as string}</span>
+							{target && <span className="block truncate text-xs text-muted-foreground leading-tight">{target}</span>}
 						</div>
 					</div>
 				)
 			},
+		},
+		{
+			id: "status",
+			meta: { label: t`Status` },
+			accessorFn: (record) => statusOrder[getMonitorStatus(record)] ?? 2,
+			header: ({ column }) => <HeaderButton column={column} name={t`Status`} Icon={CircleDotIcon} />,
+			cell: ({ row }) => (
+				<div className="ms-1.5">
+					<MonitorStatusBadge monitor={row.original} />
+				</div>
+			),
+		},
+		{
+			id: "recent",
+			meta: { label: t`Recent checks` },
+			enableSorting: false,
+			header: ({ column }) => <HeaderButton column={column} name={t`Recent checks`} Icon={ActivityIcon} />,
+			cell: ({ row }) => <MonitorStatusBar recent={getMonitorRecent(row.original)} className="ms-1.5 w-44" />,
+		},
+		{
+			id: "uptime1d",
+			meta: { label: t`Uptime 24h` },
+			accessorFn: (record) => getMonitorUptime(record).d1 ?? undefined,
+			header: ({ column }) => <HeaderButton column={column} name={t`Uptime 24h`} Icon={PercentIcon} />,
+			cell: uptimeCell,
+		},
+		{
+			id: "uptime30d",
+			meta: { label: t`Uptime 30d` },
+			accessorFn: (record) => getMonitorUptime(record).d30 ?? undefined,
+			header: ({ column }) => <HeaderButton column={column} name={t`Uptime 30d`} Icon={PercentIcon} />,
+			cell: uptimeCell,
 		},
 		{
 			id: "protocol",
@@ -307,10 +365,17 @@ export function getMonitorColumns(
 						: [row.original]
 				const isBulkAction = actionRows.length > 1
 				const shouldPause = actionRows.some((monitor) => monitor.enabled)
-				const bulkCopyContent = actionRows.map((monitor) => formatBulkMonitorLine(monitor)).join("\n")
+				// push monitors have no target and can't be expressed as bulk lines
+				const bulkCopyContent = actionRows
+					.filter((monitor) => monitor.protocol !== "push")
+					.map((monitor) => formatBulkMonitorLine(monitor))
+					.join("\n")
 				const allSystems = useStore($allSystemsById)
 				const otherSystems = useMemo(
-					() => Object.values(allSystems).filter((s) => !isBulkAction && s.id !== row.original.system),
+					() =>
+						Object.values(allSystems).filter(
+							(s) => !isBulkAction && row.original.protocol !== "push" && s.id !== row.original.system
+						),
 					[allSystems, isBulkAction]
 				)
 				return (
@@ -352,6 +417,7 @@ export function getMonitorColumns(
 								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
+								disabled={!bulkCopyContent}
 								onClick={() => {
 									copyToClipboard(bulkCopyContent)
 								}}
@@ -370,7 +436,13 @@ export function getMonitorColumns(
 											<DropdownMenuItem
 												key={sys.id}
 												onClick={() => {
-													const { id: _id, system: _system, ...rest } = row.original
+													const {
+														id: _id,
+														system: _system,
+														users: _users,
+														pushToken: _pushToken,
+														...rest
+													} = row.original
 													pb.collection("network_monitors")
 														.create({ ...rest, system: sys.id })
 														.catch(() => {})
@@ -399,8 +471,9 @@ export function getMonitorColumns(
 	]
 }
 
-const responseTimeThresholds = {
+const responseTimeThresholds: Record<NetworkMonitorRecord["protocol"], { warning: number; critical: number }> = {
 	http: { warning: 800_000, critical: 3_000_000 },
+	push: { warning: 800_000, critical: 3_000_000 },
 	tcp: { warning: 500_000, critical: 2_000_000 },
 	icmp: { warning: 100_000, critical: 500_000 },
 	dns: { warning: 150_000, critical: 800_000 },
@@ -429,6 +502,27 @@ function responseTimeCell(cell: CellContext<NetworkMonitorRecord, unknown>) {
 		<span className="ms-1.5 tabular-nums flex gap-2 items-center">
 			<span className={cn("shrink-0 size-2 rounded-full", color)} />
 			{formatMicroseconds(responseTime)}
+		</span>
+	)
+}
+
+function uptimeCell(cell: CellContext<NetworkMonitorRecord, unknown>) {
+	const value = cell.getValue() as number | undefined
+	if (value == null) {
+		return <span className="ms-1.5 text-muted-foreground">—</span>
+	}
+	let color = "bg-green-500"
+	if (!cell.row.original.enabled) {
+		color = "bg-muted-foreground/50"
+	} else if (value < 95) {
+		color = "bg-red-500"
+	} else if (value < 99.5) {
+		color = "bg-yellow-500"
+	}
+	return (
+		<span className="ms-1.5 tabular-nums flex gap-2 items-center">
+			<span className={cn("shrink-0 size-2 rounded-full", color)} />
+			{formatUptime(value)}
 		</span>
 	)
 }

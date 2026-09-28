@@ -73,8 +73,12 @@ async function fetchMonitorStats(
 	return mergeMonitorStats(rawRecords)
 }
 
-const NETWORK_MONITOR_FIELDS =
-	"id,system,target,protocol,port,server,interval,res,resMin1h,resMax1h,resAvg1h,loss1h,enabled,certInfo,updated"
+const NETWORK_MONITOR_FIELDS = [
+	"id,system,users,name,target,protocol,port,server,interval,timeout,retries,retryInterval",
+	"http,httpSecrets,notify,certExpiryDays,pushToken,enabled",
+	"res,resMin1h,resMax1h,resAvg1h,loss1h,certInfo,updated",
+	"status,statusChanged,lastCheck,lastError,lastStatusCode,recent,uptime",
+].join(",")
 
 interface UseNetworkMonitorsProps {
 	systemId?: string
@@ -360,4 +364,64 @@ function applyMonitorEvents(
 	}
 
 	return nextMonitors
+}
+
+const DOWN_MONITOR_FIELDS =
+	"id,system,name,target,protocol,port,status,statusChanged,lastError,lastStatusCode,notify,enabled"
+
+/**
+ * Enabled monitors with notifications that are currently down. Refetches when a
+ * monitor changes status (a monitor_events record is written), which is much
+ * less frequent than monitor record updates.
+ */
+export function useDownMonitors() {
+	const [monitors, setMonitors] = useState<NetworkMonitorRecord[]>([])
+
+	useEffect(() => {
+		let cancelled = false
+		let unsubscribe: (() => void) | undefined
+		let refetchTimeout: ReturnType<typeof setTimeout> | undefined
+
+		const fetchDown = () =>
+			pb
+				.collection<NetworkMonitorRecord>("network_monitors")
+				.getFullList({
+					fields: DOWN_MONITOR_FIELDS,
+					filter: 'status = "down" && notify = true && enabled = true',
+				})
+				.then((records) => {
+					if (!cancelled) setMonitors(records)
+				})
+				.catch((error) => {
+					if (!cancelled) console.error("Failed to fetch down monitors", error)
+				})
+
+		fetchDown()
+		;(async () => {
+			try {
+				const unsub = await pb.collection("monitor_events").subscribe(
+					"*",
+					() => {
+						if (cancelled) return
+						clearTimeout(refetchTimeout)
+						refetchTimeout = setTimeout(fetchDown, 1000)
+					},
+					{ fields: "id" }
+				)
+				// the effect may have been cleaned up while subscribing
+				if (cancelled) unsub()
+				else unsubscribe = unsub
+			} catch (error) {
+				console.error("Failed to subscribe to monitor events", error)
+			}
+		})()
+
+		return () => {
+			cancelled = true
+			clearTimeout(refetchTimeout)
+			unsubscribe?.()
+		}
+	}, [])
+
+	return monitors
 }
