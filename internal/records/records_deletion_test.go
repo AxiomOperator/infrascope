@@ -426,3 +426,64 @@ func TestDeleteOldSystemdServiceRecords(t *testing.T) {
 	assert.Len(t, remainingRecords, 1, "Should have exactly 1 record remaining")
 	assert.Equal(t, "apache.service", remainingRecords[0].Get("name"), "The recent record should be kept")
 }
+
+// TestDeleteOldMonitorEvents tests age and per-monitor count retention of monitor_events
+func TestDeleteOldMonitorEvents(t *testing.T) {
+	hub, err := tests.NewTestHub(t.TempDir())
+	require.NoError(t, err)
+	defer hub.Cleanup()
+
+	user, err := tests.CreateUser(hub, "monitor-events@example.com", "testtesttest")
+	require.NoError(t, err)
+	system, err := tests.CreateRecord(hub, "systems", map[string]any{"name": "s", "host": "localhost", "port": "45876", "status": "up", "users": []string{user.Id}})
+	require.NoError(t, err)
+	newMonitor := func() string {
+		monitor, err := tests.CreateRecord(hub, "network_monitors", map[string]any{"system": system.Id, "target": "example.com", "protocol": "icmp", "interval": 60})
+		require.NoError(t, err)
+		return monitor.Id
+	}
+	now := time.Now().UTC()
+	ms := func(d time.Duration) int64 { return now.Add(-d).UnixMilli() }
+	day := 24 * time.Hour
+	addEvent := func(monitor, status string, start, end int64) string {
+		record, err := tests.CreateRecord(hub, "monitor_events", map[string]any{"monitor": monitor, "status": status, "start": start, "end": end})
+		require.NoError(t, err)
+		return record.Id
+	}
+	ids := func(monitor string) []string {
+		var rows []struct {
+			Id string `db:"id"`
+		}
+		require.NoError(t, hub.DB().NewQuery("SELECT id FROM monitor_events WHERE monitor = {:monitor} ORDER BY start").Bind(dbx.Params{"monitor": monitor}).All(&rows))
+		result := []string{}
+		for _, row := range rows {
+			result = append(result, row.Id)
+		}
+		return result
+	}
+
+	aged := newMonitor()
+	addEvent(aged, "up", ms(200*day), ms(100*day))
+	addEvent(aged, "down", ms(100*day), ms(91*day))
+	keptOld := addEvent(aged, "up", ms(91*day), ms(89*day))
+	openOld := addEvent(aged, "down", ms(89*day), 0)
+
+	capped := newMonitor()
+	var cappedIds []string
+	for i := range 8 {
+		cappedIds = append(cappedIds, addEvent(capped, "up", ms(time.Duration(10-i)*time.Hour), ms(time.Duration(9-i)*time.Hour)))
+	}
+
+	require.NoError(t, records.DeleteOldMonitorEvents(hub, 90*day, 5, 6))
+	assert.Equal(t, []string{keptOld, openOld}, ids(aged))
+	assert.Equal(t, cappedIds[3:], ids(capped))
+
+	// Monitors at or below the deletion threshold keep all segments.
+	require.NoError(t, records.DeleteOldMonitorEvents(hub, 90*day, 2, 5))
+	assert.Equal(t, cappedIds[3:], ids(capped))
+
+	// DeleteOldRecords applies the 90 day retention.
+	addEvent(aged, "up", ms(120*day), ms(95*day))
+	records.NewRecordManager(hub).DeleteOldRecords()
+	assert.Equal(t, []string{keptOld, openOld}, ids(aged))
+}

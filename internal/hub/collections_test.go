@@ -880,7 +880,8 @@ func TestApiMonitorAuthRules(t *testing.T) {
 		{
 			Name: "Other users cannot list hub monitor events", Method: http.MethodGet,
 			URL: "/api/collections/monitor_events/records", Headers: auth(user2Token), ExpectedStatus: 200,
-			ExpectedContent: []string{`"totalItems":0`}, NotExpectedContent: []string{hubEvent.Id}, TestAppFactory: testAppFactory,
+			// Only the paused segment the status engine opened for user2's disabled monitor.
+			ExpectedContent: []string{`"totalItems":1`, user2HubMonitor.Id}, NotExpectedContent: []string{hubEvent.Id}, TestAppFactory: testAppFactory,
 		},
 		{
 			Name: "Users cannot move a hub monitor to another user's system", Method: http.MethodPatch,

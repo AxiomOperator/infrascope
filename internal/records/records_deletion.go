@@ -29,6 +29,10 @@ func (rm *RecordManager) DeleteOldRecords() {
 		if err != nil {
 			slog.Error("Error deleting old alerts history", "err", err)
 		}
+		err = deleteOldMonitorEvents(txApp, monitorEventsRetention, 5000, 5000)
+		if err != nil {
+			slog.Error("Error deleting old monitor events", "err", err)
+		}
 		err = deleteOldQuietHours(txApp)
 		if err != nil {
 			slog.Error("Error deleting old quiet hours", "err", err)
@@ -49,6 +53,35 @@ func deleteOldAlertsHistory(app core.App, countToKeep, countBeforeDeletion int) 
 	}
 	for _, user := range users {
 		_, err = db.NewQuery("DELETE FROM alerts_history WHERE user = {:user} AND id NOT IN (SELECT id FROM alerts_history WHERE user = {:user} ORDER BY created DESC LIMIT {:countToKeep})").Bind(dbx.Params{"user": user.Id, "countToKeep": countToKeep}).Execute()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// monitorEventsRetention is how long closed monitor status segments are kept.
+const monitorEventsRetention = 90 * 24 * time.Hour
+
+// Deletes closed monitor_events segments that ended before the retention
+// period, and keeps at most countToKeep of the newest segments per monitor
+// once a monitor has more than countBeforeDeletion. Open segments (end = 0)
+// always cover the present and are never deleted by age.
+func deleteOldMonitorEvents(app core.App, retention time.Duration, countToKeep, countBeforeDeletion int) error {
+	db := app.DB()
+	cutoff := time.Now().UTC().Add(-retention).UnixMilli()
+	if _, err := db.NewQuery("DELETE FROM monitor_events WHERE end != 0 AND end < {:cutoff}").Bind(dbx.Params{"cutoff": cutoff}).Execute(); err != nil {
+		return err
+	}
+	var monitors []struct {
+		Id string `db:"monitor"`
+	}
+	err := db.NewQuery("SELECT monitor, COUNT(*) as count FROM monitor_events GROUP BY monitor HAVING count > {:countBeforeDeletion}").Bind(dbx.Params{"countBeforeDeletion": countBeforeDeletion}).All(&monitors)
+	if err != nil {
+		return err
+	}
+	for _, monitor := range monitors {
+		_, err = db.NewQuery("DELETE FROM monitor_events WHERE monitor = {:monitor} AND id NOT IN (SELECT id FROM monitor_events WHERE monitor = {:monitor} ORDER BY start DESC LIMIT {:countToKeep})").Bind(dbx.Params{"monitor": monitor.Id, "countToKeep": countToKeep}).Execute()
 		if err != nil {
 			return err
 		}

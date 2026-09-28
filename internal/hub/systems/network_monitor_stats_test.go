@@ -200,7 +200,7 @@ func TestNetworkMonitorAlertsAfterCommit(t *testing.T) {
 			require.NoError(t, app.SaveNoValidate(record))
 			called := 0
 			result := monitor.Result{LastProbeAt: time.Now().UnixMilli(), SampleCount: 3, PacketLoss1h: 10}
-			sys.manager.hub = monitorAlertHub{stubHub: stubHub{app}, handle: func(systemRecord *core.Record, results map[string]monitor.Result) error {
+			sys.manager.hub = monitorAlertHub{stubHub: stubHub{App: app}, handle: func(systemRecord *core.Record, results map[string]monitor.Result) error {
 				called++
 				assert.Equal(t, sys.Id, systemRecord.Id)
 				assert.Equal(t, result, results[record.Id])

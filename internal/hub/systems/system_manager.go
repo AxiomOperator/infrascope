@@ -12,6 +12,7 @@ import (
 	"github.com/henrygd/beszel/internal/entities/monitor"
 	"github.com/henrygd/beszel/internal/entities/system"
 	"github.com/henrygd/beszel/internal/hub/expirymap"
+	"github.com/henrygd/beszel/internal/hub/uptime"
 
 	"github.com/henrygd/beszel/internal/common"
 
@@ -69,6 +70,8 @@ type hubLike interface {
 	HandleContainerAlerts(systemRecord *core.Record, data *system.CombinedData, fetchLogs func(containerID string) (string, error)) error
 	CancelPendingStatusAlerts(systemID string)
 	CancelPendingContainerAlerts(systemID string)
+	// Uptime returns the monitor status engine, or nil when there is none.
+	Uptime() *uptime.Engine
 }
 
 // NewSystemManager creates a new SystemManager instance with the provided hub.
@@ -211,6 +214,12 @@ func (sm *SystemManager) onRecordAfterUpdateSuccess(e *core.RecordEvent) error {
 	if ok {
 		prevStatus = system.Status
 		system.Status = newStatus
+	}
+	// Monitors of a system that is not up have no current results.
+	if !ok || prevStatus != newStatus {
+		if engine := sm.hub.Uptime(); engine != nil {
+			engine.SystemStatusChanged(e.Record.Id, newStatus)
+		}
 	}
 
 	switch newStatus {

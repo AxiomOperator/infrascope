@@ -332,6 +332,13 @@ func (sys *System) createRecords(data *system.CombinedData) (*core.Record, error
 			}
 		}
 	}
+	// Feed monitor checks to the status engine. createRecords only handles
+	// default-interval results, which are the only ones that drain checks.
+	if err == nil && len(data.Monitors) > 0 {
+		if engine := hub.Uptime(); engine != nil {
+			engine.ObserveResults(sys.Id, data.Monitors, sys.agentVersion.LT(beszel.MinVersionMonitorChecks))
+		}
+	}
 	if err == nil {
 		if alertErr := hub.HandleNetworkMonitorAlerts(systemRecord, data.Monitors); alertErr != nil {
 			hub.Logger().Error("Error handling network monitor alerts", "err", alertErr)

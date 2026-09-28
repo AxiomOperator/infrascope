@@ -3,6 +3,8 @@
 package records
 
 import (
+	"time"
+
 	"github.com/pocketbase/pocketbase/core"
 )
 
@@ -19,4 +21,9 @@ func DeleteOldAlertsHistory(app core.App, countToKeep, countBeforeDeletion int) 
 // TwoDecimals exposes twoDecimals for testing
 func TwoDecimals(value float64) float64 {
 	return twoDecimals(value)
+}
+
+// DeleteOldMonitorEvents exposes deleteOldMonitorEvents for testing
+func DeleteOldMonitorEvents(app core.App, retention time.Duration, countToKeep, countBeforeDeletion int) error {
+	return deleteOldMonitorEvents(app, retention, countToKeep, countBeforeDeletion)
 }

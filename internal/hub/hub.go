@@ -10,11 +10,14 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/henrygd/beszel/internal/alerts"
 	"github.com/henrygd/beszel/internal/hub/config"
 	"github.com/henrygd/beszel/internal/hub/heartbeat"
 	"github.com/henrygd/beszel/internal/hub/systems"
+	"github.com/henrygd/beszel/internal/hub/uptime"
 	"github.com/henrygd/beszel/internal/hub/utils"
 	"github.com/henrygd/beszel/internal/records"
 	"github.com/henrygd/beszel/internal/users"
@@ -38,6 +41,9 @@ type Hub struct {
 	appURL string
 	// hubMonitors runs monitors that have no system.
 	hubMonitors hubMonitorRunner
+	// uptime derives monitor status from check results.
+	uptime     *uptime.Engine
+	uptimeOnce sync.Once
 }
 
 // NewHub creates a new Hub instance with default configuration
@@ -47,6 +53,7 @@ func NewHub(app core.App) *Hub {
 	hub.um = users.NewUserManager(hub)
 	hub.rm = records.NewRecordManager(hub)
 	hub.sm = systems.NewSystemManager(hub)
+	hub.uptime = uptime.New(app)
 	hub.hb = heartbeat.New(app, utils.GetEnv)
 	if hub.hb != nil {
 		hub.hbStop = make(chan struct{})
@@ -95,6 +102,11 @@ func (h *Hub) StartHub() error {
 		if err := h.startServer(e); err != nil {
 			return err
 		}
+		// restore monitor status before systems deliver monitor results
+		if err := h.uptime.Load(); err != nil {
+			return err
+		}
+		h.startUptimeEngine()
 		// start system updates
 		if err := h.sm.Initialize(); err != nil {
 			return err
@@ -119,6 +131,32 @@ func (h *Hub) StartHub() error {
 		return errors.New("not a pocketbase app")
 	}
 	return pb.Start()
+}
+
+// Uptime returns the engine that derives monitor status from check results.
+func (h *Hub) Uptime() *uptime.Engine {
+	return h.uptime
+}
+
+// startUptimeEngine runs the uptime engine's periodic work until the app
+// terminates, then waits for its final flush. Only the first call starts it.
+func (h *Hub) startUptimeEngine() {
+	h.uptimeOnce.Do(func() {
+		stop, done := make(chan struct{}), make(chan struct{})
+		go func() {
+			defer close(done)
+			h.uptime.Run(stop)
+		}()
+		h.OnTerminate().BindFunc(func(e *core.TerminateEvent) error {
+			close(stop)
+			select {
+			case <-done:
+			case <-time.After(5 * time.Second):
+				e.App.Logger().Warn("Timed out flushing monitor status")
+			}
+			return e.Next()
+		})
+	})
 }
 
 // initialize sets up initial configuration (collections, settings, etc.)

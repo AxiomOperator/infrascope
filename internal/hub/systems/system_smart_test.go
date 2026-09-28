@@ -11,6 +11,7 @@ import (
 	"github.com/henrygd/beszel/internal/entities/smart"
 	esystem "github.com/henrygd/beszel/internal/entities/system"
 	"github.com/henrygd/beszel/internal/hub/expirymap"
+	"github.com/henrygd/beszel/internal/hub/uptime"
 	_ "github.com/henrygd/beszel/internal/migrations"
 
 	"github.com/pocketbase/pocketbase/core"
@@ -23,7 +24,10 @@ import (
 // stubHub implements hubLike using a plain pocketbase test app, so
 // smart-device DB tests can run in-package without an import cycle to
 // internal/hub (which imports this package).
-type stubHub struct{ core.App }
+type stubHub struct {
+	core.App
+	uptime *uptime.Engine
+}
 
 func (stubHub) GetSSHKey(dataDir string) (ssh.Signer, error) { return nil, nil }
 func (stubHub) HandleSystemAlerts(systemRecord *core.Record, data *esystem.CombinedData) error {
@@ -36,6 +40,7 @@ func (stubHub) HandleContainerAlerts(systemRecord *core.Record, data *esystem.Co
 }
 func (stubHub) CancelPendingStatusAlerts(systemID string)    {}
 func (stubHub) CancelPendingContainerAlerts(systemID string) {}
+func (h stubHub) Uptime() *uptime.Engine                     { return h.uptime }
 
 // newTestSystemWithHub creates a System backed by a real (temp) database, along
 // with a matching "systems" record, for tests that need to exercise DB reads/writes.
@@ -45,7 +50,7 @@ func newTestSystemWithHub(t *testing.T) (*System, *pbtests.TestApp) {
 	require.NoError(t, err)
 	t.Cleanup(testApp.Cleanup)
 
-	sm := &SystemManager{hub: stubHub{testApp}, smartFetchMap: expirymap.New[smartFetchState](time.Hour)}
+	sm := &SystemManager{hub: stubHub{App: testApp}, smartFetchMap: expirymap.New[smartFetchState](time.Hour)}
 	t.Cleanup(sm.smartFetchMap.StopCleaner)
 
 	col, err := testApp.FindCachedCollectionByNameOrId("systems")

@@ -90,7 +90,7 @@ func TestNetworkMonitorReconnectSync(t *testing.T) {
 			})
 			require.NoError(t, app.SaveNoValidate(probe))
 
-			sm := NewSystemManager(stubHub{app})
+			sm := NewSystemManager(stubHub{App: app})
 			t.Cleanup(func() {
 				sm.cancel()
 				_ = sm.RemoveSystem(sys.Id)

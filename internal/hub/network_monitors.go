@@ -48,6 +48,7 @@ func bindNetworkMonitorsEvents(hub *Hub) {
 		if err != nil {
 			return err
 		}
+		hub.uptime.Upsert(e.Record)
 		systemID := e.Record.GetString("system")
 		if systemID == "" {
 			hub.hubMonitors.Sync(e.Record)
@@ -79,8 +80,17 @@ func bindNetworkMonitorsEvents(hub *Hub) {
 		return nil
 	})
 
+	// Model-level, so the engine also sees updates made outside the API. It
+	// runs after commit and also after the engine's own saves, which Upsert
+	// tolerates (it only writes when the record differs from its state).
+	hub.OnRecordAfterUpdateSuccess("network_monitors").BindFunc(func(e *core.RecordEvent) error {
+		hub.uptime.Upsert(e.Record)
+		return e.Next()
+	})
+
 	// remove monitor from its runner on delete
 	hub.OnRecordAfterDeleteSuccess("network_monitors").BindFunc(func(e *core.RecordEvent) error {
+		hub.uptime.Remove(e.Record.Id)
 		systemID := e.Record.GetString("system")
 		if systemID == "" {
 			hub.hubMonitors.Remove(e.Record.Id)

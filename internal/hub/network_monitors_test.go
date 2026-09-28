@@ -275,14 +275,14 @@ func TestMonitorServerFieldsNotClientSettable(t *testing.T) {
 	assert.Contains(t, []string{"", "null"}, record.GetString("recent"))
 	assert.Contains(t, []string{"", "null"}, record.GetString("state"))
 
-	record.Set("status", "down")
+	// The status engine owns status; lastError stands in for other server-written fields.
 	record.Set("lastError", "timeout")
 	require.NoError(t, env.hub.SaveNoValidate(record))
 	response := env.updateMonitor(t, record.Id, env.owner, map[string]any{"status": "up", "lastError": "", "name": "Site"})
 	require.Equal(t, http.StatusOK, response.Code, response.Body.String())
 	record, err := env.hub.FindRecordById("network_monitors", record.Id)
 	require.NoError(t, err)
-	assert.Equal(t, "down", record.GetString("status"))
+	assert.Equal(t, "unknown", record.GetString("status"))
 	assert.Equal(t, "timeout", record.GetString("lastError"))
 	assert.Equal(t, "Site", record.GetString("name"))
 }
@@ -499,4 +499,35 @@ func TestMonitorRunnerChangeSyncsAgents(t *testing.T) {
 	assert.Empty(t, updated.GetStringSlice("users"))
 	assert.Empty(t, agentA)
 	assert.Empty(t, agentB)
+}
+
+func TestMonitorHooksUpdateUptimeEngine(t *testing.T) {
+	env := newMonitorTestEnv(t)
+	record := env.createMonitor(t, env.hubMonitor(map[string]any{"enabled": false}))
+	assert.Equal(t, "paused", env.hub.Uptime().Status(record.Id))
+	stored, err := env.hub.FindRecordById("network_monitors", record.Id)
+	require.NoError(t, err)
+	assert.Equal(t, "paused", stored.GetString("status"))
+
+	response := env.updateMonitor(t, record.Id, env.owner, map[string]any{"enabled": true})
+	require.Equal(t, http.StatusOK, response.Code, response.Body.String())
+	assert.Equal(t, "unknown", env.hub.Uptime().Status(record.Id))
+	stored, err = env.hub.FindRecordById("network_monitors", record.Id)
+	require.NoError(t, err)
+	assert.Equal(t, "unknown", stored.GetString("status"))
+
+	var segments []struct {
+		Status string `db:"status"`
+		End    int64  `db:"end"`
+	}
+	require.NoError(t, env.hub.DB().NewQuery("SELECT status, end FROM monitor_events WHERE monitor = {:id} ORDER BY start, rowid").
+		Bind(map[string]any{"id": record.Id}).All(&segments))
+	require.Len(t, segments, 2)
+	assert.Equal(t, "paused", segments[0].Status)
+	assert.NotZero(t, segments[0].End)
+	assert.Equal(t, "unknown", segments[1].Status)
+	assert.Zero(t, segments[1].End)
+
+	require.NoError(t, env.hub.Delete(stored))
+	assert.Empty(t, env.hub.Uptime().Status(record.Id))
 }
