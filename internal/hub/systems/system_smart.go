@@ -56,6 +56,8 @@ func (sys *System) shouldFetchSmart() bool {
 
 // smartFetchInterval returns the agent-provided SMART interval or the default when unset.
 func (sys *System) smartFetchInterval() time.Duration {
+	sys.mu.RLock()
+	defer sys.mu.RUnlock()
 	if sys.smartInterval > 0 {
 		return sys.smartInterval
 	}

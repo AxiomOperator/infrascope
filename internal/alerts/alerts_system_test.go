@@ -252,3 +252,24 @@ func TestCPUStateAlertWithoutBreakdown(t *testing.T) {
 		assert.Zero(t, fixture.hub.TestMailer.TotalSend(), "No email should be sent without CPU breakdown data")
 	})
 }
+
+// With PRIMARY_SENSOR set (or a hotter GPU), the dashboard temperature is not
+// the hottest sensor. Triggering and averaging must use the same value, or a
+// hot GPU would keep the alert from ever resolving.
+func TestTemperatureAlertUsesDashboardTemp(t *testing.T) {
+	setPrimarySensor := func(info *system.Info, stats *system.Stats, value float64) {
+		info.DashboardTemp = value
+		stats.Temperatures = map[string]float64{"cpu": value, "gpu": 95}
+	}
+	testMultiMinuteSystemAlert(t, "Temperature", 70, 2, setPrimarySensor, 10, 71, 67)
+}
+
+// Without a dashboard temperature, alerts fall back to the hottest sensor for
+// both the trigger check and the average.
+func TestTemperatureAlertFallsBackToHottestSensor(t *testing.T) {
+	setSensors := func(_ *system.Info, stats *system.Stats, value float64) {
+		stats.Temperatures = map[string]float64{"a": value - 20, "b": value}
+	}
+	testMultiMinuteSystemAlert(t, "Temperature", 70, 2, setSensors, 30, 71, 67)
+	testOneMinuteSystemAlert(t, "Temperature", 70, setSensors, 71, 69)
+}

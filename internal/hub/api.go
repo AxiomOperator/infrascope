@@ -200,6 +200,8 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	apiNoAuth.POST("/push/{token}", h.handlePush)
 	apiNoAuth.GET("/status-pages/{slug}", h.handleStatusPage)
 	apiAuth.POST("/monitors/{id}/push-token", h.regeneratePushToken).BindFunc(excludeReadOnlyRole)
+	// clear a system's pinned SSH host key (trust the next key on first use)
+	apiAuth.POST("/systems/{id}/reset-host-key", h.resetSystemHostKey).BindFunc(excludeReadOnlyRole)
 	// handle agent websocket connection
 	apiNoAuth.GET("/agent-connect", h.handleAgentConnect)
 	// get or create universal tokens
@@ -233,7 +235,7 @@ func (h *Hub) getInfo(e *core.RequestEvent) error {
 		CheckUpdate bool   `json:"cu"`
 	}
 	info := infoResponse{
-		Key:     h.pubKey,
+		Key:     h.publicKey(),
 		Version: beszel.Version,
 	}
 	if optIn, _ := utils.GetEnv("CHECK_UPDATES"); optIn == "true" {

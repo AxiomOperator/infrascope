@@ -66,14 +66,14 @@ func TestFetchDataTimeoutKeepsWebSocketOpen(t *testing.T) {
 	var sys *System
 	select {
 	case wsConn := <-connections:
-		sys = &System{WsConn: wsConn}
+		sys = &System{wsConn: wsConn}
 	case <-time.After(3 * time.Second):
 		t.Fatal("websocket connection was not established")
 	}
 
 	_, err = sys.fetchDataFromAgent(common.DataRequestOptions{})
 	require.ErrorIs(t, err, context.DeadlineExceeded)
-	require.True(t, sys.WsConn.IsConnected(), "a slow collection must not close the connection")
+	require.True(t, sys.getWsConn().IsConnected(), "a slow collection must not close the connection")
 
 	// The late response is discarded and the next request still succeeds.
 	close(client.release)

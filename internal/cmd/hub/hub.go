@@ -27,6 +27,9 @@ func main() {
 		return
 	}
 
+	// in the container image, continue as an unprivileged user
+	dropPrivileges()
+
 	baseApp := getBaseApp()
 	hub := hub.NewHub(baseApp)
 	if err := hub.StartHub(); err != nil {

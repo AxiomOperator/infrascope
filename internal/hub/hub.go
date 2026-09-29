@@ -36,9 +36,12 @@ type Hub struct {
 	sm     *systems.SystemManager
 	hb     *heartbeat.Heartbeat
 	hbStop chan struct{}
-	pubKey string
-	signer ssh.Signer
-	appURL string
+	// keyMu guards pubKey, signer and signerPath.
+	keyMu      sync.Mutex
+	pubKey     string
+	signer     ssh.Signer
+	signerPath string // key file the cached signer was loaded from
+	appURL     string
 	// hubMonitors runs monitors that have no system.
 	hubMonitors hubMonitorRunner
 	// uptime derives monitor status from check results.
@@ -101,6 +104,8 @@ func (h *Hub) StartHub() error {
 		if err := config.SyncSystems(e); err != nil {
 			return err
 		}
+		// restrict CORS and cross-origin writes under implicit authentication
+		h.registerOriginPolicy(e)
 		// register middlewares
 		h.registerMiddlewares(e)
 		// register api routes
@@ -208,56 +213,77 @@ func (h *Hub) registerCronJobs(_ *core.ServeEvent) error {
 	return nil
 }
 
-// GetSSHKey generates key pair if it doesn't exist and returns signer
-func (h *Hub) GetSSHKey(dataDir string) (ssh.Signer, error) {
-	if h.signer != nil {
-		return h.signer, nil
-	}
+// publicKey returns the hub's SSH public key in authorized_keys format, or ""
+// before the key has been loaded.
+func (h *Hub) publicKey() string {
+	h.keyMu.Lock()
+	defer h.keyMu.Unlock()
+	return h.pubKey
+}
 
+// GetSSHKey generates key pair if it doesn't exist and returns signer.
+// The signer is cached, so the key file is read once rather than on every
+// agent connection.
+func (h *Hub) GetSSHKey(dataDir string) (ssh.Signer, error) {
 	if dataDir == "" {
 		dataDir = h.DataDir()
 	}
-
 	privateKeyPath := path.Join(dataDir, "id_ed25519")
+
+	h.keyMu.Lock()
+	defer h.keyMu.Unlock()
+	if h.signer != nil && h.signerPath == privateKeyPath {
+		return h.signer, nil
+	}
+	signer, pubKey, err := h.loadOrCreateSSHKey(privateKeyPath)
+	if err != nil {
+		return nil, err
+	}
+	h.signer, h.signerPath, h.pubKey = signer, privateKeyPath, pubKey
+	return signer, nil
+}
+
+// loadOrCreateSSHKey reads the key at privateKeyPath, generating it if missing.
+func (h *Hub) loadOrCreateSSHKey(privateKeyPath string) (ssh.Signer, string, error) {
 
 	// check if the key pair already exists
 	existingKey, err := os.ReadFile(privateKeyPath)
 	if err == nil {
 		private, err := ssh.ParsePrivateKey(existingKey)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse private key: %s", err)
+			return nil, "", fmt.Errorf("failed to parse private key: %s", err)
 		}
 		pubKeyBytes := ssh.MarshalAuthorizedKey(private.PublicKey())
-		h.pubKey = strings.TrimSuffix(string(pubKeyBytes), "\n")
-		return private, nil
+		return private, strings.TrimSuffix(string(pubKeyBytes), "\n"), nil
 	} else if !os.IsNotExist(err) {
 		// File exists but couldn't be read for some other reason
-		return nil, fmt.Errorf("failed to read %s: %w", privateKeyPath, err)
+		return nil, "", fmt.Errorf("failed to read %s: %w", privateKeyPath, err)
 	}
 
 	// Generate the Ed25519 key pair
 	_, privKey, err := ed25519.GenerateKey(nil)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	privKeyPem, err := ssh.MarshalPrivateKey(privKey, "")
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if err := os.WriteFile(privateKeyPath, pem.EncodeToMemory(privKeyPem), 0600); err != nil {
-		return nil, fmt.Errorf("failed to write private key to %q: err: %w", privateKeyPath, err)
+		return nil, "", fmt.Errorf("failed to write private key to %q: err: %w", privateKeyPath, err)
 	}
 
-	// These are fine to ignore the errors on, as we've literally just created a crypto.PublicKey | crypto.Signer
-	sshPrivate, _ := ssh.NewSignerFromSigner(privKey)
+	sshPrivate, err := ssh.NewSignerFromSigner(privKey)
+	if err != nil {
+		return nil, "", err
+	}
 	pubKeyBytes := ssh.MarshalAuthorizedKey(sshPrivate.PublicKey())
-	h.pubKey = strings.TrimSuffix(string(pubKeyBytes), "\n")
 
 	h.Logger().Info("ed25519 key pair generated successfully.")
 	h.Logger().Info("Saved to: " + privateKeyPath)
 
-	return sshPrivate, err
+	return sshPrivate, strings.TrimSuffix(string(pubKeyBytes), "\n"), nil
 }
 
 // MakeLink formats a link with the app URL and path segments.

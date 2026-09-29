@@ -55,11 +55,13 @@ type SystemAlertStats struct {
 	Bandwidth    [2]uint64                     `json:"b"`
 	GPU          map[string]SystemAlertGPUData `json:"g"`
 	Temperatures map[string]float32            `json:"t"`
-	LoadAvg      [3]float64                    `json:"la"`
-	Battery      [2]uint8                      `json:"bat"`
-	Batteries    map[string]uint8              `json:"bats"`
-	ExtraFs      map[string]SystemAlertFsStats `json:"efs"`
-	ZfsPools     map[string]SystemAlertZfsPool `json:"z"`
+	// DashboardTemp is stored by the hub with 1m records; older records lack it.
+	DashboardTemp float32                       `json:"dt"`
+	LoadAvg       [3]float64                    `json:"la"`
+	Battery       [2]uint8                      `json:"bat"`
+	Batteries     map[string]uint8              `json:"bats"`
+	ExtraFs       map[string]SystemAlertFsStats `json:"efs"`
+	ZfsPools      map[string]SystemAlertZfsPool `json:"z"`
 }
 
 type SystemAlertGPUData struct {

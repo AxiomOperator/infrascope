@@ -15,6 +15,10 @@ RUN apk add --no-cache \
 
 RUN update-ca-certificates
 
+# Data directory owned by the unprivileged hub user (fresh named volumes
+# inherit this ownership)
+RUN mkdir -p /beszel_data && chown 1000:1000 /beszel_data
+
 # Build
 ARG TARGETOS TARGETARCH
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-w -s" -o /beszel ./internal/cmd/hub
@@ -24,6 +28,15 @@ FROM scratch
 
 COPY --from=builder /beszel /
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder --chown=1000:1000 /beszel_data /beszel_data
+
+# The hub runs as an unprivileged user. The container starts as root only so
+# the hub can take ownership of DATA_DIR (existing volumes and bind mounts were
+# written by root) before it switches to PUID:PGID for good, like the gosu
+# entrypoints of common images. Set PUID/PGID to match a host user that owns a
+# bind mount, or PUID=0 to keep running as root. Running the container with
+# `user: 1000:1000` also works when the data directory is already owned by it.
+ENV PUID=1000 PGID=1000 DATA_DIR=/beszel_data
 
 # Ensure data persistence across container recreations
 VOLUME ["/beszel_data"]

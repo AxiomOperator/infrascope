@@ -52,3 +52,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.TOKEN || secrets.GITHUB_TOKEN }}
           WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
           IS_FORK: ${{ github.repository_owner != 'henrygd' }}
+          # Release signing (see .goreleaser.yml signs); self-updates refuse unsigned archives.
+          INFRASCOPE_RELEASE_SIGNING_KEY: ${{ secrets.INFRASCOPE_RELEASE_SIGNING_KEY }}
+          INFRASCOPE_RELEASE_PUBLIC_KEY: ${{ vars.INFRASCOPE_RELEASE_PUBLIC_KEY }}

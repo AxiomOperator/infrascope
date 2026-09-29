@@ -498,7 +498,7 @@ func testOld(t *testing.T, hub *tests.TestHub) {
 		assert.NoError(t, err)
 		assert.NotNil(t, newCtx, "New system context should not be nil")
 		assert.NotNil(t, newCancel, "New system cancel function should not be nil")
-		assert.NotEqual(t, originalCtx, newCtx, "New context should be different from original")
+		assert.True(t, originalCtx != newCtx, "New context should be different from original")
 
 		// Clean up
 		err = sm.RemoveSystem(record.Id)

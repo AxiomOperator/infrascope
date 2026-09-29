@@ -17,7 +17,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateRecordsRejectsNullSystemdService(t *testing.T) {
+// A null systemd entry must not roll back the stats transaction (which would
+// mark the system down). Null entries are skipped, valid ones saved, and since
+// the snapshot is incomplete, previously reported services are kept.
+func TestCreateRecordsSkipsNullSystemdService(t *testing.T) {
 	hub, user := tests.GetHubWithUser(t)
 	defer hub.Cleanup()
 	records, err := tests.CreateSystems(hub, 1, user.Id, "paused")
@@ -28,7 +31,7 @@ func TestCreateRecordsRejectsNullSystemdService(t *testing.T) {
 		{Name: "existing.service", State: systemd.StatusFailed},
 	}, records[0].Id))
 
-	for _, services := range []string{`[null]`, `[{"name":"new.service"},null]`, `[null,{"name":"new.service"}]`} {
+	for _, services := range []string{`[null]`, `[{"n":"new.service"},null]`, `[null,{"n":"new.service"}]`} {
 		for _, encoding := range []string{"json", "cbor"} {
 			t.Run(encoding+"/"+services, func(t *testing.T) {
 				var data system.CombinedData
@@ -39,15 +42,22 @@ func TestCreateRecordsRejectsNullSystemdService(t *testing.T) {
 					data = system.CombinedData{}
 					require.NoError(t, cbor.Unmarshal(encoded, &data))
 				}
-				_, err := sys.CreateRecords(&data)
-				require.ErrorContains(t, err, "null systemd service")
+				before, err := hub.CountRecords("system_stats", dbx.HashExp{"system": records[0].Id})
+				require.NoError(t, err)
+				systemRecord, err := sys.CreateRecords(&data)
+				require.NoError(t, err)
+				assert.Equal(t, "up", systemRecord.GetString("status"))
 				var names []string
 				require.NoError(t, hub.DB().Select("name").From("systemd_services").
-					Where(dbx.HashExp{"system": records[0].Id}).Column(&names))
-				assert.Equal(t, []string{"existing.service"}, names)
-				count, err := hub.CountRecords("system_stats", dbx.HashExp{"system": records[0].Id})
+					Where(dbx.HashExp{"system": records[0].Id}).OrderBy("name").Column(&names))
+				expected := []string{"existing.service"}
+				if services != `[null]` {
+					expected = []string{"existing.service", "new.service"}
+				}
+				assert.Equal(t, expected, names)
+				after, err := hub.CountRecords("system_stats", dbx.HashExp{"system": records[0].Id})
 				require.NoError(t, err)
-				assert.Zero(t, count, "invalid snapshot must roll back system stats")
+				assert.Equal(t, before+1, after, "other stats must still be saved")
 			})
 		}
 	}

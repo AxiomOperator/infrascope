@@ -664,9 +664,9 @@ func TestAverageSystemStatsSlice_MixedOptionalFields(t *testing.T) {
 	// CpuBreakdown: only 1 record had it, so sum/2
 	require.NotNil(t, result.CpuBreakdown)
 	assert.Equal(t, 2.5, result.CpuBreakdown[0])
-	// GPUData: only 1 record had it, so sum/2
+	// GPUData: averaged over the records that include the GPU
 	require.NotNil(t, result.GPUData)
-	assert.Equal(t, 20.0, result.GPUData["gpu0"].Usage)
+	assert.Equal(t, 40.0, result.GPUData["gpu0"].Usage)
 }
 
 func TestAverageSystemStatsSlice_Zfs(t *testing.T) {
@@ -805,10 +805,10 @@ func TestAverageContainerStatsSlice_ContainerAppearsInSomeRecords(t *testing.T) 
 	assert.Equal(t, 15.0, result[0].Cpu)
 	assert.Equal(t, 150.0, result[0].Mem)
 
-	// redis: sum / count where count = total records (2), not records containing redis
+	// redis: averaged over the records containing redis, not diluted by the others
 	assert.Equal(t, "redis", result[1].Name)
-	assert.Equal(t, 2.5, result[1].Cpu)
-	assert.Equal(t, 32.0, result[1].Mem)
+	assert.Equal(t, 5.0, result[1].Cpu)
+	assert.Equal(t, 64.0, result[1].Mem)
 }
 
 // Tests backward compatibility with deprecated NetworkSent/NetworkRecv (MB) when Bandwidth is zero.
@@ -919,4 +919,68 @@ func TestAverageSystemStatsSlice_BtrfsDisplayName(t *testing.T) {
 	require.Len(t, result.ZfsPools, 1)
 	assert.Equal(t, "after", result.ZfsPools["b:uuid"].DisplayName)
 	assert.Equal(t, float64(15), result.ZfsPools["b:uuid"].Used)
+}
+
+// Items that appear mid-window are averaged over the samples that include
+// them, so they are not diluted (which would compound in longer rollups).
+func TestAverageSystemStatsSlice_PerItemCounts(t *testing.T) {
+	input := []system.Stats{
+		{
+			Cpu:               10,
+			NetworkInterfaces: map[string][4]uint64{"eth0": {100, 200, 150, 250}},
+			Temperatures:      map[string]float64{"cpu": 50},
+			Fans:              map[string]uint16{"fan1": 1000},
+			ExtraFs:           map[string]*system.FsStats{"data": {DiskTotal: 100, DiskUsed: 40, DiskReadBytes: 10}},
+		},
+		{
+			Cpu:               20,
+			NetworkInterfaces: map[string][4]uint64{"eth0": {300, 400, 350, 450}, "wg0": {50, 60, 50, 60}},
+			Temperatures:      map[string]float64{"cpu": 60, "nvme": 40},
+			Fans:              map[string]uint16{"fan1": 2000, "fan2": 500},
+			ExtraFs: map[string]*system.FsStats{
+				"data": {DiskTotal: 100, DiskUsed: 60, DiskReadBytes: 30},
+				"usb":  {DiskTotal: 32, DiskUsed: 8, DiskReadBytes: 4},
+			},
+			GPUData: map[string]system.GPUData{
+				"gpu0": {Name: "GPU", Usage: 30, Temperature: 70, Power: 100, Engines: map[string]float64{"3D": 20}},
+			},
+		},
+		{
+			Cpu:               30,
+			NetworkInterfaces: map[string][4]uint64{"eth0": {200, 300, 200, 300}},
+			Temperatures:      map[string]float64{"cpu": 70},
+			Fans:              map[string]uint16{"fan1": 3000},
+			ExtraFs:           map[string]*system.FsStats{"data": {DiskTotal: 100, DiskUsed: 50, DiskReadBytes: 20}},
+			GPUData: map[string]system.GPUData{
+				"gpu0": {Name: "GPU", Usage: 50, Temperature: 80, Power: 200, Engines: map[string]float64{"3D": 40, "Video": 10}},
+			},
+		},
+	}
+
+	result := records.AverageSystemStatsSlice(input)
+
+	assert.Equal(t, 20.0, result.Cpu)
+	assert.Equal(t, [4]uint64{200, 300, 350, 450}, result.NetworkInterfaces["eth0"])
+	assert.Equal(t, [4]uint64{50, 60, 50, 60}, result.NetworkInterfaces["wg0"], "interface present in one sample")
+	assert.Equal(t, 60.0, result.Temperatures["cpu"])
+	assert.Equal(t, 40.0, result.Temperatures["nvme"], "sensor present in one sample")
+	assert.Equal(t, uint16(2000), result.Fans["fan1"])
+	assert.Equal(t, uint16(500), result.Fans["fan2"])
+	assert.Equal(t, 50.0, result.ExtraFs["data"].DiskUsed)
+	assert.Equal(t, uint64(20), result.ExtraFs["data"].DiskReadBytes)
+	assert.Equal(t, 32.0, result.ExtraFs["usb"].DiskTotal, "filesystem mounted in one sample")
+	assert.Equal(t, 8.0, result.ExtraFs["usb"].DiskUsed)
+	assert.Equal(t, uint64(4), result.ExtraFs["usb"].DiskReadBytes)
+	gpu := result.GPUData["gpu0"]
+	assert.Equal(t, 40.0, gpu.Usage, "GPU present in two of three samples")
+	assert.Equal(t, 75.0, gpu.Temperature)
+	assert.Equal(t, 150.0, gpu.Power)
+	assert.Equal(t, 30.0, gpu.Engines["3D"])
+	assert.Equal(t, 10.0, gpu.Engines["Video"], "engine present in one sample")
+
+	// A second rollup level must not compound any dilution.
+	again := records.AverageSystemStatsSlice([]system.Stats{result, result})
+	assert.Equal(t, 40.0, again.Temperatures["nvme"])
+	assert.Equal(t, 8.0, again.ExtraFs["usb"].DiskUsed)
+	assert.Equal(t, 40.0, again.GPUData["gpu0"].Usage)
 }

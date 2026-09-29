@@ -60,7 +60,7 @@ func bindNetworkMonitorsEvents(hub *Hub) {
 		// If connected, run the monitor immediately. Paused systems may be absent
 		// from the manager; their monitors will sync when they reconnect.
 		system, err := hub.sm.GetSystem(systemID)
-		if err == nil && system.Status == "up" {
+		if err == nil && system.GetStatus() == "up" {
 			go hub.upsertNetworkMonitor(e.Record, true)
 		}
 		return nil

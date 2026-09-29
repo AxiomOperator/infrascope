@@ -3,6 +3,8 @@ package ws
 import (
 	"context"
 	"errors"
+	"sync"
+	"sync/atomic"
 	"time"
 	"weak"
 
@@ -26,7 +28,9 @@ type Handler struct {
 
 // WsConn represents a WebSocket connection to an agent.
 type WsConn struct {
-	conn           *gws.Conn
+	// conn is cleared by OnClose (gws read loop goroutine) while updaters,
+	// realtime workers and API handlers use it, so it is accessed atomically.
+	conn           atomic.Pointer[gws.Conn]
 	requestManager *RequestManager
 	DownChan       chan struct{}
 	agentVersion   semver.Version
@@ -40,10 +44,15 @@ type FingerprintRecord struct {
 	Token       string `db:"token"`
 }
 
-var upgrader *gws.Upgrader
+var (
+	upgrader   *gws.Upgrader
+	upgraderMu sync.Mutex
+)
 
 // GetUpgrader returns a singleton WebSocket upgrader instance.
 func GetUpgrader() *gws.Upgrader {
+	upgraderMu.Lock()
+	defer upgraderMu.Unlock()
 	if upgrader != nil {
 		return upgrader
 	}
@@ -54,12 +63,15 @@ func GetUpgrader() *gws.Upgrader {
 
 // NewWsConnection creates a new WebSocket connection wrapper with agent version.
 func NewWsConnection(conn *gws.Conn, agentVersion semver.Version) *WsConn {
-	return &WsConn{
-		conn:           conn,
+	wsConn := &WsConn{
 		requestManager: NewRequestManager(conn),
 		DownChan:       make(chan struct{}, 1),
 		agentVersion:   agentVersion,
 	}
+	if conn != nil {
+		wsConn.conn.Store(conn)
+	}
+	return wsConn
 }
 
 // OnOpen sets a deadline for the WebSocket connection and extracts agent version.
@@ -87,7 +99,7 @@ func (h *Handler) OnClose(conn *gws.Conn, err error) {
 	if !ok {
 		return
 	}
-	wsConn.(*WsConn).conn = nil
+	wsConn.(*WsConn).conn.Store(nil)
 	// wait 5 seconds to allow reconnection before setting system down
 	// use a weak pointer to avoid keeping references if the system is removed
 	go func(downChan weak.Pointer[chan struct{}]) {
@@ -101,8 +113,8 @@ func (h *Handler) OnClose(conn *gws.Conn, err error) {
 
 // Close terminates the WebSocket connection gracefully.
 func (ws *WsConn) Close(msg []byte) {
-	if ws.IsConnected() {
-		ws.conn.WriteClose(1000, msg)
+	if conn := ws.conn.Load(); conn != nil {
+		conn.WriteClose(1000, msg)
 	}
 	if ws.requestManager != nil {
 		ws.requestManager.Close()
@@ -111,24 +123,26 @@ func (ws *WsConn) Close(msg []byte) {
 
 // Ping sends a ping frame to keep the connection alive.
 func (ws *WsConn) Ping() error {
-	if ws.conn == nil {
+	conn := ws.conn.Load()
+	if conn == nil {
 		return gws.ErrConnClosed
 	}
-	ws.conn.SetDeadline(time.Now().Add(deadline))
-	return ws.conn.WritePing(nil)
+	conn.SetDeadline(time.Now().Add(deadline))
+	return conn.WritePing(nil)
 }
 
 // sendMessage encodes data to CBOR and sends it as a binary message to the agent.
 // This is kept for backwards compatibility but new actions should use RequestManager.
 func (ws *WsConn) sendMessage(data common.HubRequest[any]) error {
-	if ws.conn == nil {
+	conn := ws.conn.Load()
+	if conn == nil {
 		return gws.ErrConnClosed
 	}
 	bytes, err := cbor.Marshal(data)
 	if err != nil {
 		return err
 	}
-	return ws.conn.WriteMessage(gws.OpcodeBinary, bytes)
+	return conn.WriteMessage(gws.OpcodeBinary, bytes)
 }
 
 // handleAgentRequest processes a request to the agent, handling both legacy and new formats.
@@ -163,7 +177,7 @@ func (ws *WsConn) handleAgentRequest(req *PendingRequest, handler ResponseHandle
 
 // IsConnected returns true if the WebSocket connection is active.
 func (ws *WsConn) IsConnected() bool {
-	return ws.conn != nil
+	return ws.conn.Load() != nil
 }
 
 // AgentVersion returns the connected agent's version (as reported during handshake).

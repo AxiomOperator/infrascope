@@ -87,10 +87,10 @@ func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *syst
 			}
 			val = maxUsedPct
 		case "Temperature":
-			if data.Info.DashboardTemp < 1 {
+			val = alertTemperature(data.Info.DashboardTemp, data.Stats.Temperatures)
+			if val < 1 {
 				continue
 			}
-			val = data.Info.DashboardTemp
 			unit = "°C"
 		case "LoadAvg1":
 			val = data.Info.LoadAvg[0]
@@ -265,15 +265,16 @@ func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *syst
 					}
 				}
 			case "Temperature":
-				if alert.mapSums == nil {
-					alert.mapSums = make(map[string]float32, len(stats.Temperatures))
-				}
-				for key, temp := range stats.Temperatures {
-					if _, ok := alert.mapSums[key]; !ok {
-						alert.mapSums[key] = float32(0)
+				temp := stats.DashboardTemp
+				if temp <= 0 {
+					for _, sensorTemp := range stats.Temperatures {
+						temp = max(temp, sensorTemp)
 					}
-					alert.mapSums[key] += temp
 				}
+				if temp < 1 {
+					continue
+				}
+				alert.val += float64(temp)
 			case "LoadAvg1":
 				alert.val += stats.LoadAvg[0]
 			case "LoadAvg5":
@@ -327,16 +328,6 @@ func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *syst
 				}
 			}
 			alert.val = float64(maxPct / float32(alert.count))
-		case "Temperature":
-			maxTemp := float32(0)
-			for key, value := range alert.mapSums {
-				sumTemp := float32(value) / float32(alert.count)
-				if sumTemp > maxTemp {
-					maxTemp = sumTemp
-					alert.descriptor = fmt.Sprintf("Highest sensor %s", key)
-				}
-			}
-			alert.val = float64(maxTemp)
 		default:
 			alert.val = alert.val / float64(alert.count)
 		}
@@ -367,6 +358,21 @@ func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *syst
 		}
 	}
 	return nil
+}
+
+// alertTemperature is the temperature that Temperature alerts check: the
+// agent's dashboard temperature (PRIMARY_SENSOR, or its default pick), or the
+// hottest sensor when the agent reports none. Averages over past records use
+// the same source (see HandleSystemAlerts).
+func alertTemperature(dashboardTemp float64, temperatures map[string]float64) float64 {
+	if dashboardTemp > 0 {
+		return dashboardTemp
+	}
+	var hottest float64
+	for _, temp := range temperatures {
+		hottest = max(hottest, temp)
+	}
+	return hottest
 }
 
 func zfsDiskAlertKey(poolName string) string {

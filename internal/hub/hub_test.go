@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	beszelTests "github.com/henrygd/beszel/internal/tests"
@@ -265,4 +266,30 @@ func TestAppUrl(t *testing.T) {
 		settings := hub.Settings()
 		assert.Equal(t, "http://example.com/app", settings.Meta.AppURL)
 	})
+}
+
+// The signer is loaded once and cached: later calls must not re-read the key
+// file (it is read on every agent connection otherwise).
+func TestGetSSHKeyCachesSigner(t *testing.T) {
+	hub, _ := beszelTests.NewTestHub(t.TempDir())
+	defer hub.Cleanup()
+	dir := t.TempDir()
+
+	first, err := hub.GetSSHKey(dir)
+	require.NoError(t, err)
+	pubKey := hub.GetPubkey()
+	require.NoError(t, os.Remove(filepath.Join(dir, "id_ed25519")))
+
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Go(func() {
+			signer, err := hub.GetSSHKey(dir)
+			assert.NoError(t, err)
+			assert.Same(t, first, signer)
+		})
+	}
+	wg.Wait()
+	assert.Equal(t, pubKey, hub.GetPubkey())
+	_, err = os.Stat(filepath.Join(dir, "id_ed25519"))
+	assert.True(t, os.IsNotExist(err), "a cached signer must not regenerate the key file")
 }

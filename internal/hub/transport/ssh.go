@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/blang/semver"
@@ -16,7 +17,10 @@ import (
 )
 
 // SSHTransport implements Transport over SSH connections.
+// It is safe for concurrent use: mu guards client and agentVersion, while
+// sessions on a client are multiplexed by the SSH library.
 type SSHTransport struct {
+	mu           sync.Mutex
 	client       *ssh.Client
 	config       *ssh.ClientConfig
 	host         string
@@ -51,33 +55,40 @@ func NewSSHTransport(cfg SSHTransportConfig) *SSHTransport {
 
 // SetClient sets the SSH client for reuse across requests.
 func (t *SSHTransport) SetClient(client *ssh.Client) {
+	t.mu.Lock()
 	t.client = client
+	t.mu.Unlock()
 }
 
 // SetAgentVersion sets the agent version (extracted from SSH handshake).
 func (t *SSHTransport) SetAgentVersion(version semver.Version) {
+	t.mu.Lock()
 	t.agentVersion = version
+	t.mu.Unlock()
 }
 
 // GetClient returns the current SSH client (for connection management).
 func (t *SSHTransport) GetClient() *ssh.Client {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	return t.client
 }
 
 // GetAgentVersion returns the agent version.
 func (t *SSHTransport) GetAgentVersion() semver.Version {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	return t.agentVersion
 }
 
 // Request sends a request to the agent via SSH and unmarshals the response.
 func (t *SSHTransport) Request(ctx context.Context, action common.WebSocketAction, req any, dest any) error {
-	if t.client == nil {
-		if err := t.connect(); err != nil {
-			return err
-		}
+	client, err := t.getOrConnect()
+	if err != nil {
+		return err
 	}
 
-	session, err := t.createSessionWithTimeout(ctx)
+	session, err := t.createSessionWithTimeout(ctx, client)
 	if err != nil {
 		return err
 	}
@@ -121,18 +132,36 @@ func (t *SSHTransport) Request(ctx context.Context, action common.WebSocketActio
 
 // IsConnected returns true if the SSH connection is active.
 func (t *SSHTransport) IsConnected() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	return t.client != nil
 }
 
 // Close terminates the SSH connection.
 func (t *SSHTransport) Close() {
-	if t.client != nil {
-		t.client.Close()
-		t.client = nil
+	t.mu.Lock()
+	client := t.client
+	t.client = nil
+	t.mu.Unlock()
+	if client != nil {
+		client.Close()
 	}
 }
 
-// connect establishes a new SSH connection.
+// getOrConnect returns the current client, dialing a new one if there is none.
+func (t *SSHTransport) getOrConnect() (*ssh.Client, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.client != nil {
+		return t.client, nil
+	}
+	if err := t.connect(); err != nil {
+		return nil, err
+	}
+	return t.client, nil
+}
+
+// connect establishes a new SSH connection. The caller must hold mu.
 func (t *SSHTransport) connect() error {
 	if t.config == nil {
 		return errors.New("SSH config not set")
@@ -158,8 +187,8 @@ func (t *SSHTransport) connect() error {
 }
 
 // createSessionWithTimeout creates a new SSH session with a timeout.
-func (t *SSHTransport) createSessionWithTimeout(ctx context.Context) (*ssh.Session, error) {
-	if t.client == nil {
+func (t *SSHTransport) createSessionWithTimeout(ctx context.Context, client *ssh.Client) (*ssh.Session, error) {
+	if client == nil {
 		return nil, errors.New("client not initialized")
 	}
 
@@ -170,7 +199,7 @@ func (t *SSHTransport) createSessionWithTimeout(ctx context.Context) (*ssh.Sessi
 	errChan := make(chan error, 1)
 
 	go func() {
-		session, err := t.client.NewSession()
+		session, err := client.NewSession()
 		if err != nil {
 			errChan <- err
 		} else {

@@ -171,10 +171,11 @@ func (sys *System) DeleteNetworkMonitor(id string) error {
 }
 
 func (sys *System) syncNetworkMonitors(req monitor.SyncRequest) (monitor.SyncResponse, error) {
-	if sys.agentVersion.LT(beszel.MinVersionNetworkMonitors) {
+	agentVersion := sys.getAgentVersion()
+	if agentVersion.LT(beszel.MinVersionNetworkMonitors) {
 		return monitor.SyncResponse{}, nil
 	}
-	req = syncRequestForAgent(req, sys.agentVersion)
+	req = syncRequestForAgent(req, agentVersion)
 	timeout := 5 * time.Second
 	if req.Action == monitor.SyncActionUpsert && req.RunNow {
 		// Allow the probe to finish, including a timeout result, while preserving

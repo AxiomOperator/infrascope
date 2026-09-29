@@ -38,198 +38,220 @@ type StatsRecord struct {
 	Stats []byte `db:"stats"`
 }
 
-// Create longer records by averaging shorter records
+// longerRecordTiers are the rollup tiers, from shortest to longest.
+var longerRecordTiers = []LongerRecordData{
+	{
+		shorterType: "1m",
+		// change to 9 from 10 to allow edge case timing or short pauses
+		minShorterRecords:  9,
+		longerType:         "10m",
+		longerTimeDuration: -10 * time.Minute,
+	},
+	{
+		shorterType:        "10m",
+		minShorterRecords:  2,
+		longerType:         "20m",
+		longerTimeDuration: -20 * time.Minute,
+	},
+	{
+		shorterType:        "20m",
+		minShorterRecords:  6,
+		longerType:         "120m",
+		longerTimeDuration: -120 * time.Minute,
+	},
+	{
+		shorterType:        "120m",
+		minShorterRecords:  4,
+		longerType:         "480m",
+		longerTimeDuration: -480 * time.Minute,
+	},
+}
+
+// CreateLongerRecords creates longer records by averaging shorter records.
+//
+// Each system (and the monitors of each system) is rolled up in its own
+// transaction, so the write lock is held briefly instead of for the whole job,
+// and the stats to average are fetched with one query per (system, type).
 func (rm *RecordManager) CreateLongerRecords() {
 	now := time.Now().UTC()
-	longerRecordData := []LongerRecordData{
-		{
-			shorterType: "1m",
-			// change to 9 from 10 to allow edge case timing or short pauses
-			minShorterRecords:  9,
-			longerType:         "10m",
-			longerTimeDuration: -10 * time.Minute,
-		},
-		{
-			shorterType:        "10m",
-			minShorterRecords:  2,
-			longerType:         "20m",
-			longerTimeDuration: -20 * time.Minute,
-		},
-		{
-			shorterType:        "20m",
-			minShorterRecords:  6,
-			longerType:         "120m",
-			longerTimeDuration: -120 * time.Minute,
-		},
-		{
-			shorterType:        "120m",
-			minShorterRecords:  4,
-			longerType:         "480m",
-			longerTimeDuration: -480 * time.Minute,
-		},
-	}
-	// wrap the operations in a transaction
 	// Pocketbase cron does not handle errors, log them here.
-	err := rm.app.RunInTransaction(func(txApp core.App) error {
-		var err error
-
-		collections := [2]*core.Collection{}
-		collections[0], err = txApp.FindCachedCollectionByNameOrId("system_stats")
-		if err != nil {
-			return err
-		}
-		collections[1], err = txApp.FindCachedCollectionByNameOrId("container_stats")
-		if err != nil {
-			return err
-		}
-		monitorStatsColl, err := txApp.FindCachedCollectionByNameOrId("network_monitor_stats")
-		if err != nil {
-			return err
-		}
-		var systems RecordIds
-		db := txApp.DB()
-
-		if err := db.NewQuery("SELECT id FROM systems WHERE status='up'").All(&systems); err != nil {
-			return err
-		}
-
-		// loop through all active systems, time periods, and collections
-		for _, system := range systems {
-			// log.Println("processing system", system.GetString("name"))
-			for i := range longerRecordData {
-				recordData := longerRecordData[i]
-				// log.Println("processing longer record type", recordData.longerType)
-				// add one minute padding for longer records because they are created slightly later than the job start time
-				longerRecordPeriod := now.Add(recordData.longerTimeDuration + time.Minute)
-				// shorter records are created independently of longer records, so we shouldn't need to add padding
-				shorterRecordPeriod := now.Add(recordData.longerTimeDuration)
-				for _, collection := range collections {
-					// check creation time of last longer record if not 10m, since 10m is created every run
-					if recordData.longerType != "10m" {
-						count, err := txApp.CountRecords(collection.Id, dbx.NewExp(
-							"system = {:system} AND type = {:type} AND created > {:created}",
-							dbx.Params{
-								"type":    recordData.longerType,
-								"system":  system.Id,
-								"created": longerRecordPeriod.Format(types.DefaultDateLayout),
-							},
-						))
-						if err != nil {
-							return err
-						}
-						// continue if longer record exists
-						if count > 0 {
-							continue
-						}
-					}
-					// get shorter records from the past x minutes
-					var recordIds RecordIds
-
-					params := dbx.Params{
-						"type":    recordData.shorterType,
-						"system":  system.Id,
-						"created": shorterRecordPeriod.Format(types.DefaultDateLayout),
-					}
-
-					err := db.
-						Select("id").
-						From(collection.Name).
-						Where(dbx.NewExp(
-							"system={:system} AND type={:type} AND created > {:created}",
-							params,
-						)).
-						OrderBy("created").
-						All(&recordIds)
-					if err != nil {
-						return err
-					}
-
-					// continue if not enough shorter records
-					if len(recordIds) < recordData.minShorterRecords {
-						continue
-					}
-					// average the shorter records and create longer record
-					longerRecord := core.NewRecord(collection)
-					longerRecord.Set("system", system.Id)
-					longerRecord.Set("type", recordData.longerType)
-					switch collection.Name {
-					case "system_stats":
-						longerRecord.Set("stats", rm.AverageSystemStats(db, recordIds))
-					case "container_stats":
-						longerRecord.Set("stats", rm.AverageContainerStats(db, recordIds))
-					}
-					if err := txApp.SaveNoValidate(longerRecord); err != nil {
-						txApp.Logger().Error("failed to save longer record", "err", err)
-					}
-				}
-			}
-		}
-
-		// network_monitor_stats is aggregated per monitor (not per system)
-		var monitors []struct {
-			Id     string `db:"id"`
-			System string `db:"system"`
-		}
-		// Disabled monitors still have history that must advance through retention tiers.
-		if err := db.NewQuery("SELECT id, system FROM network_monitors").All(&monitors); err != nil {
-			return err
-		}
-
-		for _, monitorRec := range monitors {
-			for i := range longerRecordData {
-				recordData := longerRecordData[i]
-				longerRecordPeriod := now.Add(recordData.longerTimeDuration + time.Minute)
-				shorterRecordPeriod := now.Add(recordData.longerTimeDuration)
-
-				if recordData.longerType != "10m" {
-					count, err := txApp.CountRecords(monitorStatsColl.Id, dbx.NewExp(
-						"monitor={:monitor} AND type={:type} AND created>{:created}",
-						dbx.Params{
-							"monitor": monitorRec.Id,
-							"type":    recordData.longerType,
-							"created": longerRecordPeriod.UnixMilli(),
-						},
-					))
-					if err != nil {
-						return err
-					}
-					if count > 0 {
-						continue
-					}
-				}
-
-				stats, count, err := rm.AverageMonitorStats(db, monitorRec.Id, recordData.shorterType, shorterRecordPeriod.UnixMilli())
-				if err != nil {
-					txApp.Logger().Error("failed to average monitor stats", "monitor", monitorRec.Id, "err", err)
-					continue
-				}
-				// Monitor intervals can exceed the aggregation window, so average
-				// any available records at every level and skip only empty windows.
-				if count == 0 {
-					continue
-				}
-
-				longerRecord := core.NewRecord(monitorStatsColl)
-				longerRecord.Set("system", monitorRec.System)
-				longerRecord.Set("monitor", monitorRec.Id)
-				longerRecord.Set("type", recordData.longerType)
-				longerRecord.Set("created", now.UnixMilli())
-				longerRecord.Set("res_min", stats.ResMin)
-				longerRecord.Set("res_max", stats.ResMax)
-				longerRecord.Set("total_count", stats.TotalCount)
-				longerRecord.Set("success_count", stats.SuccessCount)
-				longerRecord.Set("res_sum", stats.ResponseSum)
-				if err := txApp.SaveNoValidate(longerRecord); err != nil {
-					txApp.Logger().Error("failed to save monitor longer record", "err", err)
-				}
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
+	var systems RecordIds
+	if err := rm.app.DB().NewQuery("SELECT id FROM systems WHERE status='up'").All(&systems); err != nil {
 		rm.app.Logger().Error("failed to create longer records", "err", err)
+		return
 	}
+	for _, system := range systems {
+		err := rm.app.RunInTransaction(func(txApp core.App) error {
+			return rm.createLongerSystemRecords(txApp, system.Id, now)
+		})
+		if err != nil {
+			rm.app.Logger().Error("failed to create longer records", "system", system.Id, "err", err)
+		}
+	}
+
+	// network_monitor_stats is aggregated per monitor (not per system)
+	var monitors []struct {
+		Id     string `db:"id"`
+		System string `db:"system"`
+	}
+	// Disabled monitors still have history that must advance through retention tiers.
+	if err := rm.app.DB().NewQuery("SELECT id, system FROM network_monitors ORDER BY system").All(&monitors); err != nil {
+		rm.app.Logger().Error("failed to create longer monitor records", "err", err)
+		return
+	}
+	for start := 0; start < len(monitors); {
+		end := start + 1
+		for end < len(monitors) && monitors[end].System == monitors[start].System {
+			end++
+		}
+		batch := monitors[start:end]
+		start = end
+		err := rm.app.RunInTransaction(func(txApp core.App) error {
+			for _, monitorRec := range batch {
+				if err := rm.createLongerMonitorRecords(txApp, monitorRec.Id, monitorRec.System, now); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			rm.app.Logger().Error("failed to create longer monitor records", "system", batch[0].System, "err", err)
+		}
+	}
+}
+
+// createLongerSystemRecords rolls up the system_stats and container_stats of one system.
+func (rm *RecordManager) createLongerSystemRecords(txApp core.App, systemID string, now time.Time) error {
+	collections := [2]*core.Collection{}
+	var err error
+	collections[0], err = txApp.FindCachedCollectionByNameOrId("system_stats")
+	if err != nil {
+		return err
+	}
+	collections[1], err = txApp.FindCachedCollectionByNameOrId("container_stats")
+	if err != nil {
+		return err
+	}
+	db := txApp.DB()
+	for _, recordData := range longerRecordTiers {
+		// add one minute padding for longer records because they are created slightly later than the job start time
+		longerRecordPeriod := now.Add(recordData.longerTimeDuration + time.Minute)
+		// shorter records are created independently of longer records, so we shouldn't need to add padding
+		shorterRecordPeriod := now.Add(recordData.longerTimeDuration)
+		for _, collection := range collections {
+			// check creation time of last longer record if not 10m, since 10m is created every run
+			if recordData.longerType != "10m" {
+				count, err := txApp.CountRecords(collection.Id, dbx.NewExp(
+					"system = {:system} AND type = {:type} AND created > {:created}",
+					dbx.Params{
+						"type":    recordData.longerType,
+						"system":  systemID,
+						"created": longerRecordPeriod.Format(types.DefaultDateLayout),
+					},
+				))
+				if err != nil {
+					return err
+				}
+				// continue if longer record exists
+				if count > 0 {
+					continue
+				}
+			}
+			// get shorter records from the past x minutes
+			var rows []StatsRecord
+			err := db.
+				Select("stats").
+				From(collection.Name).
+				Where(dbx.NewExp(
+					"system={:system} AND type={:type} AND created > {:created}",
+					dbx.Params{
+						"type":    recordData.shorterType,
+						"system":  systemID,
+						"created": shorterRecordPeriod.Format(types.DefaultDateLayout),
+					},
+				)).
+				OrderBy("created").
+				All(&rows)
+			if err != nil {
+				return err
+			}
+
+			// continue if not enough shorter records
+			if len(rows) < recordData.minShorterRecords {
+				continue
+			}
+			// average the shorter records and create longer record
+			longerRecord := core.NewRecord(collection)
+			longerRecord.Set("system", systemID)
+			longerRecord.Set("type", recordData.longerType)
+			switch collection.Name {
+			case "system_stats":
+				longerRecord.Set("stats", averageSystemStatsRows(rows))
+			case "container_stats":
+				longerRecord.Set("stats", averageContainerStatsRows(rows))
+			}
+			if err := txApp.SaveNoValidate(longerRecord); err != nil {
+				txApp.Logger().Error("failed to save longer record", "err", err)
+			}
+		}
+	}
+	return nil
+}
+
+// createLongerMonitorRecords rolls up the network_monitor_stats of one monitor.
+func (rm *RecordManager) createLongerMonitorRecords(txApp core.App, monitorID, systemID string, now time.Time) error {
+	monitorStatsColl, err := txApp.FindCachedCollectionByNameOrId("network_monitor_stats")
+	if err != nil {
+		return err
+	}
+	db := txApp.DB()
+	for _, recordData := range longerRecordTiers {
+		longerRecordPeriod := now.Add(recordData.longerTimeDuration + time.Minute)
+		shorterRecordPeriod := now.Add(recordData.longerTimeDuration)
+
+		if recordData.longerType != "10m" {
+			count, err := txApp.CountRecords(monitorStatsColl.Id, dbx.NewExp(
+				"monitor={:monitor} AND type={:type} AND created>{:created}",
+				dbx.Params{
+					"monitor": monitorID,
+					"type":    recordData.longerType,
+					"created": longerRecordPeriod.UnixMilli(),
+				},
+			))
+			if err != nil {
+				return err
+			}
+			if count > 0 {
+				continue
+			}
+		}
+
+		stats, count, err := rm.AverageMonitorStats(db, monitorID, recordData.shorterType, shorterRecordPeriod.UnixMilli())
+		if err != nil {
+			txApp.Logger().Error("failed to average monitor stats", "monitor", monitorID, "err", err)
+			continue
+		}
+		// Monitor intervals can exceed the aggregation window, so average
+		// any available records at every level and skip only empty windows.
+		if count == 0 {
+			continue
+		}
+
+		longerRecord := core.NewRecord(monitorStatsColl)
+		longerRecord.Set("system", systemID)
+		longerRecord.Set("monitor", monitorID)
+		longerRecord.Set("type", recordData.longerType)
+		longerRecord.Set("created", now.UnixMilli())
+		longerRecord.Set("res_min", stats.ResMin)
+		longerRecord.Set("res_max", stats.ResMax)
+		longerRecord.Set("total_count", stats.TotalCount)
+		longerRecord.Set("success_count", stats.SuccessCount)
+		longerRecord.Set("res_sum", stats.ResponseSum)
+		if err := txApp.SaveNoValidate(longerRecord); err != nil {
+			txApp.Logger().Error("failed to save monitor longer record", "err", err)
+		}
+	}
+	return nil
 }
 
 func getCreatedTimeField(collectionName string, period time.Time) any {
@@ -240,15 +262,10 @@ func getCreatedTimeField(collectionName string, period time.Time) any {
 	return period.Format(types.DefaultDateLayout)
 }
 
-// Calculate the average stats of a list of system_stats records without reflect
-func (rm *RecordManager) AverageSystemStats(db dbx.Builder, records RecordIds) *system.Stats {
-	stats := make([]system.Stats, 0, len(records))
-	var row StatsRecord
-	params := make(dbx.Params, 1)
-	for _, rec := range records {
-		row.Stats = row.Stats[:0]
-		params["id"] = rec.Id
-		db.NewQuery("SELECT stats FROM system_stats WHERE id = {:id}").Bind(params).One(&row)
+// averageSystemStatsRows averages system_stats rows, skipping undecodable ones.
+func averageSystemStatsRows(rows []StatsRecord) *system.Stats {
+	stats := make([]system.Stats, 0, len(rows))
+	for _, row := range rows {
 		var s system.Stats
 		if err := json.Unmarshal(row.Stats, &s); err != nil {
 			continue
@@ -278,9 +295,15 @@ func AverageSystemStatsSlice(records []system.Stats) system.Stats {
 	var cpuCoresSums []uint64
 	// accumulate cpu breakdown [user, system, iowait, steal, idle]
 	var cpuBreakdownSums []float64
-	tempCount := float64(0)
+	// Per-item presence counts, so an item that appears or disappears mid-window
+	// is averaged over the samples that include it rather than diluted.
+	netCounts := make(map[string]uint64)
+	tempCounts := make(map[string]float64)
 	var fanSums map[string]uint64
-	fanCount := uint64(0)
+	fanCounts := make(map[string]uint64)
+	fsCounts := make(map[string]float64)
+	gpuCounts := make(map[string]float64)
+	gpuEngineCounts := make(map[string]map[string]float64)
 	zfsPoolCounts := make(map[string]uint64)
 	zfsCapacityCounts := make(map[string]uint64)
 
@@ -368,6 +391,7 @@ func AverageSystemStatsSlice(records []system.Stats) system.Stats {
 			sum.NetworkInterfaces = make(map[string][4]uint64, len(stats.NetworkInterfaces))
 		}
 		for key, value := range stats.NetworkInterfaces {
+			netCounts[key]++
 			sum.NetworkInterfaces[key] = [4]uint64{
 				sum.NetworkInterfaces[key][0] + value[0],
 				sum.NetworkInterfaces[key][1] + value[1],
@@ -381,9 +405,9 @@ func AverageSystemStatsSlice(records []system.Stats) system.Stats {
 			if sum.Temperatures == nil {
 				sum.Temperatures = make(map[string]float64, len(stats.Temperatures))
 			}
-			tempCount++
 			for key, value := range stats.Temperatures {
 				sum.Temperatures[key] += value
+				tempCounts[key]++
 			}
 		}
 
@@ -392,9 +416,9 @@ func AverageSystemStatsSlice(records []system.Stats) system.Stats {
 			if fanSums == nil {
 				fanSums = make(map[string]uint64, len(stats.Fans))
 			}
-			fanCount++
 			for key, value := range stats.Fans {
 				fanSums[key] += uint64(value)
+				fanCounts[key]++
 			}
 		}
 
@@ -408,6 +432,7 @@ func AverageSystemStatsSlice(records []system.Stats) system.Stats {
 					sum.ExtraFs[key] = &system.FsStats{}
 				}
 				fs := sum.ExtraFs[key]
+				fsCounts[key]++
 				fs.DiskTotal += value.DiskTotal
 				fs.DiskUsed += value.DiskUsed
 				fs.DiskWritePs += value.DiskWritePs
@@ -472,6 +497,7 @@ func AverageSystemStatsSlice(records []system.Stats) system.Stats {
 				if !ok {
 					gpu = system.GPUData{Name: value.Name}
 				}
+				gpuCounts[id]++
 				gpu.Temperature += value.Temperature
 				gpu.MemoryUsed += value.MemoryUsed
 				gpu.MemoryTotal += value.MemoryTotal
@@ -483,8 +509,12 @@ func AverageSystemStatsSlice(records []system.Stats) system.Stats {
 					if gpu.Engines == nil {
 						gpu.Engines = make(map[string]float64, len(value.Engines))
 					}
+					if gpuEngineCounts[id] == nil {
+						gpuEngineCounts[id] = make(map[string]float64, len(value.Engines))
+					}
 					for engineKey, engineValue := range value.Engines {
 						gpu.Engines[engineKey] += engineValue
+						gpuEngineCounts[id][engineKey]++
 					}
 				}
 
@@ -532,9 +562,10 @@ func AverageSystemStatsSlice(records []system.Stats) system.Stats {
 	// Average network interfaces
 	if sum.NetworkInterfaces != nil {
 		for key := range sum.NetworkInterfaces {
+			n := max(1, netCounts[key])
 			sum.NetworkInterfaces[key] = [4]uint64{
-				sum.NetworkInterfaces[key][0] / uint64(count),
-				sum.NetworkInterfaces[key][1] / uint64(count),
+				sum.NetworkInterfaces[key][0] / n,
+				sum.NetworkInterfaces[key][1] / n,
 				sum.NetworkInterfaces[key][2],
 				sum.NetworkInterfaces[key][3],
 			}
@@ -542,17 +573,15 @@ func AverageSystemStatsSlice(records []system.Stats) system.Stats {
 	}
 
 	// Average temperatures
-	if sum.Temperatures != nil && tempCount > 0 {
-		for key := range sum.Temperatures {
-			sum.Temperatures[key] = twoDecimals(sum.Temperatures[key] / tempCount)
-		}
+	for key := range sum.Temperatures {
+		sum.Temperatures[key] = twoDecimals(sum.Temperatures[key] / tempCounts[key])
 	}
 
 	// Average fan speeds
-	if fanSums != nil && fanCount > 0 {
+	if fanSums != nil {
 		sum.Fans = make(map[string]uint16, len(fanSums))
 		for key, value := range fanSums {
-			sum.Fans[key] = uint16(value / fanCount)
+			sum.Fans[key] = uint16(value / fanCounts[key])
 		}
 	}
 
@@ -560,14 +589,15 @@ func AverageSystemStatsSlice(records []system.Stats) system.Stats {
 	if sum.ExtraFs != nil {
 		for key := range sum.ExtraFs {
 			fs := sum.ExtraFs[key]
-			fs.DiskTotal = twoDecimals(fs.DiskTotal / count)
-			fs.DiskUsed = twoDecimals(fs.DiskUsed / count)
-			fs.DiskWritePs = twoDecimals(fs.DiskWritePs / count)
-			fs.DiskReadPs = twoDecimals(fs.DiskReadPs / count)
-			fs.DiskReadBytes = fs.DiskReadBytes / uint64(count)
-			fs.DiskWriteBytes = fs.DiskWriteBytes / uint64(count)
+			n := fsCounts[key]
+			fs.DiskTotal = twoDecimals(fs.DiskTotal / n)
+			fs.DiskUsed = twoDecimals(fs.DiskUsed / n)
+			fs.DiskWritePs = twoDecimals(fs.DiskWritePs / n)
+			fs.DiskReadPs = twoDecimals(fs.DiskReadPs / n)
+			fs.DiskReadBytes = fs.DiskReadBytes / uint64(n)
+			fs.DiskWriteBytes = fs.DiskWriteBytes / uint64(n)
 			for i := range fs.DiskIoStats {
-				fs.DiskIoStats[i] = twoDecimals(fs.DiskIoStats[i] / count)
+				fs.DiskIoStats[i] = twoDecimals(fs.DiskIoStats[i] / n)
 			}
 		}
 	}
@@ -584,17 +614,16 @@ func AverageSystemStatsSlice(records []system.Stats) system.Stats {
 	if sum.GPUData != nil {
 		for id := range sum.GPUData {
 			gpu := sum.GPUData[id]
-			gpu.Temperature = twoDecimals(gpu.Temperature / count)
-			gpu.MemoryUsed = twoDecimals(gpu.MemoryUsed / count)
-			gpu.MemoryTotal = twoDecimals(gpu.MemoryTotal / count)
-			gpu.Usage = twoDecimals(gpu.Usage / count)
-			gpu.Power = twoDecimals(gpu.Power / count)
-			gpu.Count = twoDecimals(gpu.Count / count)
+			n := gpuCounts[id]
+			gpu.Temperature = twoDecimals(gpu.Temperature / n)
+			gpu.MemoryUsed = twoDecimals(gpu.MemoryUsed / n)
+			gpu.MemoryTotal = twoDecimals(gpu.MemoryTotal / n)
+			gpu.Usage = twoDecimals(gpu.Usage / n)
+			gpu.Power = twoDecimals(gpu.Power / n)
+			gpu.Count = twoDecimals(gpu.Count / n)
 
-			if gpu.Engines != nil {
-				for engineKey := range gpu.Engines {
-					gpu.Engines[engineKey] = twoDecimals(gpu.Engines[engineKey] / count)
-				}
+			for engineKey := range gpu.Engines {
+				gpu.Engines[engineKey] = twoDecimals(gpu.Engines[engineKey] / gpuEngineCounts[id][engineKey])
 			}
 
 			sum.GPUData[id] = gpu
@@ -635,15 +664,11 @@ func hasBattery(legacy [2]uint8, batteries map[string]uint8) bool {
 	return legacy != [2]uint8{} || len(batteries) > 0
 }
 
-// Calculate the average stats of a list of container_stats records
-func (rm *RecordManager) AverageContainerStats(db dbx.Builder, records RecordIds) []container.Stats {
-	allStats := make([][]container.Stats, 0, len(records))
-	var row StatsRecord
-	params := make(dbx.Params, 1)
-	for _, rec := range records {
-		row.Stats = row.Stats[:0]
-		params["id"] = rec.Id
-		db.NewQuery("SELECT stats FROM container_stats WHERE id = {:id}").Bind(params).One(&row)
+// averageContainerStatsRows averages container_stats rows. Any undecodable row
+// yields an empty result.
+func averageContainerStatsRows(rows []StatsRecord) []container.Stats {
+	allStats := make([][]container.Stats, 0, len(rows))
+	for _, row := range rows {
 		var cs []container.Stats
 		if err := json.Unmarshal(row.Stats, &cs); err != nil {
 			return []container.Stats{}
@@ -659,7 +684,9 @@ func AverageContainerStatsSlice(records [][]container.Stats) []container.Stats {
 		return []container.Stats{}
 	}
 	sums := make(map[string]*container.Stats)
-	count := float64(len(records))
+	// Containers that start or stop mid-window are averaged over the samples
+	// that include them.
+	counts := make(map[string]float64)
 
 	for _, containerStats := range records {
 		for i := range containerStats {
@@ -667,6 +694,7 @@ func AverageContainerStatsSlice(records [][]container.Stats) []container.Stats {
 			if _, ok := sums[stat.Name]; !ok {
 				sums[stat.Name] = &container.Stats{Name: stat.Name}
 			}
+			counts[stat.Name]++
 			sums[stat.Name].Cpu += stat.Cpu
 			sums[stat.Name].Mem += stat.Mem
 			sentBytes := stat.Bandwidth[0]
@@ -682,6 +710,7 @@ func AverageContainerStatsSlice(records [][]container.Stats) []container.Stats {
 
 	result := make([]container.Stats, 0, len(sums))
 	for _, value := range sums {
+		count := counts[value.Name]
 		result = append(result, container.Stats{
 			Name:      value.Name,
 			Cpu:       twoDecimals(value.Cpu / count),

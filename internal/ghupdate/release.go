@@ -23,6 +23,16 @@ type release struct {
 	Id        int             `json:"id"`
 }
 
+// findAsset returns the asset with the given name, or nil.
+func (r *release) findAsset(name string) *releaseAsset {
+	for _, asset := range r.Assets {
+		if asset.Name == name {
+			return asset
+		}
+	}
+	return nil
+}
+
 // findAssetBySuffix returns the first available asset containing the specified suffix.
 func (r *release) findAssetBySuffix(suffix string) (*releaseAsset, error) {
 	if suffix != "" {

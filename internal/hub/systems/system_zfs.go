@@ -21,7 +21,7 @@ type zfsFetchState struct {
 }
 
 func (sys *System) supportsZfsData() bool {
-	return sys.agentVersion.GTE(beszel.MinVersionZfsData)
+	return sys.getAgentVersion().GTE(beszel.MinVersionZfsData)
 }
 
 // FetchAndSaveZfsPools fetches ZFS detail data from the agent and saves it to
@@ -69,6 +69,8 @@ func (sys *System) shouldFetchZfs() bool {
 
 // zfsFetchInterval returns the agent-provided ZFS interval or the default when unset.
 func (sys *System) zfsFetchInterval() time.Duration {
+	sys.mu.RLock()
+	defer sys.mu.RUnlock()
 	if sys.zfsInterval > 0 {
 		return sys.zfsInterval
 	}

@@ -13,11 +13,15 @@ func (h *Hub) GetSystemManager() *systems.SystemManager {
 
 // TESTING ONLY: GetPubkey returns the public key
 func (h *Hub) GetPubkey() string {
+	h.keyMu.Lock()
+	defer h.keyMu.Unlock()
 	return h.pubKey
 }
 
 // TESTING ONLY: SetPubkey sets the public key
 func (h *Hub) SetPubkey(pubkey string) {
+	h.keyMu.Lock()
+	defer h.keyMu.Unlock()
 	h.pubKey = pubkey
 }
 

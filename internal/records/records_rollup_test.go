@@ -113,3 +113,68 @@ func TestLongerRecordsForHubMonitor(t *testing.T) {
 	require.Empty(t, longer[0].GetString("system"))
 	require.EqualValues(t, 2, longer[0].GetInt("total_count"))
 }
+
+// Each system is rolled up (in its own transaction) from its own records only,
+// with values averaged across the window and containers averaged per name.
+func TestLongerRecordsAveragesPerSystem(t *testing.T) {
+	hub, err := tests.NewTestHub(t.TempDir())
+	require.NoError(t, err)
+	defer hub.Cleanup()
+
+	user, err := tests.CreateUser(hub, "rollup@example.com", "testtesttest")
+	require.NoError(t, err)
+	created := time.Now().UTC().Add(-time.Minute).Format(types.DefaultDateLayout)
+	systemIDs := make([]string, 2)
+	for i := range systemIDs {
+		sys, err := tests.CreateRecord(hub, "systems", map[string]any{
+			"name": "rollup-system", "host": "localhost", "port": "45876",
+			"status": "up", "users": []string{user.Id},
+		})
+		require.NoError(t, err)
+		systemIDs[i] = sys.Id
+		base := float64(i * 100)
+		for j := range 10 {
+			_, err := tests.CreateRecord(hub, "system_stats", map[string]any{
+				"system": sys.Id, "type": "1m", "created": created,
+				"stats": map[string]any{"cpu": base + float64(j)},
+			})
+			require.NoError(t, err)
+			containers := []map[string]any{{"n": "web", "c": base + float64(j)}}
+			if j < 5 {
+				containers = append(containers, map[string]any{"n": "job", "c": 10})
+			}
+			_, err = tests.CreateRecord(hub, "container_stats", map[string]any{
+				"system": sys.Id, "type": "1m", "created": created, "stats": containers,
+			})
+			require.NoError(t, err)
+		}
+	}
+
+	records.NewRecordManager(hub).CreateLongerRecords()
+
+	for i, systemID := range systemIDs {
+		base := float64(i * 100)
+		stats, err := hub.FindAllRecords("system_stats", dbx.HashExp{"system": systemID, "type": "10m"})
+		require.NoError(t, err)
+		require.Len(t, stats, 1)
+		var s struct {
+			Cpu float64 `json:"cpu"`
+		}
+		require.NoError(t, stats[0].UnmarshalJSONField("stats", &s))
+		require.Equal(t, base+4.5, s.Cpu)
+
+		containerStats, err := hub.FindAllRecords("container_stats", dbx.HashExp{"system": systemID, "type": "10m"})
+		require.NoError(t, err)
+		require.Len(t, containerStats, 1)
+		var cs []struct {
+			Name string  `json:"n"`
+			Cpu  float64 `json:"c"`
+		}
+		require.NoError(t, containerStats[0].UnmarshalJSONField("stats", &cs))
+		byName := map[string]float64{}
+		for _, c := range cs {
+			byName[c.Name] = c.Cpu
+		}
+		require.Equal(t, map[string]float64{"web": base + 4.5, "job": 10}, byName)
+	}
+}

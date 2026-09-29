@@ -5,6 +5,7 @@ package ghupdate
 
 import (
 	"context"
+	"crypto/ed25519"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -88,6 +89,11 @@ type Config struct {
 
 	// The data directory to use when fetching and downloading the latest release.
 	DataDir string
+
+	// PublicKey is the base64 ed25519 key that release archives must be
+	// signed with. Defaults to the key embedded at build time; mostly useful
+	// for tests.
+	PublicKey string
 }
 
 type updater struct {
@@ -148,8 +154,10 @@ func (p *updater) update() (updated bool, err error) {
 		return false, nil
 	}
 
-	suffix := archiveSuffix(p.config.ArchiveExecutable, runtime.GOOS, runtime.GOARCH, buildGOARM)
-	asset, err := latest.findAssetBySuffix(suffix)
+	if p.config.PublicKey == "" {
+		p.config.PublicKey = releasePublicKey
+	}
+	publicKey, err := ParsePublicKey(p.config.PublicKey)
 	if err != nil {
 		return false, err
 	}
@@ -163,18 +171,9 @@ func (p *updater) update() (updated bool, err error) {
 	}
 	defer os.RemoveAll(releaseDir)
 
-	ColorPrintf(ColorYellow, "Downloading %s...", asset.Name)
-
-	// download the release asset
-	assetPath, err := archivePath(releaseDir, asset.Name)
+	suffix := archiveSuffix(p.config.ArchiveExecutable, runtime.GOOS, runtime.GOARCH, buildGOARM)
+	asset, assetPath, err := p.downloadVerifiedAsset(latest, suffix, publicKey, releaseDir)
 	if err != nil {
-		return false, err
-	}
-	if err := downloadFile(p.config.Context, p.config.HttpClient, asset.DownloadUrl, assetPath); err != nil {
-		return false, err
-	}
-	ColorPrint(ColorYellow, "Verifying checksum...")
-	if err := verifyAssetChecksum(assetPath, asset.Digest); err != nil {
 		return false, err
 	}
 
@@ -247,6 +246,48 @@ func (p *updater) update() (updated bool, err error) {
 	}
 
 	return true, nil
+}
+
+// downloadVerifiedAsset downloads the release archive ending with suffix into
+// releaseDir and verifies its SHA-256 digest and its ed25519 signature
+// (asset <archive>.sig) against publicKey.
+func (p *updater) downloadVerifiedAsset(latest *release, suffix string, publicKey ed25519.PublicKey, releaseDir string) (*releaseAsset, string, error) {
+	asset, err := latest.findAssetBySuffix(suffix)
+	if err != nil {
+		return nil, "", err
+	}
+	signatureAsset := latest.findAsset(asset.Name + SignatureSuffix)
+	if signatureAsset == nil {
+		return nil, "", fmt.Errorf("%w: the release has no %s asset", ErrInvalidSignature, asset.Name+SignatureSuffix)
+	}
+
+	ColorPrintf(ColorYellow, "Downloading %s...", asset.Name)
+
+	// download the release asset
+	assetPath, err := archivePath(releaseDir, asset.Name)
+	if err != nil {
+		return nil, "", err
+	}
+	if err := downloadFile(p.config.Context, p.config.HttpClient, asset.DownloadUrl, assetPath); err != nil {
+		return nil, "", err
+	}
+	ColorPrint(ColorYellow, "Verifying checksum...")
+	if err := verifyAssetChecksum(assetPath, asset.Digest); err != nil {
+		return nil, "", err
+	}
+	ColorPrint(ColorYellow, "Verifying signature...")
+	signaturePath := filepath.Join(releaseDir, ".signature")
+	if err := downloadFile(p.config.Context, p.config.HttpClient, signatureAsset.DownloadUrl, signaturePath); err != nil {
+		return nil, "", fmt.Errorf("failed to download release signature: %w", err)
+	}
+	signature, err := os.ReadFile(signaturePath)
+	if err != nil {
+		return nil, "", err
+	}
+	if err := verifyArchiveSignature(publicKey, assetPath, signature); err != nil {
+		return nil, "", err
+	}
+	return asset, assetPath, nil
 }
 
 // FetchLatestRelease fetches the latest release from the given GitHub API URL

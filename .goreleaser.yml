@@ -6,6 +6,8 @@ before:
   hooks:
     - go mod tidy
     - go generate -run fetchsmartctl ./agent
+    # Release signing tool (see signs). Built outside the repo so the tree stays clean.
+    - go build -o /tmp/infrascope-signtool ./internal/ghupdate/signtool
 
 builds:
   - id: beszel
@@ -13,6 +15,10 @@ builds:
     main: internal/cmd/hub/hub.go
     env:
       - CGO_ENABLED=0
+    # Embeds the release signing public key; self-updates verify archives
+    # against it and are refused by builds without it.
+    ldflags:
+      - -s -w -X github.com/henrygd/beszel/internal/ghupdate.releasePublicKey={{ .Env.INFRASCOPE_RELEASE_PUBLIC_KEY }}
     goos:
       - linux
       - darwin
@@ -40,7 +46,7 @@ builds:
     env:
       - CGO_ENABLED=0
     ldflags:
-      - -s -w -X github.com/henrygd/beszel/internal/ghupdate.buildGOARM={{ .Arm }}
+      - -s -w -X github.com/henrygd/beszel/internal/ghupdate.buildGOARM={{ .Arm }} -X github.com/henrygd/beszel/internal/ghupdate.releasePublicKey={{ .Env.INFRASCOPE_RELEASE_PUBLIC_KEY }}
     goos:
       - linux
       - darwin
@@ -93,6 +99,8 @@ builds:
       - CGO_ENABLED=0
     flags:
       - -tags=glibc
+    ldflags:
+      - -s -w -X github.com/henrygd/beszel/internal/ghupdate.releasePublicKey={{ .Env.INFRASCOPE_RELEASE_PUBLIC_KEY }}
     goos:
       - linux
     goarch:
@@ -132,6 +140,21 @@ archives:
     format_overrides:
       - goos: windows
         formats: [zip]
+
+# Signs every archive for verified self-updates: <archive>.sig holds the
+# base64 ed25519 signature of the archive (see internal/ghupdate/signature.go).
+# The private key comes from the INFRASCOPE_RELEASE_SIGNING_KEY secret (base64
+# seed; create a pair with `go run ./internal/ghupdate/signtool -generate`) and
+# the matching public key from INFRASCOPE_RELEASE_PUBLIC_KEY. A release without
+# them fails rather than publishing unverifiable archives.
+signs:
+  - id: release-archives
+    artifacts: archive
+    cmd: /tmp/infrascope-signtool
+    args: ["-in", "${artifact}", "-out", "${signature}"]
+    signature: "${artifact}.sig"
+    env:
+      - INFRASCOPE_RELEASE_SIGNING_KEY={{ .Env.INFRASCOPE_RELEASE_SIGNING_KEY }}
 
 nfpms:
   - id: beszel-agent
