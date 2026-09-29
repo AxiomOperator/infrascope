@@ -1,5 +1,6 @@
 import type { CellContext, Column, ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
+import { getMonitorProtocolLabel } from "@/lib/monitor-protocols"
 import { cn, copyToClipboard, decimalString, formatMicroseconds, hourWithSeconds } from "@/lib/utils"
 import {
 	TimerIcon,
@@ -71,6 +72,16 @@ const protocolColors: Record<string, string> = {
 	http: "bg-green-500/15! text-green-700 dark:text-green-400",
 	dns: "bg-amber-500/15! text-amber-600 dark:text-amber-400",
 	push: "bg-cyan-500/15! text-cyan-700 dark:text-cyan-400",
+	ssh: "bg-slate-500/15! text-slate-700 dark:text-slate-300",
+	grpc: "bg-emerald-500/15! text-emerald-700 dark:text-emerald-400",
+	postgres: "bg-sky-500/15! text-sky-700 dark:text-sky-400",
+	mysql: "bg-orange-500/15! text-orange-700 dark:text-orange-400",
+	redis: "bg-red-500/15! text-red-600 dark:text-red-400",
+	smtp: "bg-indigo-500/15! text-indigo-600 dark:text-indigo-400",
+	imap: "bg-violet-500/15! text-violet-600 dark:text-violet-400",
+	minecraft: "bg-lime-500/15! text-lime-700 dark:text-lime-400",
+	a2s: "bg-yellow-500/15! text-yellow-700 dark:text-yellow-400",
+	docker: "bg-blue-500/15! text-blue-700 dark:text-blue-300",
 }
 
 const SYSTEM_STATUS_COLORS = {
@@ -240,7 +251,7 @@ export function getMonitorColumns(
 			header: ({ column }) => <HeaderButton column={column} name={t`Protocol`} Icon={ArrowLeftRightIcon} />,
 			cell: ({ getValue }) => {
 				const protocol = getValue() as string
-				return <Badge className={cn("uppercase", protocolColors[protocol])}>{protocol}</Badge>
+				return <Badge className={protocolColors[protocol]}>{getMonitorProtocolLabel(protocol)}</Badge>
 			},
 		},
 		{
@@ -477,6 +488,16 @@ const responseTimeThresholds: Record<NetworkMonitorRecord["protocol"], { warning
 	tcp: { warning: 500_000, critical: 2_000_000 },
 	icmp: { warning: 100_000, critical: 500_000 },
 	dns: { warning: 150_000, critical: 800_000 },
+	ssh: { warning: 500_000, critical: 2_000_000 },
+	grpc: { warning: 800_000, critical: 3_000_000 },
+	postgres: { warning: 800_000, critical: 3_000_000 },
+	mysql: { warning: 500_000, critical: 2_000_000 },
+	redis: { warning: 500_000, critical: 2_000_000 },
+	smtp: { warning: 1_500_000, critical: 5_000_000 },
+	imap: { warning: 1_500_000, critical: 5_000_000 },
+	minecraft: { warning: 500_000, critical: 2_000_000 },
+	a2s: { warning: 300_000, critical: 1_500_000 },
+	docker: { warning: 500_000, critical: 2_000_000 },
 }
 
 function responseTimeCell(cell: CellContext<NetworkMonitorRecord, unknown>) {

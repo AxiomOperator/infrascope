@@ -672,7 +672,22 @@ export interface UpdateInfo {
 	url: string // url to new version
 }
 
-export type MonitorProtocol = "icmp" | "tcp" | "http" | "dns" | "push"
+export type MonitorProtocol =
+	| "icmp"
+	| "tcp"
+	| "http"
+	| "dns"
+	| "push"
+	| "ssh"
+	| "postgres"
+	| "mysql"
+	| "redis"
+	| "smtp"
+	| "imap"
+	| "grpc"
+	| "minecraft"
+	| "a2s"
+	| "docker"
 
 export type MonitorStatus = "up" | "down" | "pending" | "maintenance" | "paused" | "unknown"
 
@@ -703,6 +718,8 @@ export interface NetworkMonitorRecord {
 	http?: MonitorHTTPOptions | null
 	/** Only returned to users who can edit the monitor. */
 	httpSecrets?: MonitorHTTPSecrets | null
+	/** Non-secret protocol-specific check options. */
+	check?: MonitorCheckOptions | null
 	notify: boolean
 	certExpiryDays: number
 	/** Alert when loss over the last hour exceeds this percent; 0 disables it. */
@@ -757,6 +774,30 @@ export interface MonitorHTTPSecrets {
 	body?: string
 	basicUser?: string
 	basicPass?: string
+	/** postgres and redis credentials. */
+	username?: string
+	password?: string
+}
+
+export type MonitorDNSRecordType = "A" | "AAAA" | "CNAME" | "MX" | "TXT" | "NS" | "SRV"
+
+/** Non-secret protocol-specific check options; the hub keeps only the fields the protocol uses. */
+export interface MonitorCheckOptions {
+	/** dns: record type to query; empty resolves A and AAAA. */
+	recordType?: MonitorDNSRecordType
+	/** dns: value one of the records must match. */
+	expected?: string
+	/** dns: omitted means contains. */
+	matchMode?: "equals"
+	/** tcp, ssh: text the server must send first. */
+	banner?: string
+	/** tcp, postgres, redis, smtp, imap, grpc: connect with TLS. */
+	tls?: boolean
+	/** smtp, imap: upgrade with STARTTLS. */
+	startTLS?: boolean
+	ignoreTLS?: boolean
+	/** grpc: health service name; empty checks the server. */
+	service?: string
 }
 
 export interface MonitorEventRecord {
@@ -778,6 +819,8 @@ export interface StatusPageRecord {
 	title: string
 	description: string
 	monitors: string[]
+	/** Ordered ids of the systems shown on the page. */
+	systems: string[]
 	public: boolean
 	showTargets: boolean
 	showResponseTimes: boolean
@@ -807,8 +850,18 @@ export interface PublicStatusPage {
 	updated: number
 	overall: "up" | "degraded" | "down" | "maintenance" | "unknown"
 	showResponseTimes: boolean
+	systems: PublicStatusPageSystem[]
 	monitors: PublicStatusPageMonitor[]
 	maintenance: PublicStatusPageMaintenance[]
+}
+
+/** A system on a public status page. Only its name is published. */
+export interface PublicStatusPageSystem {
+	name: string
+	status: "up" | "down" | "paused" | "pending" | "unknown"
+	uptime: { d1: number | null; d7: number | null; d30: number | null }
+	/** Daily uptime, oldest first. */
+	days: PublicStatusPageDay[]
 }
 
 export interface PublicStatusPageMonitor {

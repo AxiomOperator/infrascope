@@ -1,6 +1,22 @@
 import type { ClientResponseError } from "pocketbase"
 import * as v from "valibot"
-import type { MonitorHTTPOptions, MonitorHTTPSecrets, MonitorProtocol, NetworkMonitorRecord } from "@/types"
+import {
+	checkUsesTls,
+	containerRefPattern,
+	defaultMonitorPort,
+	monitorProtocols,
+	supportsStartTls,
+	supportsTls,
+	usesMonitorPort,
+} from "@/lib/monitor-protocols"
+import type {
+	MonitorCheckOptions,
+	MonitorDNSRecordType,
+	MonitorHTTPOptions,
+	MonitorHTTPSecrets,
+	MonitorProtocol,
+	NetworkMonitorRecord,
+} from "@/types"
 
 export type { MonitorProtocol }
 
@@ -11,19 +27,24 @@ export type MonitorValues = {
 	port: number
 	server: string
 	interval: string
+	/** TLS options select the default smtp and imap ports. */
+	check?: Pick<MonitorCheckOptions, "tls" | "startTLS"> | null
 }
 
-type NormalizedMonitorValues = Omit<MonitorValues, "system" | "interval"> & {
+type NormalizedMonitorValues = Omit<MonitorValues, "system" | "interval" | "check"> & {
 	interval: number
 }
 
-type BulkMonitorLineSource = Pick<NetworkMonitorRecord, "target" | "protocol" | "port" | "interval" | "server">
+type BulkMonitorLineSource = Pick<
+	NetworkMonitorRecord,
+	"target" | "protocol" | "port" | "interval" | "server" | "check"
+>
 
 export const defaultInterval = 30
 /** Shortest interval of a hub monitor (the hub may enforce a longer one). */
 export const hubMinInterval = 10
 
-const MonitorProtocolSchema = v.picklist(["icmp", "tcp", "http", "dns", "push"])
+const MonitorProtocolSchema = v.picklist(monitorProtocols)
 
 const MonitorIntervalSchema = v.pipe(v.string(), v.toNumber(), v.minValue(1), v.maxValue(3600))
 
@@ -36,17 +57,18 @@ const NormalizedMonitorValuesSchema = v.pipe(
 		port: v.number(),
 		server: v.pipe(v.string(), v.trim()),
 		interval: MonitorIntervalSchema,
+		check: v.optional(v.nullable(v.object({ tls: v.optional(v.boolean()), startTLS: v.optional(v.boolean()) }))),
 	}),
 	v.transform((input): NormalizedMonitorValues => {
 		let { protocol, port } = input
 		let httpTarget = input.target
-		if (protocol !== "tcp") {
+		if (!usesMonitorPort(protocol)) {
 			if (protocol === "http" && input.target) {
 				httpTarget = normalizeHttpTarget(input.target, port)
 			}
 			port = 0
 		} else if (!port) {
-			port = 443
+			port = protocol === "tcp" ? 443 : defaultMonitorPort(protocol, input.check)
 		}
 		return {
 			// HTTP monitors may be entered as bare hostnames, so normalize them to a
@@ -66,13 +88,20 @@ const NormalizedMonitorValuesSchema = v.pipe(
 	),
 	v.forward(
 		v.check((input) => {
-			if (input.protocol !== "tcp") {
+			if (!usesMonitorPort(input.protocol)) {
 				return input.port === 0
 			}
 
 			return Number.isInteger(input.port) && input.port >= 1 && input.port <= 65535
 		}, "Port must be between 1 and 65535"),
 		["port"]
+	),
+	v.forward(
+		v.check(
+			(input) => input.protocol !== "docker" || containerRefPattern.test(input.target),
+			"Target must be a container name or ID"
+		),
+		["target"]
 	)
 )
 
@@ -178,7 +207,8 @@ export function parseBulkMonitorLine(line: string, lineNumber: number, system: s
 }
 
 export function formatBulkMonitorLine(monitor: BulkMonitorLineSource) {
-	const port = monitor.protocol !== "tcp" || monitor.port === 443 ? "" : `${monitor.port}`
+	const defaultPort = monitor.protocol === "tcp" ? 443 : defaultMonitorPort(monitor.protocol, monitor.check)
+	const port = !usesMonitorPort(monitor.protocol) || monitor.port === defaultPort ? "" : `${monitor.port}`
 	const interval = monitor.interval === defaultInterval ? "" : `${monitor.interval}`
 	const server = monitor.protocol !== "dns" ? "" : monitor.server
 	return trimTrailingEmptyFields([monitor.target, monitor.protocol, port, interval, server]).join(",")
@@ -305,4 +335,99 @@ export function httpPayloadFromForm(form: HttpFormState): {
 		http: Object.keys(http).length ? http : null,
 		httpSecrets: Object.keys(secrets).length ? secrets : null,
 	}
+}
+
+// ---------- Check options ----------
+
+export const dnsRecordTypes: MonitorDNSRecordType[] = ["A", "AAAA", "CNAME", "MX", "TXT", "NS", "SRV"]
+
+/** TLS mode of a check: none, STARTTLS (smtp and imap) or implicit TLS. */
+export type TlsMode = "none" | "starttls" | "tls"
+
+/** Editable state of the check options form. */
+export type CheckFormState = {
+	/** Empty resolves A and AAAA records. */
+	recordType: MonitorDNSRecordType | ""
+	expected: string
+	matchMode: "contains" | "equals"
+	banner: string
+	tlsMode: TlsMode
+	ignoreTLS: boolean
+	service: string
+	username: string
+	password: string
+}
+
+export function checkFormFromMonitor(
+	monitor?: Pick<NetworkMonitorRecord, "check" | "httpSecrets"> | null
+): CheckFormState {
+	const check = monitor?.check ?? {}
+	const secrets = monitor?.httpSecrets ?? {}
+	return {
+		recordType: check.recordType ?? "",
+		expected: check.expected ?? "",
+		matchMode: check.matchMode === "equals" ? "equals" : "contains",
+		banner: check.banner ?? "",
+		tlsMode: check.tls ? "tls" : check.startTLS ? "starttls" : "none",
+		ignoreTLS: !!check.ignoreTLS,
+		service: check.service ?? "",
+		username: secrets.username ?? "",
+		password: secrets.password ?? "",
+	}
+}
+
+/** Whether the protocol stores credentials in httpSecrets. */
+export function usesCheckCredentials(protocol: MonitorProtocol) {
+	return protocol === "postgres" || protocol === "redis"
+}
+
+/**
+ * Builds the check options and credentials the protocol uses; null when empty.
+ * Mirrors the hub, which drops fields the protocol doesn't use.
+ */
+export function checkPayloadFromForm(
+	protocol: MonitorProtocol,
+	form: CheckFormState
+): { check: MonitorCheckOptions | null; secrets: MonitorHTTPSecrets | null } {
+	const check: MonitorCheckOptions = {}
+	if (protocol === "dns") {
+		if (form.recordType) check.recordType = form.recordType
+		if (form.expected.trim()) {
+			check.expected = form.expected.trim()
+			if (form.matchMode === "equals") check.matchMode = "equals"
+		}
+	}
+	if ((protocol === "tcp" || protocol === "ssh") && form.banner) {
+		check.banner = form.banner
+	}
+	if (supportsTls(protocol)) {
+		if (form.tlsMode === "tls") check.tls = true
+		else if (form.tlsMode === "starttls" && supportsStartTls(protocol)) check.startTLS = true
+		if ((check.tls || check.startTLS) && form.ignoreTLS) check.ignoreTLS = true
+	}
+	if (protocol === "grpc" && form.service.trim()) {
+		check.service = form.service.trim()
+	}
+
+	const secrets: MonitorHTTPSecrets = {}
+	if (usesCheckCredentials(protocol)) {
+		if (form.username.trim()) secrets.username = form.username.trim()
+		if (form.password) secrets.password = form.password
+	}
+	return {
+		check: Object.keys(check).length ? check : null,
+		secrets: Object.keys(secrets).length ? secrets : null,
+	}
+}
+
+/** Whether the form sets any check option the protocol uses. */
+export function hasCustomCheckOptions(protocol: MonitorProtocol, form: CheckFormState) {
+	const { check, secrets } = checkPayloadFromForm(protocol, form)
+	return !!check || !!secrets
+}
+
+/** Whether a monitor with these options reports a TLS certificate. */
+export function monitorReportsCert(protocol: MonitorProtocol, target: string, form: CheckFormState) {
+	if (protocol === "http") return isHttpsTarget(target)
+	return checkUsesTls(protocol, checkPayloadFromForm(protocol, form).check)
 }

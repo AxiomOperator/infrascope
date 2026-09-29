@@ -36,6 +36,11 @@ msgstr ""
 msgid "{0, plural, one {# monitor} other {# monitors}}"
 msgstr ""
 
+#. placeholder {0}: record.systems.length
+#: src/components/routes/settings/status-pages.tsx
+msgid "{0, plural, one {# system} other {# systems}}"
+msgstr ""
+
 #. placeholder {0}: newVersion.v
 #: src/components/footer-repo-link.tsx
 msgctxt "New version available"
@@ -252,6 +257,10 @@ msgstr "5 daq"
 msgid "7d"
 msgstr ""
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "A and AAAA"
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 #: src/lib/shoutrrr.ts
 msgid "A password requires a username"
@@ -259,6 +268,10 @@ msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
 msgid "A status page can show up to {MAX_MONITORS} monitors."
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "A status page can show up to {MAX_SYSTEMS} systems."
 msgstr ""
 
 #: src/components/routes/system/raw-capacity-label.tsx
@@ -350,6 +363,10 @@ msgstr ""
 #: src/components/navbar.tsx
 msgid "Add System"
 msgstr "Tizim qo'shish"
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Add system…"
+msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
 #~ msgid "Add URL"
@@ -694,6 +711,10 @@ msgstr "Baytlar (KB/s, MB/s, GB/s)"
 msgid "Cache / Buffers"
 msgstr "Kesh / Buferlar"
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Calls the standard gRPC health check and expects SERVING."
+msgstr ""
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Can reload"
 msgstr "Qayta yuklay oladi"
@@ -828,6 +849,10 @@ msgstr "Tiklash havolasi uchun {email} ni tekshiring."
 msgid "Check logs for more details."
 msgstr "Batafsil ma'lumot uchun jurnallarni tekshiring."
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Check options"
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Check the availability and response time of a service from the hub or an agent."
 msgstr ""
@@ -845,6 +870,30 @@ msgstr "Bildirishnoma xizmatingizni tekshiring"
 msgid "Checked {0}"
 msgstr ""
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Checks that the container is running and, if it has a health check, healthy. Runs on the agent's Docker or Podman host."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Checks that the server sends a valid MySQL handshake. No login is attempted."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Checks that the server sends an SSH-2.0 identification. No login is attempted."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Checks that the server speaks PostgreSQL; with a password, also that it can log in."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Checks the IMAP greeting."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Checks the SMTP greeting and EHLO reply."
+msgstr ""
+
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "Checksum errors"
 msgstr "Nazorat summasi xatolari"
@@ -854,7 +903,11 @@ msgid "Choose where alerts should be sent."
 msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
-msgid "Choose which monitors to show and what details are visible."
+#~ msgid "Choose which monitors to show and what details are visible."
+#~ msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Choose which systems and monitors to show and what details are visible."
 msgstr ""
 
 #: src/components/containers-table/containers-table.tsx
@@ -919,6 +972,10 @@ msgstr ""
 msgid "Command line instructions"
 msgstr "Buyruq qatori ko'rsatmalari"
 
+#: src/components/routes/settings/status-pages.tsx
+msgid "Components"
+msgstr ""
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Configure how you receive alert notifications."
 msgstr "Ogohlantirish bildirishnomalarini qanday olishingizni sozlang."
@@ -952,10 +1009,19 @@ msgstr "Konteyner"
 msgid "Container Health"
 msgstr "Konteyner holati"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Container name or ID"
+msgstr ""
+
 #: src/components/navbar.tsx
+#: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/routes/system.tsx
 msgid "Containers"
 msgstr "Konteynerlar"
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Contains"
+msgstr ""
 
 #: src/lib/shoutrrr.ts
 #: src/lib/shoutrrr.ts
@@ -1109,6 +1175,10 @@ msgstr "Hisob yaratish"
 msgid "Created"
 msgstr "Yaratilgan"
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Credentials aren't visible to you and are kept unchanged."
+msgstr ""
+
 #: src/components/routes/settings/general.tsx
 msgid "Critical (%)"
 msgstr "Kritik (%)"
@@ -1175,6 +1245,10 @@ msgstr "Kunlik"
 #: src/components/network-monitors-table/daily-uptime-bar.tsx
 #: src/components/routes/status-page.tsx
 msgid "Daily uptime"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Databases"
 msgstr ""
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
@@ -1415,6 +1489,14 @@ msgstr ""
 msgid "Empty"
 msgstr "Bo'sh"
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Empty checks the whole server"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Encryption"
+msgstr ""
+
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -1494,6 +1576,10 @@ msgstr ""
 msgid "Ephemeral"
 msgstr "Vaqtinchalik"
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Equals"
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-push-url.tsx
@@ -1553,6 +1639,11 @@ msgstr "Faollikdan chiqdi"
 msgid "Expected a token like 123456789:ABC-def…"
 msgstr ""
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Expected banner"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Expected value"
 msgstr ""
@@ -1721,6 +1812,10 @@ msgstr ""
 msgid "Full"
 msgstr "To'liq"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Games"
+msgstr ""
+
 #. Context: General settings
 #: src/components/routes/settings/general.tsx
 #: src/components/routes/settings/layout.tsx
@@ -1777,6 +1872,7 @@ msgstr ""
 msgid "Health"
 msgstr "Sog'lik"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/routes/settings/layout.tsx
 msgid "Heartbeat"
 msgstr "Heartbeat"
@@ -1843,10 +1939,9 @@ msgstr "HTTP usul: POST, GET yoki HEAD (standart: POST)"
 msgid "HTTP options"
 msgstr ""
 
-#. placeholder {0}: outdatedAgents.map((id) => allSystems[id]?.name).join(", ")
 #: src/components/network-monitors-table/monitor-dialog.tsx
-msgid "HTTP options, timeouts and retry intervals need agent version 0.21.0 or newer: {0}"
-msgstr ""
+#~ msgid "HTTP options, timeouts and retry intervals need agent version 0.21.0 or newer: {0}"
+#~ msgstr ""
 
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
@@ -1897,6 +1992,7 @@ msgstr "Faolsiz"
 msgid "If you've lost the password to your admin account, you may reset it using the following command."
 msgstr "Agar admin hisobingiz parolini yo'qotgan bo'lsangiz, quyidagi buyruq yordamida uni tiklashingiz mumkin."
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Ignore TLS errors"
 msgstr ""
@@ -2123,6 +2219,10 @@ msgstr ""
 msgid "Loss 1h"
 msgstr "1 soatlik yo‘qotish"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Mail"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Main PID"
 msgstr "Asosiy PID"
@@ -2155,6 +2255,10 @@ msgstr "Qo'lda o'rnatish ko'rsatmalari"
 
 #: src/lib/shoutrrr.ts
 msgid "Markdown formatting"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Match"
 msgstr ""
 
 #. Chart select field. Please try to keep this short.
@@ -2263,7 +2367,7 @@ msgstr ""
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/status-pages.tsx
-#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/status-page.tsx
 msgid "Monitors"
 msgstr ""
 
@@ -2320,6 +2424,7 @@ msgstr "Nom"
 msgid "Net"
 msgstr "Tarmoq"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/routes/system.tsx
 msgid "Network"
 msgstr "Tarmoq"
@@ -2392,11 +2497,15 @@ msgid "No monitors found."
 msgstr ""
 
 #: src/components/routes/status-page.tsx
-msgid "No monitors on this page."
-msgstr ""
+#~ msgid "No monitors on this page."
+#~ msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
 msgid "No more monitors to add"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "No more systems to add"
 msgstr ""
 
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
@@ -2433,10 +2542,15 @@ msgstr ""
 msgid "No systems found."
 msgstr "Tizimlar topilmadi."
 
+#: src/components/routes/status-page.tsx
+msgid "No systems or monitors on this page."
+msgstr ""
+
 #: src/components/routes/settings/notifications.tsx
 msgid "No webhook or push notifications configured."
 msgstr ""
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "None"
 msgstr "Yo‘q"
@@ -2477,6 +2591,10 @@ msgstr ""
 msgid "On each restart, systems in the database will be updated to match the systems defined in the file."
 msgstr "Har qayta ishga tushirilganda, ma'lumotlar bazasidagi tizimlar fayldagi tizimlarga mos yangilanadi."
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "One of the records must match this value."
+msgstr ""
+
 #: src/lib/alerts.ts
 msgid "One or more containers are unhealthy"
 msgstr "Bir yoki bir nechta konteyner nosog‘lom holatda"
@@ -2514,6 +2632,10 @@ msgid "Ongoing"
 msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
+msgid "Only the system name and status history are shown."
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
 msgid "Open"
 msgstr ""
 
@@ -2530,6 +2652,10 @@ msgstr ""
 msgid "Open menu"
 msgstr "Menyuni ochish"
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+#: src/components/network-monitors-table/monitor-check-options.tsx
+#: src/components/network-monitors-table/monitor-check-options.tsx
+#: src/components/network-monitors-table/monitor-check-options.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Optional"
 msgstr ""
@@ -2542,14 +2668,14 @@ msgstr ""
 msgid "Or continue with"
 msgstr "Yoki bilan davom eting"
 
-#: src/components/routes/system/cpu-sheet.tsx
-msgid "Other"
-msgstr "Boshqa"
-
 #: src/components/routes/system/package-updates-table.tsx
 msgctxt "Version change"
 msgid "Other"
 msgstr ""
+
+#: src/components/routes/system/cpu-sheet.tsx
+msgid "Other"
+msgstr "Boshqa"
 
 #. placeholder {0}: state.values.extra.map(([k]) => k).join(", ")
 #: src/components/routes/settings/notification-builder.tsx
@@ -2607,6 +2733,7 @@ msgstr ""
 
 #: src/components/login/auth-form.tsx
 #: src/components/login/auth-form.tsx
+#: src/components/network-monitors-table/monitor-check-options.tsx
 #: src/lib/shoutrrr.ts
 msgid "Password"
 msgstr "Parol"
@@ -2940,6 +3067,10 @@ msgstr ""
 #. placeholder {0}: rawDetected.service.name
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Recognized as {0}."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Record type"
 msgstr ""
 
 #: src/components/containers-table/containers-table.tsx
@@ -3320,6 +3451,18 @@ msgstr ""
 msgid "Sender number"
 msgstr ""
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Sends a Java Edition server list ping."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Sends a Source engine A2S_INFO query over UDP."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Sends PING and expects PONG, authenticating first when a password is set."
+msgstr ""
+
 #: src/components/routes/system/charts/network-charts.tsx
 msgid "Sent"
 msgstr "Yuborildi"
@@ -3338,6 +3481,14 @@ msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Server subpath"
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "Servers"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Service"
 msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
@@ -3377,7 +3528,11 @@ msgid "Setup guide"
 msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
-msgid "Share the status and uptime of selected monitors on a page that can be viewed without logging in."
+#~ msgid "Share the status and uptime of selected monitors on a page that can be viewed without logging in."
+#~ msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Share the status and uptime of selected systems and monitors on a page that can be viewed without logging in."
 msgstr ""
 
 #: src/components/routes/settings/notification-builder.tsx
@@ -3581,6 +3736,7 @@ msgstr "Systemd xizmatlari"
 #: src/components/navbar.tsx
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/routes/settings/status-pages.tsx
 msgid "Systems"
 msgstr "Tizimlar"
 
@@ -3667,6 +3823,10 @@ msgstr "Test bildirishnoma yuborildi"
 msgid "Text the response body must contain"
 msgstr ""
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Text the server must send after connecting."
+msgstr ""
+
 #. placeholder {0}: service.name
 #: src/components/routes/settings/notification-builder.tsx
 msgid "That doesn't look like a {0} webhook URL."
@@ -3736,6 +3896,11 @@ msgstr "Keyin backend'ga kiring va foydalanuvchilar jadvalidagi foydalanuvchi hi
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "This action cannot be undone. This will permanently delete all current records for {name} from the database."
 msgstr "Bu amalni bekor qilib bo'lmaydi. Bu {name} uchun barcha joriy yozuvlarni ma'lumotlar bazasidan butunlay o'chiradi."
+
+#. placeholder {0}: outdatedAgents.map((id) => allSystems[id]?.name).join(", ")
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "This protocol, check options, HTTP options, timeouts and retry intervals need agent version 0.21.0 or newer: {0}"
+msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
 msgid "This slug is already in use."
@@ -3978,6 +4143,10 @@ msgstr "Tur"
 msgid "Unavailable monitor"
 msgstr ""
 
+#: src/components/routes/settings/status-pages.tsx
+msgid "Unavailable system"
+msgstr ""
+
 #: src/components/routes/status-page.tsx
 msgid "Under maintenance"
 msgstr ""
@@ -4135,6 +4304,10 @@ msgstr ""
 msgid "Use plain HTTP (disable TLS)"
 msgstr ""
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Use TLS"
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 msgid "Use TLS (mqtts)"
 msgstr ""
@@ -4164,6 +4337,7 @@ msgstr ""
 msgid "User key"
 msgstr ""
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
 #: src/lib/shoutrrr.ts
 #: src/lib/shoutrrr.ts
 #: src/lib/shoutrrr.ts
@@ -4259,6 +4433,10 @@ msgstr "Ogohlantirish (%)"
 #: src/components/routes/settings/general.tsx
 msgid "Warning thresholds"
 msgstr "Ogohlantirish chegaralari"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Web"
+msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "webhook"

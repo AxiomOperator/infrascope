@@ -15,25 +15,46 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectLabel,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
 import { $allSystemsById, $systems } from "@/lib/stores"
 import { supportsNetworkMonitors } from "@/lib/utils"
 import { needsAgentUpdateForMonitorOptions } from "@/lib/network-monitor-utils"
+import {
+	defaultMonitorPort,
+	isAgentOnlyProtocol,
+	isCheckProtocol,
+	monitorProtocolLabels,
+	usesMonitorPort,
+} from "@/lib/monitor-protocols"
 import type { NetworkMonitorRecord } from "@/types"
 import {
 	buildMonitorPayload,
+	type CheckFormState,
+	checkFormFromMonitor,
+	checkPayloadFromForm,
 	defaultInterval,
 	getErrorMessage,
 	type HttpFormState,
 	httpFormFromMonitor,
 	httpPayloadFromForm,
 	hubMinInterval,
-	isHttpsTarget,
+	hasCustomCheckOptions,
 	maxLossThreshold,
 	type MonitorProtocol,
+	monitorReportsCert,
 	parseMonitorThreshold,
+	usesCheckCredentials,
 } from "./monitor-form-utils"
+import { MonitorCheckDescription, MonitorCheckOptions } from "./monitor-check-options"
 import { hasCustomHttpOptions, MonitorHttpOptions, SwitchField } from "./monitor-http-options"
 import { MonitorPushUrl } from "./monitor-push-url"
 import { MonitorBulkAddSheet } from "./monitor-bulk-add-sheet"
@@ -41,6 +62,37 @@ import { SystemMultiSelect } from "./system-multi-select"
 import { UptimeKumaImportDialog } from "./uptime-kuma-import-dialog"
 
 type RunsOn = "hub" | "agent"
+
+/** Protocol select groups; push and docker are added depending on where the monitor runs. */
+const protocolGroups: { id: string; protocols: MonitorProtocol[] }[] = [
+	{ id: "network", protocols: ["icmp", "tcp", "dns", "ssh"] },
+	{ id: "web", protocols: ["http", "grpc"] },
+	{ id: "databases", protocols: ["postgres", "mysql", "redis"] },
+	{ id: "mail", protocols: ["smtp", "imap"] },
+	{ id: "games", protocols: ["minecraft", "a2s"] },
+]
+
+/** Port input value of a monitor; empty for protocols without a port. */
+function portInput(monitor?: NetworkMonitorRecord) {
+	return monitor && usesMonitorPort(monitor.protocol) && monitor.port ? String(monitor.port) : ""
+}
+
+/** Target placeholder of a protocol; docker uses the translated containerHint. */
+function targetPlaceholder(protocol: MonitorProtocol, containerHint: string) {
+	switch (protocol) {
+		case "http":
+			return "http://localhost:8090"
+		case "dns":
+			return "example.com"
+		case "docker":
+			return containerHint
+		case "icmp":
+		case "tcp":
+			return "1.1.1.1"
+		default:
+			return "localhost"
+	}
+}
 
 export function AddMonitorDialog({ systemId, monitors }: { systemId?: string; monitors: NetworkMonitorRecord[] }) {
 	const [open, setOpen] = useState(false)
@@ -167,7 +219,7 @@ function MonitorDialogContent({
 	const [name, setName] = useState(monitor?.name ?? "")
 	const [protocol, setProtocol] = useState<MonitorProtocol>(monitor?.protocol ?? "icmp")
 	const [target, setTarget] = useState(monitor?.target ?? "")
-	const [port, setPort] = useState(monitor?.protocol === "tcp" && monitor.port ? String(monitor.port) : "")
+	const [port, setPort] = useState(() => portInput(monitor))
 	const [server, setServer] = useState(monitor?.protocol === "dns" ? (monitor.server ?? "") : "")
 	const [monitorInterval, setMonitorInterval] = useState(String(monitor?.interval ?? defaultInterval))
 	const [timeout, setTimeoutValue] = useState(monitor?.timeout ? String(monitor.timeout) : "")
@@ -178,6 +230,7 @@ function MonitorDialogContent({
 	const [lossThreshold, setLossThreshold] = useState(thresholdInput(monitor?.lossThreshold))
 	const [latencyThreshold, setLatencyThreshold] = useState(thresholdInput(monitor?.latencyThreshold))
 	const [httpForm, setHttpForm] = useState<HttpFormState>(() => httpFormFromMonitor(monitor))
+	const [checkForm, setCheckForm] = useState<CheckFormState>(() => checkFormFromMonitor(monitor))
 	const [loading, setLoading] = useState(false)
 	const [selectedSystemId, setSelectedSystemId] = useState(monitor?.system ?? "")
 	const [selectedSystemIds, setSelectedSystemIds] = useState<Set<string>>(new Set())
@@ -202,7 +255,7 @@ function MonitorDialogContent({
 		setName(monitor?.name ?? "")
 		setProtocol(monitor?.protocol ?? "icmp")
 		setTarget(monitor?.target ?? "")
-		setPort(monitor?.protocol === "tcp" && monitor.port ? String(monitor.port) : "")
+		setPort(portInput(monitor))
 		setServer(monitor?.protocol === "dns" ? (monitor.server ?? "") : "")
 		setMonitorInterval(String(monitor?.interval ?? defaultInterval))
 		setTimeoutValue(monitor?.timeout ? String(monitor.timeout) : "")
@@ -213,6 +266,7 @@ function MonitorDialogContent({
 		setLossThreshold(thresholdInput(monitor?.lossThreshold))
 		setLatencyThreshold(thresholdInput(monitor?.latencyThreshold))
 		setHttpForm(httpFormFromMonitor(monitor))
+		setCheckForm(checkFormFromMonitor(monitor))
 		setSelectedSystemId(monitor?.system ?? "")
 		setSelectedSystemIds(new Set())
 		setCreatedPushMonitor(null)
@@ -221,10 +275,37 @@ function MonitorDialogContent({
 
 	const changeRunsOn = (value: RunsOn) => {
 		setRunsOn(value)
-		// push monitors only run on the hub
-		if (value === "agent" && protocol === "push") {
+		// push monitors only run on the hub, docker monitors only on agents
+		if ((value === "agent" && protocol === "push") || (value === "hub" && isAgentOnlyProtocol(protocol))) {
 			setProtocol("icmp")
 		}
+	}
+
+	/** Default port of the protocol with the current TLS options. */
+	const defaultPortFor = (value: MonitorProtocol, form = checkForm) => {
+		if (value === "tcp") return 0
+		const { check } = checkPayloadFromForm(value, form)
+		return defaultMonitorPort(value, check)
+	}
+
+	/** Changes the protocol, replacing a port that is empty or the previous protocol's default. */
+	const changeProtocol = (value: MonitorProtocol) => {
+		const previousDefault = defaultPortFor(protocol)
+		if (!port || Number(port) === previousDefault) {
+			const next = defaultPortFor(value)
+			setPort(next ? String(next) : "")
+		}
+		setProtocol(value)
+	}
+
+	/** Updates check options, following default smtp and imap ports when the TLS mode changes. */
+	const changeCheckForm = (form: CheckFormState) => {
+		const previousDefault = defaultPortFor(protocol)
+		if (!port || Number(port) === previousDefault) {
+			const next = defaultPortFor(protocol, form)
+			setPort(next ? String(next) : "")
+		}
+		setCheckForm(form)
 	}
 
 	const agentSystemIds = isHub
@@ -237,12 +318,22 @@ function MonitorDialogContent({
 	const usesNewAgentOptions =
 		Number(timeout) > 0 ||
 		Number(retryInterval) > 0 ||
+		isCheckProtocol(protocol) ||
+		hasCustomCheckOptions(protocol, checkForm) ||
 		(protocol === "http" &&
 			(hasCustomHttpOptions(httpForm) || (secretsHidden && !!monitor?.http && Object.keys(monitor.http).length > 0)))
 	const outdatedAgents = usesNewAgentOptions
 		? agentSystemIds.filter((id) => allSystems[id] && needsAgentUpdateForMonitorOptions(allSystems[id].info?.v))
 		: []
-	const showCertExpiry = protocol === "http" && isHttpsTarget(target)
+	const showCertExpiry = monitorReportsCert(protocol, target, checkForm)
+	const hasPort = usesMonitorPort(protocol)
+	const protocolGroupLabels: Record<string, string> = {
+		network: t`Network`,
+		web: t`Web`,
+		databases: t`Databases`,
+		mail: t`Mail`,
+		games: t`Games`,
+	}
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault()
@@ -266,14 +357,16 @@ function MonitorDialogContent({
 			if (latencyValue === null) {
 				throw new Error(t`Response time threshold must be a whole number of milliseconds.`)
 			}
+			const checkPayload = checkPayloadFromForm(protocol, checkForm)
 			const basePayload = buildMonitorPayload(
 				{
 					system: targetSystems[0],
 					target,
 					protocol,
-					port: protocol === "tcp" ? Number(port) : 0,
+					port: hasPort ? Number(port) : 0,
 					server: protocol === "dns" ? server.trim() : "",
 					interval: monitorInterval,
+					check: checkPayload.check,
 				},
 				monitor ? monitor.enabled : true
 			)
@@ -284,10 +377,11 @@ function MonitorDialogContent({
 				retries: Number(retries) || 0,
 				retryInterval: isPush ? 0 : Number(retryInterval) || 0,
 				notify,
-				certExpiryDays: protocol === "http" && isHttpsTarget(basePayload.target) ? Number(certExpiryDays) || 0 : 0,
+				certExpiryDays: monitorReportsCert(protocol, basePayload.target, checkForm) ? Number(certExpiryDays) || 0 : 0,
 				lossThreshold: lossValue,
 				latencyThreshold: latencyValue,
 			}
+			payload.check = checkPayload.check
 			if (protocol === "http") {
 				const { http, httpSecrets } = httpPayloadFromForm(httpForm)
 				payload.http = http
@@ -295,7 +389,9 @@ function MonitorDialogContent({
 				if (!secretsHidden) payload.httpSecrets = httpSecrets
 			} else {
 				payload.http = null
-				if (!secretsHidden) payload.httpSecrets = null
+				if (!secretsHidden) {
+					payload.httpSecrets = usesCheckCredentials(protocol) ? checkPayload.secrets : null
+				}
 			}
 			if (isHub) {
 				// hub monitors need owners; keep existing owners when editing a hub monitor
@@ -423,24 +519,44 @@ function MonitorDialogContent({
 					</div>
 				)}
 				<div className="grid grid-cols-2 gap-3">
-					<div className={isPush || protocol !== "tcp" ? "col-span-2 grid gap-2" : "grid gap-2"}>
+					<div className={hasPort ? "grid gap-2" : "col-span-2 grid gap-2"}>
 						<Label htmlFor="monitor-protocol">
 							<Trans>Protocol</Trans>
 						</Label>
-						<Select value={protocol} onValueChange={(value) => setProtocol(value as MonitorProtocol)}>
+						<Select value={protocol} onValueChange={(value) => changeProtocol(value as MonitorProtocol)}>
 							<SelectTrigger id="monitor-protocol">
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="icmp">ICMP</SelectItem>
-								<SelectItem value="tcp">TCP</SelectItem>
-								<SelectItem value="http">HTTP</SelectItem>
-								<SelectItem value="dns">DNS</SelectItem>
-								{isHub && <SelectItem value="push">Push</SelectItem>}
+								{protocolGroups.map((group) => (
+									<SelectGroup key={group.id}>
+										<SelectLabel>{protocolGroupLabels[group.id]}</SelectLabel>
+										{group.protocols.map((value) => (
+											<SelectItem key={value} value={value}>
+												{monitorProtocolLabels[value]}
+											</SelectItem>
+										))}
+									</SelectGroup>
+								))}
+								{isHub ? (
+									<SelectGroup>
+										<SelectLabel>
+											<Trans>Heartbeat</Trans>
+										</SelectLabel>
+										<SelectItem value="push">{monitorProtocolLabels.push}</SelectItem>
+									</SelectGroup>
+								) : (
+									<SelectGroup>
+										<SelectLabel>
+											<Trans>Containers</Trans>
+										</SelectLabel>
+										<SelectItem value="docker">{monitorProtocolLabels.docker}</SelectItem>
+									</SelectGroup>
+								)}
 							</SelectContent>
 						</Select>
 					</div>
-					{protocol === "tcp" && (
+					{hasPort && (
 						<div className="grid gap-2">
 							<Label htmlFor="monitor-port">
 								<Trans>Port</Trans>
@@ -450,7 +566,8 @@ function MonitorDialogContent({
 								type="number"
 								value={port}
 								onChange={(e) => setPort(e.target.value)}
-								placeholder="443"
+								placeholder={protocol === "tcp" ? "443" : String(defaultPortFor(protocol) || "")}
+								required={protocol === "grpc"}
 								min={1}
 								max={65535}
 							/>
@@ -470,13 +587,12 @@ function MonitorDialogContent({
 							id="monitor-target"
 							value={target}
 							onChange={(e) => setTarget(e.target.value)}
-							placeholder={
-								protocol === "http" ? "http://localhost:8090" : protocol === "dns" ? "example.com" : "1.1.1.1"
-							}
+							placeholder={targetPlaceholder(protocol, t`Container name or ID`)}
 							required
 						/>
 					</div>
 				)}
+				{!isPush && <MonitorCheckDescription protocol={protocol} />}
 				{protocol === "dns" && (
 					<div className="grid gap-2">
 						<Label htmlFor="monitor-dns-server">
@@ -587,6 +703,14 @@ function MonitorDialogContent({
 						</p>
 					</div>
 				)}
+				<MonitorCheckOptions
+					key={protocol}
+					protocol={protocol}
+					value={checkForm}
+					onChange={changeCheckForm}
+					secretsHidden={secretsHidden}
+					disabled={loading}
+				/>
 				{protocol === "http" && (
 					<MonitorHttpOptions
 						value={httpForm}
@@ -653,8 +777,8 @@ function MonitorDialogContent({
 							</p>
 							<p className="text-xs opacity-90">
 								<Trans>
-									HTTP options, timeouts and retry intervals need agent version 0.21.0 or newer:{" "}
-									{outdatedAgents.map((id) => allSystems[id]?.name).join(", ")}
+									This protocol, check options, HTTP options, timeouts and retry intervals need agent version 0.21.0 or
+									newer: {outdatedAgents.map((id) => allSystems[id]?.name).join(", ")}
 								</Trans>
 							</p>
 						</div>

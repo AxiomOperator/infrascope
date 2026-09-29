@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"strings"
 	"time"
 
@@ -29,6 +28,9 @@ type Outcome struct {
 	// Keyword reports whether the configured keyword was found in the response
 	// body, before KeywordInvert applies. It is nil when no keyword was checked.
 	Keyword *bool
+	// Cert is the leaf certificate of a TLS connection the probe made, which
+	// replaces the monitor's certificate info. It is nil without TLS.
+	Cert *monitor.CertInfo
 }
 
 // outcomeOf converts a response time and error into an outcome.
@@ -55,18 +57,48 @@ func checkErrString(err error) string {
 // Implementations must honor cancellation and bound their execution time.
 type monitorProbe func(context.Context, monitor.Config) Outcome
 
-func networkMonitorProbe(httpProbe *httpProber) monitorProbe {
+// ProbeFunc performs one check of a monitor. It must honor cancellation and
+// bound its execution time by config.ProbeTimeout().
+type ProbeFunc func(ctx context.Context, config monitor.Config) Outcome
+
+func networkMonitorProbe(httpProbe *httpProber, extra map[string]ProbeFunc) monitorProbe {
 	return func(ctx context.Context, config monitor.Config) Outcome {
+		if probe, ok := extra[config.Protocol]; ok {
+			return probe(ctx, config)
+		}
 		timeout := config.ProbeTimeout()
 		switch config.Protocol {
-		case "icmp":
+		case monitor.ProtocolICMP:
 			return outcomeOf(monitorICMP(ctx, config.Target, timeout))
-		case "tcp":
-			return outcomeOf(monitorTCP(ctx, config.Target, config.Port, timeout))
-		case "http":
+		case monitor.ProtocolTCP:
+			if config.Check == nil {
+				return outcomeOf(monitorTCP(ctx, config.Target, config.Port, timeout))
+			}
+			return probeTCP(ctx, config)
+		case monitor.ProtocolHTTP:
 			return httpProbe.probe(ctx, config)
-		case "dns":
-			return outcomeOf(monitorDNS(ctx, config.Target, config.Server, timeout))
+		case monitor.ProtocolDNS:
+			return probeDNS(ctx, config)
+		case monitor.ProtocolSSH:
+			return probeSSH(ctx, config)
+		case monitor.ProtocolPostgres:
+			return probePostgres(ctx, config)
+		case monitor.ProtocolMySQL:
+			return probeMySQL(ctx, config)
+		case monitor.ProtocolRedis:
+			return probeRedis(ctx, config)
+		case monitor.ProtocolSMTP:
+			return probeSMTP(ctx, config)
+		case monitor.ProtocolIMAP:
+			return probeIMAP(ctx, config)
+		case monitor.ProtocolGRPC:
+			return probeGRPC(ctx, config)
+		case monitor.ProtocolMinecraft:
+			return probeMinecraft(ctx, config)
+		case monitor.ProtocolA2S:
+			return probeA2S(ctx, config)
+		case monitor.ProtocolDocker:
+			return outcomeOf(-1, errors.New("docker checks require an agent with docker access"))
 		default:
 			return outcomeOf(-1, fmt.Errorf("unknown monitor protocol: %s", config.Protocol))
 		}
@@ -93,74 +125,11 @@ func limitProbe(probe monitorProbe, sem chan struct{}) monitorProbe {
 func monitorTCP(ctx context.Context, target string, port uint16, timeout time.Duration) (int64, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-
-	// Resolve DNS first, outside the timing window but within the probe deadline.
-	ips, err := net.DefaultResolver.LookupHost(ctx, target)
+	conn, start, err := dialTCP(ctx, target, port)
 	if err != nil {
 		return -1, err
 	}
-	if len(ips) == 0 {
-		return -1, errors.New("no addresses resolved for TCP monitor")
-	}
-	portString := fmt.Sprintf("%d", port)
-	deadline, _ := ctx.Deadline()
-
-	// Share the remaining probe budget across addresses so an unresponsive
-	// first address cannot consume all the time available for alternatives.
-	start := time.Now()
-	for i, ip := range ips {
-		if err := ctx.Err(); err != nil {
-			return -1, err
-		}
-		dialer := net.Dialer{Timeout: time.Until(deadline) / time.Duration(len(ips)-i)}
-		var conn net.Conn
-		conn, err = dialer.DialContext(ctx, "tcp", net.JoinHostPort(ip, portString))
-		if err != nil {
-			continue
-		}
-		responseUs := time.Since(start).Microseconds()
-		conn.Close()
-		return responseUs, nil
-	}
-	return -1, err
-}
-
-// monitorDNS measures DNS resolution response time in microseconds. If server is
-// non-empty, the lookup is sent to that DNS server (host or host:port, default
-// port 53) instead of the system resolver. Returns -1 and an error on failure.
-func monitorDNS(ctx context.Context, target, server string, timeout time.Duration) (int64, error) {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	resolver := net.DefaultResolver
-	if server != "" {
-		resolver = dnsResolverForServer(server)
-	}
-
-	start := time.Now()
-	ips, err := resolver.LookupHost(ctx, target)
-	if err != nil {
-		return -1, err
-	}
-	if len(ips) == 0 {
-		return -1, errors.New("no addresses resolved")
-	}
-	return time.Since(start).Microseconds(), nil
-}
-
-// dnsResolverForServer builds a resolver that sends lookups to the given DNS
-// server address instead of the system resolver. server may be a bare host or
-// host:port; when no port is given, the standard DNS port 53 is used.
-func dnsResolverForServer(server string) *net.Resolver {
-	address := server
-	if _, _, err := net.SplitHostPort(server); err != nil {
-		address = net.JoinHostPort(server, "53")
-	}
-	return &net.Resolver{
-		PreferGo: true,
-		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
-			var dialer net.Dialer
-			return dialer.DialContext(ctx, network, address)
-		},
-	}
+	responseUs := time.Since(start).Microseconds()
+	conn.Close()
+	return responseUs, nil
 }

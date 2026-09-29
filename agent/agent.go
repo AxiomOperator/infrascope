@@ -127,7 +127,7 @@ func NewAgent(dataDir ...string) (agent *Agent, err error) {
 	agent.handlerRegistry = NewHandlerRegistry()
 
 	// initialize monitor manager
-	agent.monitorManager = newMonitorManager()
+	agent.monitorManager = newMonitorManager(agent.dockerManager)
 
 	agent.storagePoolManager = newStoragePoolManager()
 

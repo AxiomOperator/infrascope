@@ -119,6 +119,9 @@ func (task *monitorTask) run(probe monitorProbe, immediate bool) *monitor.Result
 
 	generation, _ := task.resumeGuard.snapshot()
 	out := probe(task.ctx, task.config)
+	if out.Cert != nil && task.ctx.Err() == nil {
+		task.storeProbeCert(*out.Cert)
+	}
 	var published *monitorPublication
 	task.runMu.Lock()
 	currentGeneration, _ := task.resumeGuard.snapshot()
@@ -264,6 +267,19 @@ func (task *monitorTask) refreshCert(check certChecker) {
 		interval = certCheckRetryInterval
 	}
 	task.nextCertCheck = now.Add(interval)
+}
+
+// storeProbeCert stores the certificate a probe saw on its TLS connection.
+// It is marked unsent when it differs from the known certificate, so it is
+// reported once rather than with every stats result.
+func (task *monitorTask) storeProbeCert(info monitor.CertInfo) {
+	task.certMu.Lock()
+	defer task.certMu.Unlock()
+	if task.cert != nil && *task.cert == info {
+		return
+	}
+	task.cert = &info
+	task.certUnsent = true
 }
 
 // certInfo returns a copy of the latest certificate info, or nil if unknown.

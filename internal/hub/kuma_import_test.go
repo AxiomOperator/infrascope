@@ -79,7 +79,7 @@ func TestKumaImportDryRun(t *testing.T) {
 	adjusted := notesByName(result.Adjusted, false)
 	assert.Equal(t, []string{"retries lowered from 15 to 10"}, adjusted["Health keyword"])
 	assert.Equal(t, []string{"timeout lowered from 96s to 60s", "max redirects lowered from 50 to 20"}, adjusted["API status"])
-	assert.Equal(t, []string{"DNS record type MX is not supported; the host name is resolved instead"}, adjusted["DNS"])
+	assert.Empty(t, adjusted["DNS"], "MX records are supported")
 	assert.Equal(t, []string{"push URL is now /api/beszel/push/<token> (same token)"}, adjusted["Backup job"])
 	assert.Equal(t, []string{"new push token generated; update the push URL"}, adjusted["Cron heartbeat"])
 
@@ -152,6 +152,7 @@ func TestKumaImportCreatesHubMonitors(t *testing.T) {
 	dns := find("DNS")
 	assert.Equal(t, "dns", dns.GetString("protocol"))
 	assert.Equal(t, "9.9.9.9:5353", dns.GetString("server"))
+	assert.JSONEq(t, `{"recordType":"MX"}`, dns.GetString("check"))
 	assert.Equal(t, "Ab3dEf6hIj9kLm2nOp5qRs8tUv1wXy4Z", find("Backup job").GetString("pushToken"))
 	cron := find("Cron heartbeat").GetString("pushToken")
 	assert.Len(t, cron, pushTokenLength)

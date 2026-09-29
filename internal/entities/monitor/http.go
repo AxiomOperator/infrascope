@@ -61,6 +61,18 @@ func (c Config) Validate() error {
 			return fmt.Errorf("http options: %w", err)
 		}
 	}
+	if c.Protocol != "" && !slices.Contains(Protocols, c.Protocol) {
+		return fmt.Errorf("unsupported protocol %q", c.Protocol)
+	}
+	if UsesPort(c.Protocol) && c.Port == 0 {
+		return errors.New("port is required")
+	}
+	if err := c.validateTarget(); err != nil {
+		return err
+	}
+	if err := c.Check.Validate(c.Protocol); err != nil {
+		return fmt.Errorf("check options: %w", err)
+	}
 	return nil
 }
 

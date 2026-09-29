@@ -2,6 +2,7 @@ package hub
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -11,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/blang/semver"
+	"github.com/henrygd/beszel"
 	"github.com/henrygd/beszel/internal/entities/monitor"
 	"github.com/henrygd/beszel/internal/hub/monitorsecrets"
 	"github.com/henrygd/beszel/internal/hub/systems"
@@ -197,15 +200,27 @@ func prepareMonitor(app core.App, record, original *core.Record, auth *core.Reco
 	}
 
 	// Clear options the protocol does not use.
-	if protocol != "tcp" {
+	if !monitor.UsesPort(protocol) {
 		record.Set("port", 0)
 	}
-	if protocol != "dns" {
+	if protocol != monitor.ProtocolDNS {
 		record.Set("server", "")
 	}
-	if protocol != "http" {
+	if protocol != monitor.ProtocolHTTP {
 		record.Set("http", nil)
-		record.Set("httpSecrets", nil)
+		if protocol != monitor.ProtocolPostgres && protocol != monitor.ProtocolRedis {
+			record.Set("httpSecrets", nil)
+		}
+	}
+
+	if monitor.IsAgentOnlyProtocol(protocol) && systemID == "" {
+		return monitorInputError("Docker monitors require a system")
+	}
+	if systemID != "" && monitor.IsCheckProtocol(protocol) {
+		if version, ok := systemAgentVersion(app, systemID); ok && version.LT(beszel.MinVersionMonitorChecks) {
+			return monitorInputError(fmt.Sprintf("%s monitors require agent version %s or newer (the system runs %s)",
+				protocol, beszel.MinVersionMonitorChecks, version))
+		}
 	}
 
 	if protocol == monitor.ProtocolPush {
@@ -255,20 +270,47 @@ func prepareMonitor(app core.App, record, original *core.Record, auth *core.Reco
 	}
 
 	config, err := systems.MonitorConfigFromRecord(app, record)
+	if err == nil && config.Port == 0 && monitor.UsesPort(protocol) {
+		config.Port = monitor.DefaultPort(protocol, config.Check)
+		record.Set("port", config.Port)
+	}
 	if err == nil {
 		err = config.Validate()
 	}
 	if err != nil {
 		return monitorInputError(err.Error())
 	}
-	// Store only known HTTP options, each in its field. The model hook
-	// seals the secrets before they are written.
-	if protocol == "http" {
+	// Store only known options, each in its field, and only those the
+	// protocol uses. The model hook seals the secrets before they are written.
+	if protocol == monitor.ProtocolHTTP {
 		fields, secrets := systems.SplitHTTPOptions(config.HTTP)
 		record.Set("http", nilIfZero(fields))
 		record.Set("httpSecrets", nilIfZero(secrets))
+		record.Set("check", nil)
+	} else {
+		fields, secrets := systems.SplitCheckOptions(config.Check)
+		record.Set("check", nilIfZero(fields))
+		if protocol == monitor.ProtocolPostgres || protocol == monitor.ProtocolRedis {
+			record.Set("httpSecrets", nilIfZero(secrets))
+		}
 	}
 	return nil
+}
+
+// systemAgentVersion returns the agent version a system last reported.
+func systemAgentVersion(app core.App, systemID string) (semver.Version, bool) {
+	system, err := app.FindRecordById("systems", systemID)
+	if err != nil {
+		return semver.Version{}, false
+	}
+	var info struct {
+		Version string `json:"v"`
+	}
+	if err := json.Unmarshal([]byte(system.GetString("info")), &info); err != nil || info.Version == "" {
+		return semver.Version{}, false
+	}
+	version, err := semver.Parse(strings.TrimPrefix(info.Version, "v"))
+	return version, err == nil
 }
 
 // validPushToken reports whether token has the format of generated push tokens.

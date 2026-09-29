@@ -30,6 +30,18 @@ type managerOptions struct {
 	userAgent   string
 	concurrency int
 	onCheck     func(id string, event monitor.CheckEvent)
+	probes      map[string]ProbeFunc
+}
+
+// WithProbe runs monitors of protocol with probe instead of the built-in
+// probe, such as the agent's docker container check.
+func WithProbe(protocol string, probe ProbeFunc) Option {
+	return func(o *managerOptions) {
+		if o.probes == nil {
+			o.probes = map[string]ProbeFunc{}
+		}
+		o.probes[protocol] = probe
+	}
 }
 
 // WithUserAgent sets the User-Agent of HTTP probes. A User-Agent header in a
@@ -60,7 +72,7 @@ func NewManager(defaultIntervalMs uint16, opts ...Option) *Manager {
 	for _, opt := range opts {
 		opt(&options)
 	}
-	probe := networkMonitorProbe(newHTTPProber(options.userAgent))
+	probe := networkMonitorProbe(newHTTPProber(options.userAgent), options.probes)
 	if options.concurrency > 0 {
 		probe = limitProbe(probe, make(chan struct{}, options.concurrency))
 	}

@@ -226,7 +226,11 @@ func convertKumaMonitor(km kumaMonitor, minInterval int) (kumaConversion, kumaSk
 			server = net.JoinHostPort(server, strconv.Itoa(int(km.Port)))
 		}
 		conv.fields["server"] = server
-		if recordType := strings.ToUpper(strings.TrimSpace(string(km.DNSResolveType))); recordType != "" && recordType != "A" && recordType != "AAAA" {
+		switch recordType := strings.ToUpper(strings.TrimSpace(string(km.DNSResolveType))); {
+		case recordType == "":
+		case slices.Contains(monitor.DNSRecordTypes, recordType):
+			conv.fields["check"] = map[string]any{"recordType": recordType}
+		default:
 			note("DNS record type %s is not supported; the host name is resolved instead", recordType)
 		}
 	case "push":

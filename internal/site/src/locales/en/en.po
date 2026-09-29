@@ -31,6 +31,11 @@ msgstr "{0, plural, one {# incident} other {# incidents}}"
 msgid "{0, plural, one {# monitor} other {# monitors}}"
 msgstr "{0, plural, one {# monitor} other {# monitors}}"
 
+#. placeholder {0}: record.systems.length
+#: src/components/routes/settings/status-pages.tsx
+msgid "{0, plural, one {# system} other {# systems}}"
+msgstr "{0, plural, one {# system} other {# systems}}"
+
 #. placeholder {0}: newVersion.v
 #: src/components/footer-repo-link.tsx
 msgctxt "New version available"
@@ -247,6 +252,10 @@ msgstr "5 min"
 msgid "7d"
 msgstr "7d"
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "A and AAAA"
+msgstr "A and AAAA"
+
 #: src/lib/shoutrrr.ts
 #: src/lib/shoutrrr.ts
 msgid "A password requires a username"
@@ -255,6 +264,10 @@ msgstr "A password requires a username"
 #: src/components/routes/settings/status-pages.tsx
 msgid "A status page can show up to {MAX_MONITORS} monitors."
 msgstr "A status page can show up to {MAX_MONITORS} monitors."
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "A status page can show up to {MAX_SYSTEMS} systems."
+msgstr "A status page can show up to {MAX_SYSTEMS} systems."
 
 #: src/components/routes/system/raw-capacity-label.tsx
 msgid "About raw capacity"
@@ -345,6 +358,10 @@ msgstr "Add status page"
 #: src/components/navbar.tsx
 msgid "Add System"
 msgstr "Add System"
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Add system…"
+msgstr "Add system…"
 
 #: src/components/routes/settings/notifications.tsx
 #~ msgid "Add URL"
@@ -689,6 +706,10 @@ msgstr "Bytes (KB/s, MB/s, GB/s)"
 msgid "Cache / Buffers"
 msgstr "Cache / Buffers"
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Calls the standard gRPC health check and expects SERVING."
+msgstr "Calls the standard gRPC health check and expects SERVING."
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Can reload"
 msgstr "Can reload"
@@ -823,6 +844,10 @@ msgstr "Check {email} for a reset link."
 msgid "Check logs for more details."
 msgstr "Check logs for more details."
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Check options"
+msgstr "Check options"
+
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Check the availability and response time of a service from the hub or an agent."
 msgstr "Check the availability and response time of a service from the hub or an agent."
@@ -840,6 +865,30 @@ msgstr "Check your notification service"
 msgid "Checked {0}"
 msgstr "Checked {0}"
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Checks that the container is running and, if it has a health check, healthy. Runs on the agent's Docker or Podman host."
+msgstr "Checks that the container is running and, if it has a health check, healthy. Runs on the agent's Docker or Podman host."
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Checks that the server sends a valid MySQL handshake. No login is attempted."
+msgstr "Checks that the server sends a valid MySQL handshake. No login is attempted."
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Checks that the server sends an SSH-2.0 identification. No login is attempted."
+msgstr "Checks that the server sends an SSH-2.0 identification. No login is attempted."
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Checks that the server speaks PostgreSQL; with a password, also that it can log in."
+msgstr "Checks that the server speaks PostgreSQL; with a password, also that it can log in."
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Checks the IMAP greeting."
+msgstr "Checks the IMAP greeting."
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Checks the SMTP greeting and EHLO reply."
+msgstr "Checks the SMTP greeting and EHLO reply."
+
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "Checksum errors"
 msgstr "Checksum errors"
@@ -849,8 +898,12 @@ msgid "Choose where alerts should be sent."
 msgstr "Choose where alerts should be sent."
 
 #: src/components/routes/settings/status-pages.tsx
-msgid "Choose which monitors to show and what details are visible."
-msgstr "Choose which monitors to show and what details are visible."
+#~ msgid "Choose which monitors to show and what details are visible."
+#~ msgstr "Choose which monitors to show and what details are visible."
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Choose which systems and monitors to show and what details are visible."
+msgstr "Choose which systems and monitors to show and what details are visible."
 
 #: src/components/containers-table/containers-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
@@ -914,6 +967,10 @@ msgstr "Comma separated codes or ranges, e.g. 200-299, 301. Defaults to 200-399.
 msgid "Command line instructions"
 msgstr "Command line instructions"
 
+#: src/components/routes/settings/status-pages.tsx
+msgid "Components"
+msgstr "Components"
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Configure how you receive alert notifications."
 msgstr "Configure how you receive alert notifications."
@@ -947,10 +1004,19 @@ msgstr "Container"
 msgid "Container Health"
 msgstr "Container Health"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Container name or ID"
+msgstr "Container name or ID"
+
 #: src/components/navbar.tsx
+#: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/routes/system.tsx
 msgid "Containers"
 msgstr "Containers"
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Contains"
+msgstr "Contains"
 
 #: src/lib/shoutrrr.ts
 #: src/lib/shoutrrr.ts
@@ -1104,6 +1170,10 @@ msgstr "Create account"
 msgid "Created"
 msgstr "Created"
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Credentials aren't visible to you and are kept unchanged."
+msgstr "Credentials aren't visible to you and are kept unchanged."
+
 #: src/components/routes/settings/general.tsx
 msgid "Critical (%)"
 msgstr "Critical (%)"
@@ -1171,6 +1241,10 @@ msgstr "Daily"
 #: src/components/routes/status-page.tsx
 msgid "Daily uptime"
 msgstr "Daily uptime"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Databases"
+msgstr "Databases"
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/lib/shoutrrr.ts
@@ -1410,6 +1484,14 @@ msgstr "Emoji name or image URL"
 msgid "Empty"
 msgstr "Empty"
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Empty checks the whole server"
+msgstr "Empty checks the whole server"
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Encryption"
+msgstr "Encryption"
+
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -1489,6 +1571,10 @@ msgstr "Entity"
 msgid "Ephemeral"
 msgstr "Ephemeral"
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Equals"
+msgstr "Equals"
+
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-push-url.tsx
@@ -1548,6 +1634,11 @@ msgstr "Exited active"
 msgid "Expected a token like 123456789:ABC-def…"
 msgstr "Expected a token like 123456789:ABC-def…"
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Expected banner"
+msgstr "Expected banner"
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Expected value"
 msgstr "Expected value"
@@ -1716,6 +1807,10 @@ msgstr "From number"
 msgid "Full"
 msgstr "Full"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Games"
+msgstr "Games"
+
 #. Context: General settings
 #: src/components/routes/settings/general.tsx
 #: src/components/routes/settings/layout.tsx
@@ -1772,6 +1867,7 @@ msgstr "Headers, body and credentials aren't visible to you and are kept unchang
 msgid "Health"
 msgstr "Health"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/routes/settings/layout.tsx
 msgid "Heartbeat"
 msgstr "Heartbeat"
@@ -1838,10 +1934,9 @@ msgstr "HTTP method: POST, GET, or HEAD (default: POST)"
 msgid "HTTP options"
 msgstr "HTTP options"
 
-#. placeholder {0}: outdatedAgents.map((id) => allSystems[id]?.name).join(", ")
 #: src/components/network-monitors-table/monitor-dialog.tsx
-msgid "HTTP options, timeouts and retry intervals need agent version 0.21.0 or newer: {0}"
-msgstr "HTTP options, timeouts and retry intervals need agent version 0.21.0 or newer: {0}"
+#~ msgid "HTTP options, timeouts and retry intervals need agent version 0.21.0 or newer: {0}"
+#~ msgstr "HTTP options, timeouts and retry intervals need agent version 0.21.0 or newer: {0}"
 
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
@@ -1892,6 +1987,7 @@ msgstr "Idle"
 msgid "If you've lost the password to your admin account, you may reset it using the following command."
 msgstr "If you've lost the password to your admin account, you may reset it using the following command."
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Ignore TLS errors"
 msgstr "Ignore TLS errors"
@@ -2118,6 +2214,10 @@ msgstr "Loss > {loss}%"
 msgid "Loss 1h"
 msgstr "Loss 1h"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Mail"
+msgstr "Mail"
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Main PID"
 msgstr "Main PID"
@@ -2151,6 +2251,10 @@ msgstr "Manual setup instructions"
 #: src/lib/shoutrrr.ts
 msgid "Markdown formatting"
 msgstr "Markdown formatting"
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Match"
+msgstr "Match"
 
 #. Chart select field. Please try to keep this short.
 #: src/components/routes/system/chart-card.tsx
@@ -2258,7 +2362,7 @@ msgstr "Monitor response time"
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/status-pages.tsx
-#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/status-page.tsx
 msgid "Monitors"
 msgstr "Monitors"
 
@@ -2315,6 +2419,7 @@ msgstr "Name"
 msgid "Net"
 msgstr "Net"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/routes/system.tsx
 msgid "Network"
 msgstr "Network"
@@ -2387,12 +2492,16 @@ msgid "No monitors found."
 msgstr "No monitors found."
 
 #: src/components/routes/status-page.tsx
-msgid "No monitors on this page."
-msgstr "No monitors on this page."
+#~ msgid "No monitors on this page."
+#~ msgstr "No monitors on this page."
 
 #: src/components/routes/settings/status-pages.tsx
 msgid "No more monitors to add"
 msgstr "No more monitors to add"
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "No more systems to add"
+msgstr "No more systems to add"
 
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 msgid "No new monitors. All entries already exist."
@@ -2428,10 +2537,15 @@ msgstr "No status pages."
 msgid "No systems found."
 msgstr "No systems found."
 
+#: src/components/routes/status-page.tsx
+msgid "No systems or monitors on this page."
+msgstr "No systems or monitors on this page."
+
 #: src/components/routes/settings/notifications.tsx
 msgid "No webhook or push notifications configured."
 msgstr "No webhook or push notifications configured."
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "None"
 msgstr "None"
@@ -2472,6 +2586,10 @@ msgstr "Off"
 msgid "On each restart, systems in the database will be updated to match the systems defined in the file."
 msgstr "On each restart, systems in the database will be updated to match the systems defined in the file."
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "One of the records must match this value."
+msgstr "One of the records must match this value."
+
 #: src/lib/alerts.ts
 msgid "One or more containers are unhealthy"
 msgstr "One or more containers are unhealthy"
@@ -2509,6 +2627,10 @@ msgid "Ongoing"
 msgstr "Ongoing"
 
 #: src/components/routes/settings/status-pages.tsx
+msgid "Only the system name and status history are shown."
+msgstr "Only the system name and status history are shown."
+
+#: src/components/routes/settings/status-pages.tsx
 msgid "Open"
 msgstr "Open"
 
@@ -2525,6 +2647,10 @@ msgstr "Open"
 msgid "Open menu"
 msgstr "Open menu"
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+#: src/components/network-monitors-table/monitor-check-options.tsx
+#: src/components/network-monitors-table/monitor-check-options.tsx
+#: src/components/network-monitors-table/monitor-check-options.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Optional"
 msgstr "Optional"
@@ -2537,12 +2663,12 @@ msgstr "Optional. Defaults to the system resolver."
 msgid "Or continue with"
 msgstr "Or continue with"
 
-#: src/components/routes/system/cpu-sheet.tsx
+#: src/components/routes/system/package-updates-table.tsx
+msgctxt "Version change"
 msgid "Other"
 msgstr "Other"
 
-#: src/components/routes/system/package-updates-table.tsx
-msgctxt "Version change"
+#: src/components/routes/system/cpu-sheet.tsx
 msgid "Other"
 msgstr "Other"
 
@@ -2602,6 +2728,7 @@ msgstr "Partial outage"
 
 #: src/components/login/auth-form.tsx
 #: src/components/login/auth-form.tsx
+#: src/components/network-monitors-table/monitor-check-options.tsx
 #: src/lib/shoutrrr.ts
 msgid "Password"
 msgstr "Password"
@@ -2936,6 +3063,10 @@ msgstr "Recipients can't include the sender number"
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Recognized as {0}."
 msgstr "Recognized as {0}."
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Record type"
+msgstr "Record type"
 
 #: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
@@ -3315,6 +3446,18 @@ msgstr "Send token in a header instead of the URL"
 msgid "Sender number"
 msgstr "Sender number"
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Sends a Java Edition server list ping."
+msgstr "Sends a Java Edition server list ping."
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Sends a Source engine A2S_INFO query over UDP."
+msgstr "Sends a Source engine A2S_INFO query over UDP."
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Sends PING and expects PONG, authenticating first when a password is set."
+msgstr "Sends PING and expects PONG, authenticating first when a password is set."
+
 #: src/components/routes/system/charts/network-charts.tsx
 msgid "Sent"
 msgstr "Sent"
@@ -3334,6 +3477,14 @@ msgstr "Server path"
 #: src/lib/shoutrrr.ts
 msgid "Server subpath"
 msgstr "Server subpath"
+
+#: src/components/routes/status-page.tsx
+msgid "Servers"
+msgstr "Servers"
+
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Service"
+msgstr "Service"
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Service Details"
@@ -3372,8 +3523,12 @@ msgid "Setup guide"
 msgstr "Setup guide"
 
 #: src/components/routes/settings/status-pages.tsx
-msgid "Share the status and uptime of selected monitors on a page that can be viewed without logging in."
-msgstr "Share the status and uptime of selected monitors on a page that can be viewed without logging in."
+#~ msgid "Share the status and uptime of selected monitors on a page that can be viewed without logging in."
+#~ msgstr "Share the status and uptime of selected monitors on a page that can be viewed without logging in."
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Share the status and uptime of selected systems and monitors on a page that can be viewed without logging in."
+msgstr "Share the status and uptime of selected systems and monitors on a page that can be viewed without logging in."
 
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Shoutrrr URL"
@@ -3576,6 +3731,7 @@ msgstr "Systemd Services"
 #: src/components/navbar.tsx
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/routes/settings/status-pages.tsx
 msgid "Systems"
 msgstr "Systems"
 
@@ -3662,6 +3818,10 @@ msgstr "Test notification sent"
 msgid "Text the response body must contain"
 msgstr "Text the response body must contain"
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Text the server must send after connecting."
+msgstr "Text the server must send after connecting."
+
 #. placeholder {0}: service.name
 #: src/components/routes/settings/notification-builder.tsx
 msgid "That doesn't look like a {0} webhook URL."
@@ -3731,6 +3891,11 @@ msgstr "Then log into the backend and reset your user account password in the us
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "This action cannot be undone. This will permanently delete all current records for {name} from the database."
 msgstr "This action cannot be undone. This will permanently delete all current records for {name} from the database."
+
+#. placeholder {0}: outdatedAgents.map((id) => allSystems[id]?.name).join(", ")
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "This protocol, check options, HTTP options, timeouts and retry intervals need agent version 0.21.0 or newer: {0}"
+msgstr "This protocol, check options, HTTP options, timeouts and retry intervals need agent version 0.21.0 or newer: {0}"
 
 #: src/components/routes/settings/status-pages.tsx
 msgid "This slug is already in use."
@@ -3973,6 +4138,10 @@ msgstr "Type"
 msgid "Unavailable monitor"
 msgstr "Unavailable monitor"
 
+#: src/components/routes/settings/status-pages.tsx
+msgid "Unavailable system"
+msgstr "Unavailable system"
+
 #: src/components/routes/status-page.tsx
 msgid "Under maintenance"
 msgstr "Under maintenance"
@@ -4130,6 +4299,10 @@ msgstr "Use 2-63 lowercase letters, numbers and hyphens, starting with a letter 
 msgid "Use plain HTTP (disable TLS)"
 msgstr "Use plain HTTP (disable TLS)"
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
+msgid "Use TLS"
+msgstr "Use TLS"
+
 #: src/lib/shoutrrr.ts
 msgid "Use TLS (mqtts)"
 msgstr "Use TLS (mqtts)"
@@ -4159,6 +4332,7 @@ msgstr "User actions"
 msgid "User key"
 msgstr "User key"
 
+#: src/components/network-monitors-table/monitor-check-options.tsx
 #: src/lib/shoutrrr.ts
 #: src/lib/shoutrrr.ts
 #: src/lib/shoutrrr.ts
@@ -4254,6 +4428,10 @@ msgstr "Warning (%)"
 #: src/components/routes/settings/general.tsx
 msgid "Warning thresholds"
 msgstr "Warning thresholds"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Web"
+msgstr "Web"
 
 #: src/lib/shoutrrr.ts
 msgid "webhook"

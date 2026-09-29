@@ -148,7 +148,7 @@ func TestMonitorManagerApplySyncUpsertRunsImmediatelyAndReturnsResult(t *testing
 
 	pm := &Manager{
 		monitors: make(map[string]*monitorTask),
-		probe:    networkMonitorProbe(newHTTPProber(networkMonitorUserAgent)),
+		probe:    networkMonitorProbe(newHTTPProber(networkMonitorUserAgent), nil),
 	}
 
 	resp, err := pm.HandleSyncRequest(monitor.SyncRequest{

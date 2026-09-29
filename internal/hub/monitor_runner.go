@@ -158,6 +158,11 @@ func (r *hubRunner) start() error {
 	r.limits = newPushLimiter()
 	configs := make([]monitor.Config, 0, len(records))
 	for _, record := range records {
+		// Agent-only monitors cannot run on the hub; the hooks never store
+		// them without a system.
+		if monitor.IsAgentOnlyProtocol(record.GetString("protocol")) {
+			continue
+		}
 		config, err := systems.MonitorConfigFromRecord(r.app, record)
 		if err != nil {
 			r.app.Logger().Warn("Skipping hub monitor with invalid config", "monitor", record.Id, "err", err)
@@ -201,7 +206,7 @@ func (r *hubRunner) Stop() {
 
 // Sync implements hubMonitorRunner.
 func (r *hubRunner) Sync(record *core.Record) {
-	if record.GetString("system") != "" || !record.GetBool("enabled") {
+	if record.GetString("system") != "" || !record.GetBool("enabled") || monitor.IsAgentOnlyProtocol(record.GetString("protocol")) {
 		r.Remove(record.Id)
 		return
 	}

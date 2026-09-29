@@ -286,3 +286,50 @@ func TestSyncRequestForAgentStripsUnsupportedFields(t *testing.T) {
 		})
 	}
 }
+
+func TestSyncRequestForAgentSkipsCheckProtocols(t *testing.T) {
+	redis := monitor.Config{ID: "r", Target: "cache", Protocol: monitor.ProtocolRedis, Port: 6379, Interval: 60,
+		Check: &monitor.CheckOptions{Password: "p"}}
+	tcp := monitor.Config{ID: "t", Target: "host", Protocol: monitor.ProtocolTCP, Port: 22, Interval: 60,
+		Check: &monitor.CheckOptions{Banner: "SSH-"}}
+	legacy := syncRequestForAgent(monitor.SyncRequest{Action: monitor.SyncActionReplace, Configs: []monitor.Config{redis, tcp}}, semver.MustParse("0.20.0"))
+	require.Equal(t, []monitor.Config{{ID: "t", Target: "host", Protocol: monitor.ProtocolTCP, Port: 22, Interval: 60}}, legacy.Configs,
+		"legacy agents get neither new protocols nor check options")
+
+	current := syncRequestForAgent(monitor.SyncRequest{Action: monitor.SyncActionReplace, Configs: []monitor.Config{redis, tcp}}, semver.MustParse("0.21.0"))
+	require.Equal(t, []monitor.Config{redis, tcp}, current.Configs)
+}
+
+func TestMonitorConfigFromRecordCheckOptions(t *testing.T) {
+	collection := core.NewBaseCollection("network_monitors")
+	collection.Fields.Add(
+		&core.TextField{Name: "protocol"}, &core.NumberField{Name: "port"}, &core.JSONField{Name: "check"},
+		&core.JSONField{Name: "http"}, &core.JSONField{Name: "httpSecrets"},
+	)
+	record := core.NewRecord(collection)
+	record.Load(map[string]any{
+		"protocol": "postgres", "port": 5432,
+		"check":       map[string]any{"tls": true, "banner": "ignored"},
+		"httpSecrets": map[string]any{"username": "app", "password": "pw"},
+	})
+	config, err := MonitorConfigFromRecord(nil, record)
+	require.NoError(t, err)
+	require.Equal(t, &monitor.CheckOptions{TLS: true, Username: "app", Password: "pw"}, config.Check)
+
+	record.Set("protocol", "mysql")
+	config, err = MonitorConfigFromRecord(nil, record)
+	require.NoError(t, err)
+	require.Nil(t, config.Check, "mysql has no check options")
+
+	record.Set("protocol", "tcp")
+	record.Set("check", `{"tls":"yes"}`)
+	_, err = MonitorConfigFromRecord(nil, record)
+	require.ErrorContains(t, err, "invalid check options")
+}
+
+func TestUpsertCheckProtocolRejectedForOlderAgents(t *testing.T) {
+	// No transport: the request fails before anything is sent.
+	sys := &System{agentVersion: semver.MustParse("0.20.5")}
+	_, err := sys.UpsertNetworkMonitor(monitor.Config{ID: "test", Protocol: monitor.ProtocolDocker, Target: "web"}, true)
+	require.ErrorIs(t, err, ErrAgentTooOldForProtocol)
+}

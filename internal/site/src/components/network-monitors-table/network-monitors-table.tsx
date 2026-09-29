@@ -49,6 +49,7 @@ import { isReadOnlyUser, queueUserSettings } from "@/lib/api"
 import { pb } from "@/lib/api"
 import { SystemStatus } from "@/lib/enums"
 import { $allSystemsById, $direction, $textMeasureVersion, $userSettings, getUserChartTime } from "@/lib/stores"
+import { getMonitorProtocolLabel, usesMonitorPort } from "@/lib/monitor-protocols"
 import { cn, formatShortDate, isVisuallyLonger, matchesFilterGroups, parseFilterGroups, parseSemVer } from "@/lib/utils"
 import type { ChartData, MonitorCertInfo, NetworkMonitorRecord } from "@/types"
 import { AddMonitorDialog, EditMonitorDialog } from "./monitor-dialog"
@@ -693,13 +694,7 @@ function CertExpiry({ cert }: { cert: MonitorCertInfo }) {
 			<Separator orientation="vertical" className="h-2.5 bg-muted-foreground opacity-70" />
 			<ShieldCheckIcon className={cn("size-3.5 text-muted-foreground -me-1", certExpiryTextColors[level])} />
 			<span className={certExpiryTextColors[level]}>
-				{daysLeft < 0 ? (
-					<Trans>Certificate expired {expires}</Trans>
-				) : (
-					<Trans>
-						Certificate expires {expires} 
-					</Trans>
-				)}
+				{daysLeft < 0 ? <Trans>Certificate expired {expires}</Trans> : <Trans>Certificate expires {expires}</Trans>}
 			</span>
 			{cert.issuer && (
 				<>
@@ -805,8 +800,8 @@ function NetworkMonitorSheetContent({
 						)}
 						<Separator orientation="vertical" className="h-2.5 bg-muted-foreground opacity-70" />
 						<ArrowLeftRightIcon className="size-3.5 text-muted-foreground -me-0.5" />
-						{monitor.protocol.toUpperCase()}
-						{monitor.protocol === "tcp" && monitor.port > 0 && (
+						{getMonitorProtocolLabel(monitor.protocol)}
+						{usesMonitorPort(monitor.protocol) && monitor.port > 0 && (
 							<>
 								<Separator orientation="vertical" className="h-2.5 bg-muted-foreground opacity-70" />
 								<EthernetPortIcon className="size-3.5 text-muted-foreground" />

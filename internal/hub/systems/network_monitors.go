@@ -28,13 +28,54 @@ type MonitorHTTPFields struct {
 	JSONExpected  string   `json:"jsonExpected,omitzero"`
 }
 
-// MonitorHTTPSecrets are the HTTP options stored in the network_monitors
-// "httpSecrets" field, which is only shown to users who can edit the monitor.
+// MonitorHTTPSecrets are the secret options stored in the network_monitors
+// "httpSecrets" field, which is stored encrypted and only shown to users who
+// can edit the monitor. HTTP monitors use the headers, body and basic auth
+// credentials; postgres and redis monitors the username and password.
 type MonitorHTTPSecrets struct {
 	Headers   [][2]string `json:"headers,omitzero"`
 	Body      string      `json:"body,omitzero"`
 	BasicUser string      `json:"basicUser,omitzero"`
 	BasicPass string      `json:"basicPass,omitzero"`
+	Username  string      `json:"username,omitzero"`
+	Password  string      `json:"password,omitzero"`
+}
+
+// MonitorCheckFields are the non-secret check options stored in the
+// network_monitors "check" field (see monitor.CheckOptions).
+type MonitorCheckFields struct {
+	RecordType string `json:"recordType,omitzero"`
+	Expected   string `json:"expected,omitzero"`
+	MatchMode  string `json:"matchMode,omitzero"`
+	Banner     string `json:"banner,omitzero"`
+	TLS        bool   `json:"tls,omitzero"`
+	StartTLS   bool   `json:"startTLS,omitzero"`
+	IgnoreTLS  bool   `json:"ignoreTLS,omitzero"`
+	Service    string `json:"service,omitzero"`
+}
+
+// SplitCheckOptions returns the stored field values of check options: the
+// non-secret fields and the credentials.
+func SplitCheckOptions(check *monitor.CheckOptions) (MonitorCheckFields, MonitorHTTPSecrets) {
+	if check == nil {
+		return MonitorCheckFields{}, MonitorHTTPSecrets{}
+	}
+	return MonitorCheckFields{
+		RecordType: check.RecordType,
+		Expected:   check.Expected,
+		MatchMode:  check.MatchMode,
+		Banner:     check.Banner,
+		TLS:        check.TLS,
+		StartTLS:   check.StartTLS,
+		IgnoreTLS:  check.IgnoreTLS,
+		Service:    check.Service,
+	}, MonitorHTTPSecrets{Username: check.Username, Password: check.Password}
+}
+
+// usesSecretCredentials reports whether monitors of protocol keep a username
+// and password in httpSecrets.
+func usesSecretCredentials(protocol string) bool {
+	return protocol == monitor.ProtocolPostgres || protocol == monitor.ProtocolRedis
 }
 
 // SplitHTTPOptions returns the stored field values of options.
@@ -78,9 +119,10 @@ func HTTPSecretsJSON(app core.App, record *core.Record) (string, error) {
 }
 
 // MonitorConfigFromRecord builds the probe config of a network_monitors record.
-// HTTP options are only set for http monitors with non-default options. It
-// fails when the stored HTTP options are not valid JSON of the expected shape,
-// or sealed secrets cannot be opened with the key of app's data dir.
+// HTTP options are only set for http monitors with non-default options, and
+// check options only with the fields the protocol uses. It fails when the
+// stored options are not valid JSON of the expected shape, or sealed secrets
+// cannot be opened with the key of app's data dir.
 func MonitorConfigFromRecord(app core.App, record *core.Record) (monitor.Config, error) {
 	config := monitor.Config{
 		ID:            record.Id,
@@ -92,8 +134,8 @@ func MonitorConfigFromRecord(app core.App, record *core.Record) (monitor.Config,
 		Timeout:       uint16(record.GetInt("timeout")),
 		RetryInterval: uint16(record.GetInt("retryInterval")),
 	}
-	if config.Protocol != "http" {
-		return config, nil
+	if config.Protocol != monitor.ProtocolHTTP {
+		return config, checkOptionsFromRecord(app, record, &config)
 	}
 	var fields MonitorHTTPFields
 	var secrets MonitorHTTPSecrets
@@ -133,6 +175,38 @@ func MonitorConfigFromRecord(app core.App, record *core.Record) (monitor.Config,
 	return config, nil
 }
 
+// checkOptionsFromRecord sets the check options of a non-http monitor.
+func checkOptionsFromRecord(app core.App, record *core.Record, config *monitor.Config) error {
+	var fields MonitorCheckFields
+	if err := unmarshalJSONField(record, "check", &fields); err != nil {
+		return fmt.Errorf("invalid check options: %w", err)
+	}
+	var secrets MonitorHTTPSecrets
+	if usesSecretCredentials(config.Protocol) {
+		rawSecrets, err := HTTPSecretsJSON(app, record)
+		if err != nil {
+			return fmt.Errorf("monitor secrets: %w", err)
+		}
+		if err := unmarshalJSON(rawSecrets, &secrets); err != nil {
+			return fmt.Errorf("invalid monitor secrets: %w", err)
+		}
+	}
+	check := monitor.CheckOptions{
+		RecordType: fields.RecordType,
+		Expected:   fields.Expected,
+		MatchMode:  fields.MatchMode,
+		Banner:     fields.Banner,
+		TLS:        fields.TLS,
+		StartTLS:   fields.StartTLS,
+		IgnoreTLS:  fields.IgnoreTLS,
+		Service:    fields.Service,
+		Username:   secrets.Username,
+		Password:   secrets.Password,
+	}
+	config.Check = check.ForProtocol(config.Protocol)
+	return nil
+}
+
 // unmarshalJSONField decodes a JSON field, treating an empty or null value as unset.
 func unmarshalJSONField(record *core.Record, field string, dest any) error {
 	return unmarshalJSON(record.GetString(field), dest)
@@ -162,6 +236,20 @@ func (sys *System) syncAllNetworkMonitors() error {
 	configs, err := sys.manager.GetMonitorConfigsForSystem(sys.Id)
 	if err != nil {
 		return fmt.Errorf("failed to load monitors: %w", err)
+	}
+	// Agents that cannot run a monitor's protocol never report its checks,
+	// so its status is unknown rather than stale.
+	if agentVersion := sys.getAgentVersion(); agentVersion.GTE(beszel.MinVersionNetworkMonitors) &&
+		agentVersion.LT(beszel.MinVersionMonitorChecks) {
+		var unsupported []string
+		for _, config := range configs {
+			if monitor.IsCheckProtocol(config.Protocol) {
+				unsupported = append(unsupported, config.ID)
+			}
+		}
+		if engine := sys.manager.hub.Uptime(); engine != nil && len(unsupported) > 0 {
+			engine.MarkUnknown(unsupported)
+		}
 	}
 	// An empty set must also replace probes retained across a disconnect.
 	return sys.SyncNetworkMonitors(configs)
@@ -204,6 +292,10 @@ func (sys *System) syncNetworkMonitors(req monitor.SyncRequest) (monitor.SyncRes
 	if agentVersion.LT(beszel.MinVersionNetworkMonitors) {
 		return monitor.SyncResponse{}, nil
 	}
+	if req.Action == monitor.SyncActionUpsert && agentVersion.LT(beszel.MinVersionMonitorChecks) &&
+		monitor.IsCheckProtocol(req.Config.Protocol) {
+		return monitor.SyncResponse{}, ErrAgentTooOldForProtocol
+	}
 	req = syncRequestForAgent(req, agentVersion)
 	timeout := 5 * time.Second
 	if req.Action == monitor.SyncActionUpsert && req.RunNow {
@@ -218,17 +310,25 @@ func (sys *System) syncNetworkMonitors(req monitor.SyncRequest) (monitor.SyncRes
 	return result, sys.request(ctx, common.SyncNetworkMonitors, req, &result)
 }
 
+// ErrAgentTooOldForProtocol is returned when a monitor of a protocol added
+// with check options is synced to an agent that cannot run it.
+var ErrAgentTooOldForProtocol = fmt.Errorf("monitor protocol requires agent version %s or newer", beszel.MinVersionMonitorChecks)
+
 // syncRequestForAgent strips config fields the agent version does not support,
-// so older agents keep probing with their defaults.
+// so older agents keep probing with their defaults. Monitors of protocols the
+// agent cannot run are left out of full syncs.
 func syncRequestForAgent(req monitor.SyncRequest, agentVersion semver.Version) monitor.SyncRequest {
 	if agentVersion.GTE(beszel.MinVersionMonitorChecks) {
 		return req
 	}
 	req.Config = req.Config.Legacy()
 	if req.Configs != nil {
-		configs := make([]monitor.Config, len(req.Configs))
-		for i, config := range req.Configs {
-			configs[i] = config.Legacy()
+		configs := make([]monitor.Config, 0, len(req.Configs))
+		for _, config := range req.Configs {
+			if monitor.IsCheckProtocol(config.Protocol) {
+				continue
+			}
+			configs = append(configs, config.Legacy())
 		}
 		req.Configs = configs
 	}

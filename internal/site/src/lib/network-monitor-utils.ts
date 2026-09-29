@@ -10,6 +10,7 @@ import type {
 	NetworkMonitorStatsRecord,
 	RawMonitorStatsRecord,
 } from "@/types"
+import { usesMonitorPort } from "./monitor-protocols"
 import { compareSemVer, parseSemVer, toFixedFloat } from "./utils"
 
 /** Derive chart metrics from the counts and response sum stored at every retention tier. */
@@ -68,7 +69,7 @@ export function withMonitorGaps(
 }
 
 export function getMonitorTarget(monitor: Pick<NetworkMonitorRecord, "target" | "protocol" | "port">) {
-	if (monitor.protocol !== "tcp") return monitor.target
+	if (!usesMonitorPort(monitor.protocol) || !monitor.port) return monitor.target
 	const host = monitor.target.includes(":") && !monitor.target.startsWith("[") ? `[${monitor.target}]` : monitor.target
 	return `${host}:${monitor.port}`
 }

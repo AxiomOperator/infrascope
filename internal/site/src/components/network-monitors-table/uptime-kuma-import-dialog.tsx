@@ -3,6 +3,7 @@ import { useStore } from "@nanostores/react"
 import { FileJsonIcon, LoaderCircleIcon } from "lucide-react"
 import { useMemo, useRef, useState } from "react"
 import { Badge } from "@/components/ui/badge"
+import { getMonitorProtocolLabel } from "@/lib/monitor-protocols"
 import { Button } from "@/components/ui/button"
 import {
 	Dialog,
@@ -56,7 +57,7 @@ function previewRows(result: UptimeKumaImportResult): PreviewRow[] {
 			key: `m${i}`,
 			kind: changes ? "adjusted" : "create",
 			name: monitor.name,
-			detail: [monitor.protocol.toUpperCase(), monitor.target].filter(Boolean).join(" · "),
+			detail: [getMonitorProtocolLabel(monitor.protocol), monitor.target].filter(Boolean).join(" · "),
 			note: changes?.join("; ") ?? "",
 		})
 	}
