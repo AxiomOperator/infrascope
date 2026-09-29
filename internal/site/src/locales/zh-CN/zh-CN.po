@@ -18,11 +18,39 @@ msgstr ""
 "X-Crowdin-File: /main/internal/site/src/locales/en/en.po\n"
 "X-Crowdin-File-ID: 32\n"
 
+#: src/lib/shoutrrr.ts
+msgid "-1 – low"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "-2 – lowest"
+msgstr ""
+
+#. placeholder {0}: day.incidents
+#: src/components/network-monitors-table/daily-uptime-bar.tsx
+msgid "{0, plural, one {# incident} other {# incidents}}"
+msgstr ""
+
+#. placeholder {0}: record.monitors.length
+#: src/components/routes/settings/status-pages.tsx
+msgid "{0, plural, one {# monitor} other {# monitors}}"
+msgstr ""
+
 #. placeholder {0}: newVersion.v
 #: src/components/footer-repo-link.tsx
 msgctxt "New version available"
 msgid "{0} available"
 msgstr "{0} 可用"
+
+#. placeholder {0}: days.length
+#: src/components/routes/status-page.tsx
+msgid "{0} days ago"
+msgstr ""
+
+#. placeholder {0}: formatDurationMs(day.downMs)
+#: src/components/network-monitors-table/daily-uptime-bar.tsx
+msgid "{0} down"
+msgstr ""
 
 #. placeholder {0}: table.getFilteredSelectedRowModel().rows.length
 #. placeholder {1}: table.getFilteredRowModel().rows.length
@@ -30,11 +58,30 @@ msgstr "{0} 可用"
 msgid "{0} of {1} row(s) selected."
 msgstr "已选择 {0} / {1} 行"
 
+#. placeholder {0}: selected.length
 #. placeholder {0}: selectedSystemIds.size
-#: src/components/network-monitors-table/monitor-dialog.tsx
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/system-multi-select.tsx
+#: src/components/network-monitors-table/system-multi-select.tsx
+#: src/components/routes/settings/maintenance.tsx
 msgid "{0} selected"
 msgstr "已选择 {0} 个"
+
+#. placeholder {0}: formatUptime(day.up)
+#. placeholder {0}: formatUptime(day.uptime)
+#. placeholder {0}: formatUptime(overall)
+#: src/components/network-monitors-table/daily-uptime-bar.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/routes/status-page.tsx
+msgid "{0} uptime"
+msgstr ""
+
+#: src/components/active-alerts.tsx
+msgid "{alertCount, plural, one {# active alert} other {# active alerts}}"
+msgstr ""
+
+#: src/components/active-alerts.tsx
+msgid "{alertCount, plural, one {# alert is currently triggered} other {# alerts are currently triggered}}"
+msgstr ""
 
 #: src/components/routes/system/info-bar.tsx
 msgid "{cores, plural, one {# core} other {# cores}}"
@@ -52,6 +99,14 @@ msgstr "{count, plural, one {{countString} 小时} other {{countString} 小时}}
 msgid "{count, plural, one {{countString} minute} few {{countString} minutes} many {{countString} minutes} other {{countString} minutes}}"
 msgstr "{count, plural, one {{countString} 分钟} few {{countString} 分钟} many {{countString} 分钟} other {{countString} 分钟}}"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "{count, plural, one {# monitor} other {# monitors}}"
+msgstr ""
+
+#: src/components/alerts-history-columns.tsx
+msgid "{days, plural, one {# day} other {# days}}"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 msgid "{daysLeft, plural, one {# day} other {# days}}"
 msgstr ""
@@ -60,8 +115,22 @@ msgstr ""
 msgid "{diskName} I/O"
 msgstr "{diskName} I/O"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "{missing, plural, one {# selected monitor is unavailable} other {# selected monitors are unavailable}}"
+msgstr ""
+
+#: src/components/active-alerts.tsx
+#: src/components/active-alerts.tsx
+msgid "{monitorCount, plural, one {# monitor is down} other {# monitors are down}}"
+msgstr ""
+
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "{numFailed, plural, one {# failed service} other {# failed services}}"
+msgstr ""
+
+#: src/components/active-alerts.tsx
+#: src/components/active-alerts.tsx
+msgid "{systemCount, plural, one {Across # system} other {Across # systems}}"
 msgstr ""
 
 #: src/components/routes/system/info-bar.tsx
@@ -69,7 +138,31 @@ msgid "{threads, plural, one {# thread} other {# threads}}"
 msgstr "{threads, plural, one {# 线程} other {# 线程}}"
 
 #: src/components/systems-table/systems-table-columns.tsx
+msgid "{total, plural, one {# update} other {# updates}}"
+msgstr ""
+
+#: src/components/systems-table/systems-table-columns.tsx
 msgid "{totalCount, plural, one {# service} other {# services}}"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "0 – at most once"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "0 – normal"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "1 – at least once"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "1 – high"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "1 – min"
 msgstr ""
 
 #: src/lib/utils.ts
@@ -98,21 +191,80 @@ msgstr "12 小时"
 msgid "15 min"
 msgstr "15 分钟"
 
+#: src/lib/shoutrrr.ts
+msgid "2 – exactly once"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "2 – low"
+msgstr ""
+
 #: src/lib/utils.ts
 msgid "24 hours"
 msgstr "24 小时"
 
+#: src/components/routes/status-page.tsx
+msgid "24h"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "3 – default"
+msgstr ""
+
 #: src/lib/utils.ts
 msgid "30 days"
 msgstr "30 天"
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "30 days ago"
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "30d"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "4 – high"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "5 – max / urgent"
+msgstr ""
 
 #. Load average
 #: src/components/routes/system/charts/load-average-chart.tsx
 msgid "5 min"
 msgstr "5 分钟"
 
+#: src/components/routes/status-page.tsx
+msgid "7d"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "A password requires a username"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "A status page can show up to {MAX_MONITORS} monitors."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Accepted status codes"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Access token"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Account SID"
+msgstr ""
+
 #. Table column
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
+#: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/routes/system/storage-pools-table.tsx
@@ -131,15 +283,20 @@ msgstr "活跃"
 msgid "Active Alerts"
 msgstr "启用的警报"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "Active now"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Active state"
 msgstr "活动状态"
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/routes/settings/notification-builder.tsx
 msgid "Add"
 msgstr ""
 
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
@@ -147,6 +304,29 @@ msgstr ""
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Add {foo}"
 msgstr "添加 {foo}"
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Add header"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
+msgid "Add maintenance"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Add monitor…"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+#: src/components/routes/settings/notifications.tsx
+msgid "Add notification"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "Add status page"
+msgstr ""
 
 #: src/components/add-system.tsx
 #: src/components/add-system.tsx
@@ -156,8 +336,8 @@ msgid "Add System"
 msgstr "添加 系统"
 
 #: src/components/routes/settings/notifications.tsx
-msgid "Add URL"
-msgstr "添加 URL"
+#~ msgid "Add URL"
+#~ msgstr "添加 URL"
 
 #: src/components/routes/settings/general.tsx
 msgid "Adjust display options for charts."
@@ -181,9 +361,14 @@ msgstr "之后"
 msgid "After setting the environment variables, restart your InfraScope hub for changes to take effect."
 msgstr "设置环境变量后，重新启动您的 InfraScope hub 以使更改生效。"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Agent"
 msgstr "客户端"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Agent update required for these options"
+msgstr ""
 
 #: src/components/command-palette.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
@@ -204,6 +389,10 @@ msgstr "警报"
 msgid "All Containers"
 msgstr "所有容器"
 
+#: src/lib/shoutrrr.ts
+msgid "all devices"
+msgstr ""
+
 #: src/components/alerts/alerts-sheet.tsx
 #: src/components/command-palette.tsx
 #: src/components/routes/home.tsx
@@ -213,23 +402,64 @@ msgstr "所有容器"
 msgid "All Systems"
 msgstr "所有客户端"
 
+#: src/components/routes/status-page.tsx
+msgid "All systems operational"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "An incoming webhook URL, or a bot token like xoxb-… for bot mode."
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Anyone with the link can view the page. Otherwise only you can."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "API key"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "API token"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Application token"
+msgstr ""
+
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Are you sure you want to delete {name}?"
 msgstr "您确定要删除 {name} 吗？"
 
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/status-pages.tsx
 msgid "Are you sure?"
 msgstr "您确定吗？"
+
+#: src/lib/shoutrrr.ts
+msgid "Auth token"
+msgstr ""
 
 #: src/components/copy-to-clipboard.tsx
 msgid "Automatic copy requires a secure context."
 msgstr "自动复制所需的安全上下文。"
 
+#: src/components/routes/system/package-updates-table.tsx
+msgctxt "Package version available to install"
+msgid "Available"
+msgstr ""
+
 #: src/components/routes/system/storage-pools-table.tsx
 msgctxt "Disk space available"
 msgid "Available"
 msgstr "可用"
+
+#: src/lib/shoutrrr.ts
+msgid "Avatar URL"
+msgstr ""
 
 #: src/components/routes/system/chart-card.tsx
 msgid "Average"
@@ -284,6 +514,10 @@ msgstr "平均、最小和最大响应时间"
 msgid "Avg 1h"
 msgstr "1 小时平均"
 
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Back to services"
+msgstr ""
+
 #: src/components/command-palette.tsx
 #: src/components/navbar.tsx
 msgid "Backups"
@@ -293,6 +527,19 @@ msgstr "备份"
 #: src/lib/alerts.ts
 msgid "Bandwidth"
 msgstr "带宽"
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+#: src/lib/shoutrrr.ts
+msgid "Basic auth password"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Basic auth user"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Basic auth username"
+msgstr ""
 
 #. Battery label in systems table header
 #: src/components/systems-table/systems-table-columns.tsx
@@ -324,14 +571,6 @@ msgstr "之前"
 msgid "Below {0}{1} in last {2, plural, one {# minute} other {# minutes}}"
 msgstr "在过去{2, plural, one {# 分钟} other {# 分钟}}中低于{0}{1}"
 
-#: src/components/login/auth-form.tsx
-msgid "InfraScope supports OpenID Connect and many OAuth2 authentication providers."
-msgstr "InfraScope 支持 OpenID Connect 和其他 OAuth2 认证方式。"
-
-#: src/components/routes/settings/notifications.tsx
-msgid "InfraScope uses <0>Shoutrrr</0> to integrate with popular notification services."
-msgstr "InfraScope 使用 <0>Shoutrrr</0> 以实现与常见的通知服务集成。"
-
 #: src/components/add-system.tsx
 msgid "Binary"
 msgstr "二进制"
@@ -341,18 +580,60 @@ msgstr "二进制"
 msgid "Bits (Kbps, Mbps, Gbps)"
 msgstr "比特 (Kbps, Mbps, Gbps)"
 
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Body"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Boot state"
 msgstr "启动状态"
+
+#: src/lib/shoutrrr.ts
+msgid "Border color"
+msgstr ""
+
+#. placeholder {0}: str(f.channel)
+#: src/lib/shoutrrr.ts
+msgid "bot · {0}"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Bot API key"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Bot email"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Bot name"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Bot token"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Bot token (xoxb)"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Bot webhook key"
+msgstr ""
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Bulk Add"
 msgstr "批量添加"
 
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 msgid "Bulk Add {foo}"
 msgstr "批量添加{foo}"
+
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
+msgid "Bulk added monitors run on the selected agents."
+msgstr ""
 
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 msgid "Bulk copy"
@@ -379,9 +660,15 @@ msgstr "可启动"
 msgid "Can stop"
 msgstr "可停止"
 
+#: src/components/network-monitors-table/monitor-push-url.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/notification-builder.tsx
 #: src/components/routes/settings/quiet-hours.tsx
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Cancel"
 msgstr "取消"
@@ -416,6 +703,18 @@ msgstr ""
 msgid "Certificate expires {expires}"
 msgstr ""
 
+#: src/lib/alerts.ts
+msgid "Certificate expiring"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Certificate expiry notification (days)"
+msgstr ""
+
+#: src/components/routes/system/package-updates-table.tsx
+msgid "Change"
+msgstr ""
+
 #: src/components/routes/settings/general.tsx
 msgid "Change display units for metrics."
 msgstr "更改指标的显示单位。"
@@ -423,6 +722,31 @@ msgstr "更改指标的显示单位。"
 #: src/components/routes/settings/general.tsx
 msgid "Change general application options."
 msgstr "更改常规应用程序选项。"
+
+#: src/lib/shoutrrr.ts
+msgid "Channel (stream)"
+msgstr ""
+
+#. placeholder {0}: maskSecret(str(f.channel))
+#: src/lib/shoutrrr.ts
+msgid "channel {0}"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Channel ID"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Channel or user"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Channel override"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Channel token"
+msgstr ""
 
 #: src/components/routes/system/charts/sensor-charts.tsx
 msgid "Charge"
@@ -441,6 +765,14 @@ msgstr "图表选项"
 msgid "Chart width"
 msgstr "图表宽度"
 
+#: src/lib/shoutrrr.ts
+msgid "Chat IDs or @channel names."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Chats"
+msgstr ""
+
 #: src/components/login/forgot-pass-form.tsx
 msgid "Check {email} for a reset link."
 msgstr "检查 {email} 以获取重置链接。"
@@ -449,20 +781,38 @@ msgstr "检查 {email} 以获取重置链接。"
 msgid "Check logs for more details."
 msgstr "检查日志以获取更多详细信息。"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Check the availability and response time of a service from the hub or an agent."
+msgstr ""
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Check your monitoring service"
 msgstr "检查您的监控服务"
 
-#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notification-builder.tsx
 msgid "Check your notification service"
 msgstr "检查您的通知服务"
+
+#. placeholder {0}: formatShortDate(new Date(data.checkedAt * 1000).toISOString())
+#: src/components/routes/system/package-updates-table.tsx
+msgid "Checked {0}"
+msgstr ""
 
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "Checksum errors"
 msgstr "校验和错误"
 
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Choose where alerts should be sent."
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Choose which monitors to show and what details are visible."
+msgstr ""
+
 #: src/components/containers-table/containers-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/routes/system/package-updates-table.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/routes/system/storage-pools-table.tsx
 #: src/components/routes/system/storage-pools-table.tsx
@@ -470,11 +820,13 @@ msgstr "校验和错误"
 msgid "Clear"
 msgstr "清除"
 
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/system-multi-select.tsx
+#: src/components/routes/settings/maintenance.tsx
 msgid "Clear all"
 msgstr "全部清除"
 
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/system-multi-select.tsx
+#: src/components/routes/settings/maintenance.tsx
 msgid "Clear matches"
 msgstr "清除匹配项"
 
@@ -498,6 +850,22 @@ msgstr "点击系统查看更多信息。"
 msgid "Click to copy"
 msgstr "点击复制"
 
+#: src/lib/shoutrrr.ts
+msgid "Click URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Client ID"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Client key"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Comma separated codes or ranges, e.g. 200-299, 301. Defaults to 200-399."
+msgstr ""
+
 #: src/components/login/forgot-pass-form.tsx
 #: src/components/login/forgot-pass-form.tsx
 msgid "Command line instructions"
@@ -508,8 +876,8 @@ msgid "Configure how you receive alert notifications."
 msgstr "配置您接收警报通知的方式。"
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
-msgid "Configure response monitoring from this agent."
-msgstr "从此客户端配置响应监控。"
+#~ msgid "Configure response monitoring from this agent."
+#~ msgstr "从此客户端配置响应监控。"
 
 #: src/components/login/auth-form.tsx
 #: src/components/login/auth-form.tsx
@@ -519,6 +887,10 @@ msgstr "确认密码"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Conflicts"
 msgstr "冲突"
+
+#: src/lib/shoutrrr.ts
+msgid "Connection"
+msgstr ""
 
 #: src/components/active-alerts.tsx
 msgid "Connection is down"
@@ -536,6 +908,15 @@ msgstr "容器健康"
 msgid "Containers"
 msgstr "容器"
 
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Contains characters that are not allowed here (/ ? # @ : or spaces)"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Content-Type"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/systems-table/systems-table-columns.tsx
@@ -545,6 +926,11 @@ msgstr "继续"
 #: src/lib/utils.ts
 msgid "Copied to clipboard"
 msgstr "已复制到剪贴板"
+
+#: src/components/network-monitors-table/monitor-push-url.tsx
+#: src/components/network-monitors-table/monitor-push-url.tsx
+msgid "Copy"
+msgstr ""
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
@@ -601,6 +987,12 @@ msgstr "复制下面的客户端<0>docker-compose.yml</0>内容，或使用<1>�
 msgid "Copy to system"
 msgstr "复制到系统"
 
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "Copy URL"
+msgstr ""
+
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Copy YAML"
 msgstr "复制 YAML"
@@ -647,9 +1039,15 @@ msgstr "CPU 时间细分"
 msgid "CPU Usage"
 msgstr "CPU 使用率"
 
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
+#: src/components/routes/settings/status-pages.tsx
 msgid "Create"
 msgstr "创建"
+
+#: src/lib/shoutrrr.ts
+msgid "Create a \"Post to a channel when a webhook request is received\" workflow in Teams and paste its URL. Legacy Office 365 connector URLs are no longer supported."
+msgstr ""
 
 #: src/components/login/auth-form.tsx
 msgid "Create account"
@@ -688,6 +1086,11 @@ msgstr "累计上传"
 msgid "Cumulative Write"
 msgstr "写入总量"
 
+#: src/components/routes/system/package-updates-table.tsx
+msgctxt "Installed package version"
+msgid "Current"
+msgstr ""
+
 #. Context: Battery state
 #. Context: Battery state
 #: src/components/routes/system/charts/sensor-charts.tsx
@@ -695,20 +1098,48 @@ msgstr "写入总量"
 msgid "Current state"
 msgstr "当前状态"
 
+#: src/lib/shoutrrr.ts
+msgid "Custom headers"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+#: src/components/routes/settings/notification-builder.tsx
+#: src/components/routes/settings/notification-builder.tsx
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Custom URL"
+msgstr ""
+
 #. Power Cycles
 #: src/components/routes/system/smart-table.tsx
 msgid "Cycles"
 msgstr "循环次数"
 
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Daily"
 msgstr "每日"
 
+#: src/components/network-monitors-table/daily-uptime-bar.tsx
+#: src/components/routes/status-page.tsx
+msgid "Daily uptime"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Default"
+msgstr ""
+
 #: src/components/routes/system/info-bar.tsx
 msgctxt "Default system layout option"
 msgid "Default"
 msgstr "默认"
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Default (10)"
+msgstr ""
 
 #: src/components/routes/settings/general.tsx
 msgid "Default time period"
@@ -716,16 +1147,32 @@ msgstr "默认时间段"
 
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/notification-builder.tsx
 #: src/components/routes/settings/quiet-hours.tsx
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Delete"
 msgstr "删除"
 
+#. placeholder {0}: info.name
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Delete {0} notification"
+msgstr ""
+
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Delete fingerprint"
 msgstr "删除指纹"
 
+#: src/lib/shoutrrr.ts
+msgid "Deliver as critical alert"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/status-pages.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Description"
 msgstr "描述"
@@ -737,6 +1184,26 @@ msgstr "详情"
 #: src/components/routes/system/smart-table.tsx
 msgid "Device"
 msgstr "设备"
+
+#: src/lib/shoutrrr.ts
+msgid "Device IDs"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Device key"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Device names, #channel tags or email addresses. Leave empty to push to all devices."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Devices"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Direct message"
+msgstr ""
 
 #. Context: Battery state
 #: src/lib/i18n.ts
@@ -766,6 +1233,10 @@ msgctxt "Layout display options"
 msgid "Display"
 msgstr "显示"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "DNS Server"
+msgstr ""
+
 #: src/components/routes/system/charts/cpu-charts.tsx
 msgid "Docker CPU Usage"
 msgstr "Docker CPU 使用"
@@ -783,8 +1254,22 @@ msgstr "Docker 网络 I/O"
 msgid "Documentation"
 msgstr "文档"
 
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Don't follow"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Don't send"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Done"
+msgstr ""
+
 #. Context: System is down
 #: src/components/alerts-history-columns.tsx
+#: src/components/network-monitors-table/monitor-status-badge.tsx
+#: src/components/network-monitors-table/status-bar.tsx
 #: src/components/routes/system/info-bar.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 #: src/lib/alerts.ts
@@ -803,16 +1288,48 @@ msgstr "下载"
 msgid "Duration"
 msgstr "持续时间"
 
+#: src/lib/shoutrrr.ts
+msgid "Each line must look like key=value"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Each recipient must be a phone number, group.<id> or u:username"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/notification-builder.tsx
 #: src/components/routes/settings/quiet-hours.tsx
+#: src/components/routes/settings/status-pages.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Edit"
 msgstr "编辑"
+
+#. placeholder {0}: info.name
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Edit {0} notification"
+msgstr ""
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Edit {foo}"
 msgstr "编辑 {foo}"
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Edit as form"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Edit as URL"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Edit maintenance"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Edit status page"
+msgstr ""
 
 #: src/components/add-system.tsx
 msgid "Edit System"
@@ -828,15 +1345,30 @@ msgstr "电子邮件"
 msgid "Email notifications"
 msgstr "电子邮件通知"
 
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Emoji name or image URL"
+msgstr ""
+
 #. Context: Battery state
 #: src/lib/i18n.ts
 msgid "Empty"
 msgstr "空电"
 
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "End Time"
 msgstr "结束时间"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "End time must be after start time."
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Ended"
+msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Endpoint URL"
@@ -845,6 +1377,38 @@ msgstr "端点 URL"
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Endpoint URL to ping (required)"
 msgstr "要 ping 的端点 URL (必填)"
+
+#: src/lib/shoutrrr.ts
+msgid "Enter a bot token (xoxb-…)"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Enter a full http(s):// URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Enter a host name, optionally with :port"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Enter a phone number with country code, e.g. +15551234567"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Enter a valid URL, e.g. ntfy://ntfy.sh/topic"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Enter a whole number between {min} and {max}"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Enter an incoming webhook URL"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Enter any <0>Shoutrrr</0> URL."
+msgstr ""
 
 #: src/components/login/login.tsx
 msgid "Enter email address to reset password"
@@ -858,12 +1422,17 @@ msgstr "输入电子邮件地址..."
 msgid "Enter your one-time password."
 msgstr "输入您的一次性密码。"
 
+#: src/lib/shoutrrr.ts
+msgid "Entity"
+msgstr ""
+
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Ephemeral"
 msgstr "暂时"
 
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-push-url.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
@@ -872,13 +1441,26 @@ msgstr "暂时"
 #: src/components/routes/settings/heartbeat.tsx
 #: src/components/routes/settings/heartbeat.tsx
 #: src/components/routes/settings/heartbeat.tsx
-#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/notification-builder.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
+#: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Error"
 msgstr "错误"
+
+#: src/lib/shoutrrr.ts
+msgid "EU (api.eu.opsgenie.com)"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Event names"
+msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Example:"
@@ -903,6 +1485,14 @@ msgstr "未在<0>config.yml</0>中定义的客户端将被删除。请定期备�
 msgid "Exited active"
 msgstr "退出活动状态"
 
+#: src/lib/shoutrrr.ts
+msgid "Expected a token like 123456789:ABC-def…"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Expected value"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 msgid "Expired"
 msgstr ""
@@ -923,6 +1513,10 @@ msgstr "导出配置"
 msgid "Export your current systems configuration."
 msgstr "导出您当前的系统配置。"
 
+#: src/lib/shoutrrr.ts
+msgid "Extra JSON data"
+msgstr ""
+
 #: src/components/routes/settings/general.tsx
 msgid "Fahrenheit (°F)"
 msgstr "华氏度 (°F)"
@@ -930,6 +1524,10 @@ msgstr "华氏度 (°F)"
 #: src/components/routes/system/smart-table.tsx
 msgid "Failed Attributes:"
 msgstr "失败属性："
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Failed checks are retried this many times before the monitor is marked down."
+msgstr ""
 
 #: src/lib/alerts.ts
 msgid "Failed Services"
@@ -944,17 +1542,33 @@ msgstr "认证失败"
 msgid "Failed to delete monitors."
 msgstr "删除监控失败。"
 
+#: src/components/routes/system/package-updates-table.tsx
+msgid "Failed to load package updates"
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "Failed to load status page"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Failed to save maintenance"
+msgstr ""
+
 #: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Failed to save settings"
 msgstr "保存设置失败"
 
+#: src/components/routes/settings/status-pages.tsx
+msgid "Failed to save status page"
+msgstr ""
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Failed to send heartbeat"
 msgstr "心跳发送失败"
 
-#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notification-builder.tsx
 msgid "Failed to send test notification"
 msgstr "发送测试通知失败"
 
@@ -975,10 +1589,15 @@ msgstr "失败: {0}"
 msgid "Fans"
 msgstr "风扇"
 
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Fields filled from the webhook URL."
+msgstr ""
+
 #: src/components/containers-table/containers-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/system/chart-card.tsx
+#: src/components/routes/system/package-updates-table.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/routes/system/storage-pools-table.tsx
 #: src/components/routes/system/storage-pools-table.tsx
@@ -1014,6 +1633,10 @@ msgstr "可用空间"
 msgctxt "Button to copy install command"
 msgid "FreeBSD command"
 msgstr "FreeBSD 命令"
+
+#: src/lib/shoutrrr.ts
+msgid "From number"
+msgstr ""
 
 #. Context: Battery state
 #: src/components/routes/system/info-bar.tsx
@@ -1052,6 +1675,26 @@ msgstr "GPU 使用率"
 msgid "Grid"
 msgstr "网格"
 
+#: src/lib/shoutrrr.ts
+msgid "Group"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Header name"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Header value"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Headers"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Headers, body and credentials aren't visible to you and are kept unchanged."
+msgstr ""
+
 #: src/components/containers-table/containers-table-columns.tsx
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "Health"
@@ -1061,6 +1704,10 @@ msgstr "健康"
 msgid "Heartbeat"
 msgstr "心跳"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Heartbeat interval (s)"
+msgstr ""
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Heartbeat Monitoring"
 msgstr "心跳监控"
@@ -1069,15 +1716,35 @@ msgstr "心跳监控"
 msgid "Heartbeat sent successfully"
 msgstr "心跳发送成功"
 
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Hide secrets"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Hide values"
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgctxt "Button to copy install command"
 msgid "Homebrew command"
 msgstr "Homebrew 安装命令"
 
+#: src/lib/shoutrrr.ts
+msgid "Host"
+msgstr ""
+
 #: src/components/add-system.tsx
 msgid "Host / IP"
 msgstr "主机/IP"
+
+#: src/lib/shoutrrr.ts
+msgid "Host of your signal-cli-rest-api server."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "HTTP method"
+msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "HTTP Method"
@@ -1086,6 +1753,27 @@ msgstr "HTTP 方法"
 #: src/components/routes/settings/heartbeat.tsx
 msgid "HTTP method: POST, GET, or HEAD (default: POST)"
 msgstr "HTTP 方法：POST、GET 或 HEAD (默认：POST)"
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "HTTP options"
+msgstr ""
+
+#. placeholder {0}: outdatedAgents.map((id) => allSystems[id]?.name).join(", ")
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "HTTP options, timeouts and retry intervals need agent version 0.21.0 or newer: {0}"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Hub"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Hub monitors must use an interval of at least {hubMinInterval} seconds."
+msgstr ""
 
 #: src/components/routes/system/disk-io-sheet.tsx
 msgctxt "Disk I/O average operation time (iostat await)"
@@ -1102,6 +1790,17 @@ msgctxt "Percent of time the disk is busy with I/O"
 msgid "I/O Utilization"
 msgstr "I/O 利用率"
 
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Icon"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Icon URL"
+msgstr ""
+
 #. Context: Battery state
 #: src/lib/i18n.ts
 msgid "Idle"
@@ -1110,6 +1809,10 @@ msgstr "闲置"
 #: src/components/login/forgot-pass-form.tsx
 msgid "If you've lost the password to your admin account, you may reset it using the following command."
 msgstr "如果您丢失了管理员账户的密码，可以使用以下命令重置。"
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Ignore TLS errors"
+msgstr ""
 
 #: src/components/containers-table/containers-table-columns.tsx
 msgctxt "Docker image"
@@ -1122,9 +1825,29 @@ msgctxt "Docker image"
 msgid "Image update available"
 msgstr "有可用的镜像更新"
 
+#: src/components/routes/status-page.tsx
+msgid "In progress"
+msgstr ""
+
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Inactive"
 msgstr "非活跃"
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Incidents"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Incoming webhook"
+msgstr ""
+
+#: src/components/login/auth-form.tsx
+msgid "InfraScope supports OpenID Connect and many OAuth2 authentication providers."
+msgstr "InfraScope 支持 OpenID Connect 和其他 OAuth2 认证方式。"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "InfraScope uses <0>Shoutrrr</0> to integrate with popular notification services."
+msgstr "InfraScope 使用 <0>Shoutrrr</0> 以实现与常见的通知服务集成。"
 
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
@@ -1140,9 +1863,54 @@ msgstr "间隔 (秒)"
 msgid "Invalid email address."
 msgstr "无效的电子邮件地址。"
 
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Invert keyword (fail when found)"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "JSON"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "JSON message key"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "JSON path"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "JSON title key"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Key"
+msgstr ""
+
+#. placeholder {0}: maskSecret(str(f.key))
+#: src/lib/shoutrrr.ts
+msgid "key {0}"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Keyword"
+msgstr ""
+
 #: src/components/routes/settings/general.tsx
 msgid "Language"
 msgstr "语言"
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Last 30 days"
+msgstr ""
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Last check"
+msgstr ""
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Last error"
+msgstr ""
 
 #: src/components/systems-table/systems-table.tsx
 msgid "Layout"
@@ -1151,6 +1919,15 @@ msgstr "布局"
 #: src/components/routes/settings/general.tsx
 msgid "Layout width"
 msgstr "布局宽度"
+
+#: src/lib/shoutrrr.ts
+msgid "Leave empty to send to all devices."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Leave empty when using an access token."
+msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Lifecycle"
@@ -1186,9 +1963,14 @@ msgstr "负载"
 msgid "Load state"
 msgstr "加载状态"
 
+#: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Loading..."
 msgstr "加载中..."
+
+#: src/components/routes/status-page.tsx
+msgid "Loading…"
+msgstr ""
 
 #: src/components/navbar.tsx
 #: src/components/navbar.tsx
@@ -1228,6 +2010,23 @@ msgstr "1 小时丢包"
 msgid "Main PID"
 msgstr "主进程 ID"
 
+#: src/components/network-monitors-table/monitor-status-badge.tsx
+#: src/components/routes/settings/layout.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/status-page.tsx
+#: src/components/routes/status-page.tsx
+msgid "Maintenance"
+msgstr ""
+
+#: src/components/routes/system/package-updates-table.tsx
+msgctxt "Version change"
+msgid "Major"
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "Major outage"
+msgstr ""
+
 #: src/components/routes/settings/layout.tsx
 msgid "Manage display and notification preferences."
 msgstr "管理显示和通知偏好。"
@@ -1236,6 +2035,10 @@ msgstr "管理显示和通知偏好。"
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Manual setup instructions"
 msgstr "手动设置说明"
+
+#: src/lib/shoutrrr.ts
+msgid "Markdown formatting"
+msgstr ""
 
 #. Chart select field. Please try to keep this short.
 #: src/components/routes/system/chart-card.tsx
@@ -1246,6 +2049,10 @@ msgstr "1分钟内最大值"
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 msgid "Max 1h"
 msgstr "1 小时最大"
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Max redirects"
+msgstr ""
 
 #: src/components/containers-table/containers-table-columns.tsx
 #: src/components/routes/system/info-bar.tsx
@@ -1273,10 +2080,31 @@ msgstr "内存使用率"
 msgid "Memory usage of containers"
 msgstr "容器内存使用量"
 
+#: src/lib/shoutrrr.ts
+msgid "Mention mobile numbers"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Mention users"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Message type"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Method"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 msgid "Min 1h"
 msgstr "1 小时最小"
+
+#: src/components/routes/system/package-updates-table.tsx
+msgctxt "Version change"
+msgid "Minor"
+msgstr ""
 
 #. Device model
 #: src/components/routes/system/smart-table.tsx
@@ -1286,20 +2114,68 @@ msgstr "型号"
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Monitor"
 msgstr "监控"
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Monitor created"
+msgstr ""
+
+#: src/lib/alerts.ts
+msgid "Monitor down"
+msgstr ""
+
+#: src/lib/alerts.ts
+msgid "Monitor is down"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "Monitors"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 msgid "Monitors created"
 msgstr "已创建监控"
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "More options"
+msgstr ""
 
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "Mountpoint"
 msgstr "挂载点"
 
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "Move down"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "Move up"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Must be a Power Automate workflow webhook URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Must not contain \"/\" or spaces"
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/alerts-history-columns.tsx
 #: src/components/containers-table/containers-table-columns.tsx
+#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-http-options.tsx
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/systemd-table/systemd-table-columns.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Name"
@@ -1316,8 +2192,8 @@ msgstr "网络"
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
-msgid "Network Monitor"
-msgstr "网络监控"
+#~ msgid "Network Monitor"
+#~ msgstr "网络监控"
 
 #: src/lib/alerts.ts
 msgid "Network Monitor Loss"
@@ -1326,8 +2202,8 @@ msgstr "网络监控丢包"
 #: src/components/command-palette.tsx
 #: src/components/navbar.tsx
 #: src/components/navbar.tsx
-#: src/components/network-monitors-table/monitor-dialog.tsx
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/routes/monitors.tsx
 msgid "Network Monitors"
@@ -1355,9 +2231,38 @@ msgstr "网络单位"
 msgid "No"
 msgstr "否"
 
+#: src/components/network-monitors-table/daily-uptime-bar.tsx
+#: src/components/routes/status-page.tsx
+msgid "No data"
+msgstr ""
+
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "No detail data for this pool."
 msgstr "此存储池没有可用的详细数据。"
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "No incidents in the last 30 days."
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "No maintenance windows."
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "No matching services."
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "No monitors found."
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "No monitors on this page."
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "No more monitors to add"
+msgstr ""
 
 #: src/components/command-palette.tsx
 #: src/components/systemd-table/systemd-table.tsx
@@ -1369,6 +2274,7 @@ msgstr "未找到结果。"
 #: src/components/containers-table/containers-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
+#: src/components/routes/system/package-updates-table.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "No results."
@@ -1378,17 +2284,34 @@ msgstr "无结果。"
 msgid "No S.M.A.R.T. attributes available for this device."
 msgstr "此设备没有可用的 S.M.A.R.T. 属性。"
 
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "No status pages."
+msgstr ""
+
+#: src/components/network-monitors-table/system-multi-select.tsx
 #: src/components/systems-table/systems-table.tsx
 #: src/components/systems-table/systems-table.tsx
 msgid "No systems found."
 msgstr "未找到系统。"
 
+#: src/components/routes/settings/notifications.tsx
+msgid "No webhook or push notifications configured."
+msgstr ""
+
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "None"
 msgstr "无"
 
+#: src/lib/shoutrrr.ts
+msgid "Not a valid Slack webhook URL or token"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Notification services"
+msgstr ""
+
 #: src/components/command-palette.tsx
+#: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Notifications"
@@ -1397,6 +2320,10 @@ msgstr "通知"
 #: src/lib/alerts.ts
 msgid "Notifications may include recent container log excerpts."
 msgstr "通知可能包含近期的容器日志片段。"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Notify when the certificate expires within this many days. 0 disables it."
+msgstr ""
 
 #: src/components/login/auth-form.tsx
 msgid "OAuth 2 / OIDC support"
@@ -1419,6 +2346,16 @@ msgstr "一个或多个监控的丢包率超过 {0}%"
 msgid "One or more services are in a failed state"
 msgstr "一个或多个服务处于失败状态"
 
+#: src/lib/shoutrrr.ts
+msgid "One per line as key=value. Added to JSON payloads."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "One per line as Name=Value."
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "One-time"
@@ -1428,8 +2365,18 @@ msgstr "一次性"
 msgid "One-time password"
 msgstr "一次性密码"
 
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Ongoing"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Open"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
+#: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1438,17 +2385,47 @@ msgstr "一次性密码"
 msgid "Open menu"
 msgstr "打开菜单"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Optional"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Optional. Defaults to the system resolver."
+msgstr ""
+
 #: src/components/login/auth-form.tsx
 msgid "Or continue with"
 msgstr "或使用以下方式登录"
+
+#: src/components/routes/system/package-updates-table.tsx
+msgctxt "Version change"
+msgid "Other"
+msgstr ""
 
 #: src/components/routes/system/cpu-sheet.tsx
 msgid "Other"
 msgstr "其他"
 
+#. placeholder {0}: state.values.extra.map(([k]) => k).join(", ")
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Other parameters kept from the URL: {0}"
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "Outage"
+msgstr ""
+
 #: src/components/alerts/alerts-sheet.tsx
 msgid "Overwrite existing alerts"
 msgstr "覆盖现有警报"
+
+#: src/components/routes/system/package-updates-table.tsx
+msgid "Package"
+msgstr ""
+
+#: src/components/routes/system/package-updates-table.tsx
+msgid "Package Updates"
+msgstr ""
 
 #: src/components/routes/system/charts/monitors-charts.tsx
 msgid "Packet loss (%)"
@@ -1471,8 +2448,17 @@ msgstr "第 {0} 页，共 {1} 页"
 msgid "Pages / Settings"
 msgstr "页面 / 设置"
 
+#: src/lib/shoutrrr.ts
+msgid "Parse mode"
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "Partial outage"
+msgstr ""
+
 #: src/components/login/auth-form.tsx
 #: src/components/login/auth-form.tsx
+#: src/lib/shoutrrr.ts
 msgid "Password"
 msgstr "密码"
 
@@ -1484,6 +2470,11 @@ msgstr "密码必须至少包含 8 个字符。"
 msgid "Password must be less than 72 bytes."
 msgstr "密码必须小于 72 字节。"
 
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Password or access token"
+msgstr ""
+
 #: src/components/login/forgot-pass-form.tsx
 msgid "Password reset request received"
 msgstr "已收到密码重置请求"
@@ -1492,11 +2483,39 @@ msgstr "已收到密码重置请求"
 msgid "Past"
 msgstr "过去"
 
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Paste the bot webhook URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Paste the Discord webhook URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Paste the Google Chat webhook URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Paste the incoming webhook URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Paste the Slack webhook URL"
+msgstr ""
+
+#: src/components/routes/system/package-updates-table.tsx
+msgctxt "Version change"
+msgid "Patch"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Pause"
 msgstr "暂停"
 
+#: src/components/network-monitors-table/monitor-status-badge.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Paused"
 msgstr "已暂停"
@@ -1505,9 +2524,18 @@ msgstr "已暂停"
 msgid "Paused ({pausedSystemsLength})"
 msgstr "已暂停 ({pausedSystemsLength})"
 
+#: src/lib/shoutrrr.ts
+msgid "Payload"
+msgstr ""
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Payload format"
 msgstr "有效载荷 (Payload) 格式"
+
+#: src/components/network-monitors-table/monitor-status-badge.tsx
+#: src/components/network-monitors-table/status-bar.tsx
+msgid "Pending"
+msgstr ""
 
 #: src/components/routes/system/cpu-sheet.tsx
 #: src/components/routes/system/cpu-sheet.tsx
@@ -1530,9 +2558,29 @@ msgstr "永久"
 msgid "Persistence"
 msgstr "持久性"
 
+#: src/lib/shoutrrr.ts
+msgid "Phone number or Messaging Service SID (MG…)."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Phone numbers, group.<id> group IDs or u:username."
+msgstr ""
+
 #: src/components/routes/system/raw-capacity-label.tsx
 msgid "Physical device space. True usable capacity is unknown. Pool disk usage alerts are disabled."
 msgstr "物理设备空间。真实可用容量未知。存储池磁盘使用率警报已禁用。"
+
+#: src/lib/shoutrrr.ts
+msgid "Plain text"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Platform"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Play notification sound"
+msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Please <0>configure an SMTP server</0> to ensure alerts are delivered."
@@ -1577,6 +2625,8 @@ msgstr "存储池使用率"
 
 #: src/components/add-system.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
 msgid "Port"
 msgstr "端口"
 
@@ -1590,6 +2640,10 @@ msgstr "端口"
 msgid "Power On"
 msgstr "开机时间"
 
+#: src/components/routes/status-page.tsx
+msgid "Powered by <0>InfraScope</0>"
+msgstr ""
+
 #: src/components/routes/system/charts/gpu-charts.tsx
 #: src/components/routes/system/charts/memory-charts.tsx
 msgid "Precise utilization at the recorded time"
@@ -1599,6 +2653,17 @@ msgstr "采集时间下的精确内存使用率"
 msgid "Preferred Language"
 msgstr "首选语言"
 
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Priority"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Private"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Process started"
 msgstr "进程启动"
@@ -1606,8 +2671,15 @@ msgstr "进程启动"
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
 msgid "Protocol"
 msgstr "协议"
+
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "Public"
+msgstr ""
 
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Public key"
@@ -1617,6 +2689,31 @@ msgstr "公钥"
 #: src/components/add-system.tsx
 msgid "Public Key"
 msgstr "公钥"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/lib/network-monitor-utils.ts
+msgid "Push monitor"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Push monitors wait for heartbeats sent to a unique URL and go down when none arrives in time."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-push-url.tsx
+msgid "Push URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Pushbullet access tokens are 34 characters"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "QoS"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Query parameters starting with @ or $ are reserved for headers and extra data"
+msgstr ""
 
 #: src/components/routes/system/disk-io-sheet.tsx
 msgctxt "Disk I/O average queue depth"
@@ -1657,6 +2754,26 @@ msgstr "读取错误"
 msgid "Received"
 msgstr "接收"
 
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/status-bar.tsx
+msgid "Recent checks"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Recipients"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Recipients can't include the sender number"
+msgstr ""
+
+#. placeholder {0}: rawDetected.service.name
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Recognized as {0}."
+msgstr ""
+
 #: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1664,9 +2781,36 @@ msgstr "接收"
 msgid "Refresh"
 msgstr "刷新"
 
+#: src/components/network-monitors-table/monitor-push-url.tsx
+#: src/components/network-monitors-table/monitor-push-url.tsx
+#: src/components/network-monitors-table/monitor-push-url.tsx
+msgid "Regenerate"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-push-url.tsx
+msgid "Regenerate push URL?"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Region"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Relationships"
 msgstr "关系"
+
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "Remove"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Remove header"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Repeats every day. Windows may span midnight."
+msgstr ""
 
 #: src/components/login/login.tsx
 msgid "Request a one-time password"
@@ -1675,6 +2819,10 @@ msgstr "请求一次性密码"
 #: src/components/login/otp-forms.tsx
 msgid "Request OTP"
 msgstr "请求 OTP"
+
+#: src/lib/shoutrrr.ts
+msgid "Required"
+msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Required by"
@@ -1694,15 +2842,20 @@ msgstr "重置密码"
 msgid "Resolved"
 msgstr "已解决"
 
+#: src/lib/shoutrrr.ts
+msgid "Responders"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/routes/status-page.tsx
 #: src/components/routes/system/charts/monitors-charts.tsx
 msgid "Response"
 msgstr "响应"
 
 #: src/components/network-monitors-table/network-monitors-table.tsx
-msgid "Response time monitoring from agents."
-msgstr "来自客户端的响应时间监控。"
+#~ msgid "Response time monitoring from agents."
+#~ msgstr "来自客户端的响应时间监控。"
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Restarts"
@@ -1712,6 +2865,35 @@ msgstr "重启次数"
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Resume"
 msgstr "恢复"
+
+#: src/lib/shoutrrr.ts
+msgid "Retain message"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Retries"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Retry interval (s)"
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "Retrying automatically."
+msgstr ""
+
+#: src/components/routes/system/package-updates-table.tsx
+msgctxt "Version change"
+msgid "Revision"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Room IDs (starting with !) or aliases. Leave empty to post to all joined rooms."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Rooms"
+msgstr ""
 
 #: src/components/routes/system/charts/disk-charts.tsx
 #: src/components/routes/system/charts/disk-charts.tsx
@@ -1728,6 +2910,10 @@ msgstr "轮换令牌"
 msgid "Rows per page"
 msgstr "每页行数"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Runs on"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Runtime Metrics"
 msgstr "运行时指标"
@@ -1739,6 +2925,10 @@ msgstr "S.M.A.R.T. 详情"
 #: src/components/routes/system/smart-table.tsx
 msgid "S.M.A.R.T. Self-Test"
 msgstr "S.M.A.R.T. 自检"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Same as interval"
+msgstr ""
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Save {foo}"
@@ -1761,9 +2951,14 @@ msgstr "保存 系统"
 msgid "Saved in the database and does not expire until you disable it."
 msgstr "保存在数据库中的数据，在您禁用之前不会过期。"
 
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Schedule"
 msgstr "计划"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Schedule maintenance windows for monitors. Monitors show as under maintenance, downtime is not counted and no notifications are sent."
+msgstr ""
 
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Schedule quiet hours where notifications will not be sent, such as during maintenance periods."
@@ -1773,6 +2968,11 @@ msgstr "安排静默时间，在此期间不会发送通知，例如在维护期
 msgid "Schedule quiet hours where notifications will not be sent."
 msgstr "安排静默时间，在此期间不会发送通知。"
 
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/status-page.tsx
+msgid "Scheduled"
+msgstr ""
+
 #: src/components/navbar.tsx
 msgid "Search"
 msgstr "搜索"
@@ -1781,14 +2981,36 @@ msgstr "搜索"
 msgid "Search for systems or settings..."
 msgstr "搜索系统或设置..."
 
-#: src/components/network-monitors-table/monitor-dialog.tsx
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
+msgid "Search monitors"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Search services"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Search services..."
+msgstr ""
+
+#: src/components/network-monitors-table/system-multi-select.tsx
+#: src/components/network-monitors-table/system-multi-select.tsx
 msgid "Search systems"
 msgstr "搜索系统"
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Seconds between pings (default: 60)"
 msgstr "Ping 之间的秒数 (默认：60)"
+
+#: src/components/routes/system/package-updates-table.tsx
+#: src/components/routes/system/package-updates-table.tsx
+msgid "Security"
+msgstr ""
+
+#: src/components/routes/system/package-updates-table.tsx
+msgid "Security: {securityCount}"
+msgstr ""
 
 #: src/components/alerts/alerts-sheet.tsx
 msgid "See <0>notification settings</0> to configure how you receive alerts."
@@ -1802,12 +3024,22 @@ msgstr "选择 {foo}"
 msgid "Select a system"
 msgstr "选择系统"
 
-#: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/system-multi-select.tsx
+#: src/components/routes/settings/maintenance.tsx
 msgid "Select all"
 msgstr "全选"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "Select at least one monitor."
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Select at least one system."
+msgstr ""
+
+#: src/components/network-monitors-table/system-multi-select.tsx
+#: src/components/routes/settings/maintenance.tsx
 msgid "Select matches"
 msgstr "选择匹配项"
 
@@ -1815,29 +3047,85 @@ msgstr "选择匹配项"
 msgid "Select row"
 msgstr "选择行"
 
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/system-multi-select.tsx
 msgid "Select systems"
 msgstr "选择系统"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Selected monitors are shown as under maintenance during this window."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-push-url.tsx
+msgid "Send a request to this URL at least once per interval. Optional parameters: <0>status=up|down</0>, <1>msg</1>, <2>ping</2> (ms)."
+msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send a single heartbeat ping to verify your endpoint is working."
 msgstr "发送单个 心跳ping 以验证您的端点是否正常工作。"
 
+#: src/lib/shoutrrr.ts
+msgid "Send each line as a separate embed"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Send heartbeats to this URL from your service, cron job or script."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Send message as"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Send message as raw JSON payload"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Send notifications when this monitor goes down or recovers."
+msgstr ""
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send periodic outbound pings to an external monitoring service so you can monitor InfraScope without exposing it to the internet."
 msgstr "定期向外部监控服务发送外发探测请求，这样您便可以在不将其暴露于互联网的情况下对 InfraScope 进行监控。"
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Send test"
+msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send test heartbeat"
 msgstr "发送测试 心跳"
 
+#: src/lib/shoutrrr.ts
+msgid "Send title as"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Send token in a header instead of the URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Sender number"
+msgstr ""
+
 #: src/components/routes/system/charts/network-charts.tsx
 msgid "Sent"
 msgstr "发送"
 
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Separate with commas"
+msgstr ""
+
 #: src/components/routes/system/smart-table.tsx
 msgid "Serial Number"
 msgstr "序列号"
+
+#: src/lib/shoutrrr.ts
+msgid "Server path"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Server subpath"
+msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Service Details"
@@ -1870,9 +3158,77 @@ msgstr "设置"
 msgid "Settings saved"
 msgstr "设置已保存"
 
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Setup guide"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Share the status and uptime of selected monitors on a page that can be viewed without logging in."
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Shoutrrr URL"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Show each monitor's URL, hostname or IP."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Show link previews"
+msgstr ""
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Show more"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Show on status pages"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Show response times"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Show secrets"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Show targets"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Show values"
+msgstr ""
+
 #: src/components/login/auth-form.tsx
 msgid "Sign in"
 msgstr "登录"
+
+#: src/components/routes/system/charts/wifi-chart.tsx
+msgid "Signal strength of connected Wi-Fi interfaces"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Signing secret"
+msgstr ""
+
+#. placeholder {0}: formatRelativeTime(monitor.statusChanged)
+#. placeholder {1}: formatShortDate(monitor.statusChanged)
+#: src/components/network-monitors-table/monitor-status-badge.tsx
+msgid "Since {0} ({1})"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Skip TLS certificate verification"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Slug"
+msgstr ""
 
 #: src/components/command-palette.tsx
 msgid "SMTP settings"
@@ -1883,6 +3239,24 @@ msgstr "SMTP 设置"
 msgid "Sort By"
 msgstr "排序依据"
 
+#: src/lib/shoutrrr.ts
+msgid "Sound"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Source"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Space path"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Start and end time must differ."
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Start Time"
@@ -1890,6 +3264,7 @@ msgstr "开始时间"
 
 #. Context: alert state (active or resolved)
 #: src/components/alerts-history-columns.tsx
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/system/storage-pools-table.tsx
 #: src/components/systemd-table/systemd-table-columns.tsx
@@ -1897,12 +3272,43 @@ msgid "State"
 msgstr "状态"
 
 #: src/components/containers-table/containers-table-columns.tsx
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/systemd-table/systemd-table.tsx
 #: src/components/systems-table/systems-table.tsx
 #: src/lib/alerts.ts
 msgid "Status"
 msgstr "状态"
+
+#. placeholder {0}: incident.statusCode
+#. placeholder {0}: monitor.lastStatusCode
+#: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Status code {0}"
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+#: src/components/routes/status-page.tsx
+msgid "Status page not found"
+msgstr ""
+
+#: src/components/routes/settings/layout.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "Status Pages"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Status pages that include these monitors show this notice."
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "Status unknown"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Stream"
+msgstr ""
 
 #: src/components/systemd-table/systemd-table-columns.tsx
 msgid "Sub State"
@@ -1950,7 +3356,7 @@ msgid "Systemd Services"
 msgstr "Systemd 服务"
 
 #: src/components/navbar.tsx
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Systems"
 msgstr "系统"
@@ -1968,15 +3374,31 @@ msgctxt "Tabs system layout option"
 msgid "Tabs"
 msgstr "标签页"
 
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Tags"
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-dialog.tsx
-#: src/components/network-monitors-table/network-monitors-columns.tsx
-#: src/components/network-monitors-table/network-monitors-columns.tsx
 msgid "Target"
 msgstr "目标"
 
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
+msgid "target[,protocol[,port[,interval[,server]]]]"
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
-msgid "target[,protocol[,port[,interval]]]"
+#~ msgid "target[,protocol[,port[,interval]]]"
+#~ msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Targets"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Targets (URLs, hostnames, IPs) will be visible to anyone with the link"
 msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
@@ -2002,21 +3424,58 @@ msgstr "温度单位"
 msgid "Temperatures of system sensors"
 msgstr "系统传感器的温度"
 
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Test"
+msgstr ""
+
 #: src/components/routes/settings/notifications.tsx
-msgid "Test <0>URL</0>"
-msgstr "测试<0>URL</0>"
+#~ msgid "Test <0>URL</0>"
+#~ msgstr "测试<0>URL</0>"
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Test heartbeat"
 msgstr "测试 heartbeat"
 
-#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notification-builder.tsx
 msgid "Test notification sent"
 msgstr "测试通知已发送"
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Text the response body must contain"
+msgstr ""
+
+#. placeholder {0}: service.name
+#: src/components/routes/settings/notification-builder.tsx
+msgid "That doesn't look like a {0} webhook URL."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-push-url.tsx
+msgid "The current URL will stop working. Anything using it must be updated with the new URL."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "The full URL requests are sent to. Use http:// to disable TLS."
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "The generated URL is not valid."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "The hub checks the target itself. Only you can see this monitor."
+msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "The overall status is <0>ok</0> when all systems are up, <1>warn</1> when alerts are triggered, and <2>error</2> when any system is down."
 msgstr "当所有系统都正常运行时，整体状态为 <0>ok</0>；当触发警报时为 <1>警告</1>；当任何系统故障时为 <2>错误</2>。"
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "The URL can't be represented by the form"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "The webhook ID is a number"
+msgstr ""
 
 #: src/components/login/forgot-pass-form.tsx
 msgid "Then log into the backend and reset your user account password in the users table."
@@ -2026,10 +3485,44 @@ msgstr "然后登录到后台并在用户表中重置您的用户账户密码。
 msgid "This action cannot be undone. This will permanently delete all current records for {name} from the database."
 msgstr "此操作无法撤销。这将永久删除数据库中{name}的所有当前记录。"
 
+#: src/components/routes/settings/status-pages.tsx
+msgid "This slug is already in use."
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "This status page does not exist or is not public."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "This system"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "This URL can't be edited with the form. It will be saved exactly as entered."
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
 msgid "This will permanently delete all selected records from the database."
 msgstr "这将永久删除数据库中所有选定的记录。"
+
+#. placeholder {0}: deleteRecord?.title
+#: src/components/routes/settings/maintenance.tsx
+msgid "This will permanently delete the maintenance window \"{0}\"."
+msgstr ""
+
+#. placeholder {0}: deleteRecord?.title
+#: src/components/routes/settings/status-pages.tsx
+msgid "This will permanently delete the status page \"{0}\". Its link will stop working."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Thread ID"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Thread timestamp"
+msgstr ""
 
 #: src/components/routes/system/charts/disk-charts.tsx
 msgid "Throughput of {extraFsName}"
@@ -2043,12 +3536,41 @@ msgstr "存储池 {displayName} 的吞吐量"
 msgid "Time format"
 msgstr "时间格式"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Timeout (seconds)"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "Title"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Title and message can't use the same value"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Title color"
+msgstr ""
+
 #: src/components/routes/settings/notifications.tsx
 msgid "To email(s)"
 msgstr "发送到电子邮件"
 
+#: src/lib/shoutrrr.ts
+msgid "To numbers"
+msgstr ""
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/routes/status-page.tsx
+msgid "Today"
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/lib/shoutrrr.ts
 msgid "Token"
 msgstr "令牌"
 
@@ -2065,6 +3587,17 @@ msgstr "令牌允许客户端连接和注册。指纹是每个系统唯一的稳
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Tokens and fingerprints are used to authenticate WebSocket connections to the hub."
 msgstr "令牌与指纹用于验证到中心的 WebSocket 连接。"
+
+#: src/components/routes/status-page.tsx
+#: src/components/routes/status-page.tsx
+msgid "Too many requests, retrying…"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Topic"
+msgstr ""
 
 #: src/components/ui/chart.tsx
 #: src/components/ui/chart.tsx
@@ -2085,6 +3618,8 @@ msgid "Total time spent on read/write (can exceed 100%)"
 msgstr "读写操作总耗时（可超过 100%）"
 
 #. placeholder {0}: data.length
+#. placeholder {0}: rows.length
+#: src/components/routes/system/package-updates-table.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Total: {0}"
 msgstr "总计: {0}"
@@ -2112,6 +3647,14 @@ msgstr "当 5 分钟内的平均负载超过阈值时触发"
 #: src/lib/alerts.ts
 msgid "Triggers when a container's health check reports unhealthy"
 msgstr "当容器健康检查报告为不健康时触发"
+
+#: src/lib/alerts.ts
+msgid "Triggers when a monitor goes down"
+msgstr ""
+
+#: src/lib/alerts.ts
+msgid "Triggers when a monitored certificate is about to expire"
+msgstr ""
 
 #: src/lib/alerts.ts
 msgid "Triggers when any sensor exceeds a threshold"
@@ -2161,12 +3704,22 @@ msgstr "当状态在上线与掉线之间切换时触发"
 msgid "Triggers when usage of any disk exceeds a threshold"
 msgstr "当任何磁盘的使用率超过阈值时触发"
 
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/routes/system/storage-pools-table.tsx
+#: src/lib/shoutrrr.ts
 msgid "Type"
 msgstr "类型"
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Unavailable monitor"
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "Under maintenance"
+msgstr ""
 
 #: src/lib/alerts.ts
 msgid "Unhealthy"
@@ -2187,7 +3740,9 @@ msgid "Universal token"
 msgstr "通用令牌"
 
 #. Context: Battery state
+#: src/components/network-monitors-table/monitor-status-badge.tsx
 #: src/components/routes/system/storage-pools-table.tsx
+#: src/components/systems-table/systems-table-columns.tsx
 #: src/lib/i18n.ts
 msgid "Unknown"
 msgstr "未知"
@@ -2198,6 +3753,8 @@ msgid "Unlimited"
 msgstr "无限制"
 
 #. Context: System is up
+#: src/components/network-monitors-table/monitor-status-badge.tsx
+#: src/components/network-monitors-table/status-bar.tsx
 #: src/components/routes/system/info-bar.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Up"
@@ -2207,7 +3764,19 @@ msgstr "在线"
 msgid "Up ({upSystemsLength})"
 msgstr "在线 ({upSystemsLength})"
 
+#: src/components/routes/system/package-updates-table.tsx
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "Up to date"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Upcoming"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/notification-builder.tsx
 #: src/components/routes/settings/quiet-hours.tsx
+#: src/components/routes/settings/status-pages.tsx
 msgid "Update"
 msgstr "更新"
 
@@ -2220,9 +3789,19 @@ msgstr "更新"
 msgid "Updated"
 msgstr "更新于"
 
+#. placeholder {0}: formatRelativeTime(data.updated, now)
+#: src/components/routes/status-page.tsx
+msgid "Updated {0}"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Updated every 10 minutes."
 msgstr "每 10 分钟更新一次。"
+
+#: src/components/routes/system.tsx
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "Updates"
+msgstr ""
 
 #: src/components/routes/system/network-sheet.tsx
 msgid "Upload"
@@ -2232,6 +3811,42 @@ msgstr "上传"
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Uptime"
 msgstr "运行时间"
+
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Uptime 24h"
+msgstr ""
+
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Uptime 30d"
+msgstr ""
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Uptime 7d"
+msgstr ""
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Uptime and response time monitoring from the hub and agents."
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "URL fragments (#…) are not supported"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "URL preview"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "US (api.opsgenie.com)"
+msgstr ""
 
 #: src/components/routes/system/charts/disk-charts.tsx
 #: src/components/routes/system/charts/disk-charts.tsx
@@ -2247,6 +3862,22 @@ msgstr "使用"
 msgid "Usage of storage pool {displayName}"
 msgstr "存储池 {displayName} 的使用量"
 
+#: src/components/routes/settings/status-pages.tsx
+msgid "Use 2-63 lowercase letters, numbers and hyphens, starting with a letter or number."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Use plain HTTP (disable TLS)"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Use TLS (mqtts)"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Use type:name, e.g. team:ops or user:jane@example.com"
+msgstr ""
+
 #: src/components/routes/system/charts/memory-charts.tsx
 #: src/components/routes/system/charts/memory-charts.tsx
 #: src/components/routes/system/storage-pools-table.tsx
@@ -2254,6 +3885,27 @@ msgstr "存储池 {displayName} 的使用量"
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "Used"
 msgstr "已用"
+
+#. placeholder {0}: maskSecret(str(f.userKey))
+#: src/lib/shoutrrr.ts
+msgid "user {0}"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "User key"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Username"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Username override"
+msgstr ""
 
 #: src/components/command-palette.tsx
 #: src/components/navbar.tsx
@@ -2266,13 +3918,39 @@ msgid "Utilization"
 msgstr "利用率"
 
 #: src/components/alerts-history-columns.tsx
+#: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Value"
 msgstr "值"
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Value {n}"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Value 1"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Value 2"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Value 3"
+msgstr ""
 
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/systems-table/systems-table.tsx
 msgid "View"
 msgstr "视图"
+
+#: src/components/active-alerts.tsx
+msgid "View alerts"
+msgstr ""
+
+#: src/components/alert-banner-sheet.tsx
+msgid "View details"
+msgstr ""
 
 #: src/components/routes/system/cpu-sheet.tsx
 #: src/components/routes/system/disk-io-sheet.tsx
@@ -2288,6 +3966,10 @@ msgstr "查看您最近的200个警报。"
 #: src/components/systems-table/systems-table.tsx
 msgid "Visible Fields"
 msgstr "可见列"
+
+#: src/lib/shoutrrr.ts
+msgid "Visible to"
+msgstr ""
 
 #: src/components/routes/system/chart-card.tsx
 msgid "Waiting for enough records to display"
@@ -2309,9 +3991,47 @@ msgstr "警告 (%)"
 msgid "Warning thresholds"
 msgstr "警告阈值"
 
+#: src/lib/shoutrrr.ts
+msgid "webhook"
+msgstr ""
+
+#. placeholder {0}: maskSecret(str(f.webhookId))
+#: src/lib/shoutrrr.ts
+msgid "webhook {0}"
+msgstr ""
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Webhook / Push notifications"
 msgstr "Webhook / 推送通知"
+
+#: src/lib/shoutrrr.ts
+msgid "Webhook ID"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Webhook token"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Webhook token (part 1)"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Webhook token (part 2)"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Webhook URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Webhook URL or token"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Webhooks key"
+msgstr ""
 
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "When enabled, this token allows agents to self-register without prior system creation."
@@ -2321,11 +4041,27 @@ msgstr "启用后，此令牌允许代理无需事先创建系统即可自行注
 msgid "When using POST, each heartbeat includes a JSON payload with system status summary, list of down systems, and triggered alerts."
 msgstr "使用 POST 时，每个 heartbeat 都包含一个 JSON 有效载荷，其中包括系统状态摘要、故障系统列表和触发的警报。"
 
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "Wi-Fi"
+msgstr ""
+
+#: src/components/routes/system/charts/wifi-chart.tsx
+msgid "Wi-Fi signal"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Wildcards (+, #) can't be used when publishing"
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgctxt "Button to copy install command"
 msgid "Windows command"
 msgstr "Windows 安装命令"
+
+#: src/lib/shoutrrr.ts
+msgid "Workflow webhook URL"
+msgstr ""
 
 #. Disk write
 #. Disk write
@@ -2355,6 +4091,10 @@ msgstr "YAML 配置"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Yes"
 msgstr "是"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "You have unsaved changes."
+msgstr ""
 
 #: src/components/routes/settings/layout.tsx
 msgid "Your user settings have been updated."

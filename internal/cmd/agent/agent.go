@@ -26,7 +26,7 @@ func (noKeyProvidedError) Error() string {
 type cmdOptions struct {
 	key    string // key is the public key(s) for SSH authentication.
 	listen string // listen is the address or port to listen on.
-	hubURL string // hubURL is the URL of the Beszel hub.
+	hubURL string // hubURL is the URL of the InfraScope hub.
 	token  string // token is the token to use for authentication.
 }
 
@@ -57,7 +57,10 @@ func (opts *cmdOptions) parse() bool {
 	pflag.StringVarP(&opts.listen, "listen", "l", "", "Address or port to listen on")
 	pflag.StringVarP(&opts.hubURL, "url", "u", "", "URL of the InfraScope hub")
 	pflag.StringVarP(&opts.token, "token", "t", "", "Token to use for authentication")
-	chinaMirrors := pflag.BoolP("china-mirrors", "c", false, "Use mirror for update (gh.beszel.dev) instead of GitHub")
+	// The gh.beszel.dev mirror served upstream Beszel binaries, so it is no
+	// longer used. The flag is kept (hidden, no-op) so existing scripts work.
+	pflag.BoolP("china-mirrors", "c", false, "No longer used")
+	_ = pflag.CommandLine.MarkDeprecated("china-mirrors", "the gh.beszel.dev mirror served upstream Beszel binaries and is no longer used; updates are downloaded from GitHub (AxiomOperator/infrascope)")
 	version := pflag.BoolP("version", "v", false, "Show version information")
 	help := pflag.BoolP("help", "h", false, "Show this help message")
 
@@ -85,7 +88,7 @@ func (opts *cmdOptions) parse() bool {
 		builder.WriteString("\nCommands:\n")
 		builder.WriteString("  fingerprint  View or reset the agent fingerprint\n")
 		builder.WriteString("  health       Check if the agent is running\n")
-		builder.WriteString("  update       Update to the latest version\n")
+		builder.WriteString("  update       Update to the latest InfraScope release\n")
 		builder.WriteString("\nFlags:\n")
 		fmt.Print(builder.String())
 		pflag.PrintDefaults()
@@ -103,7 +106,7 @@ func (opts *cmdOptions) parse() bool {
 		pflag.Usage()
 		return true
 	case subcommand == "update":
-		agent.Update(*chinaMirrors)
+		agent.Update()
 		return true
 	}
 

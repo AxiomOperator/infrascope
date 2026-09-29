@@ -13,7 +13,9 @@ type Fields = Record<string, string | boolean | string[]>
 // Fake Slack credentials, assembled at runtime so secret scanners don't flag them.
 const SLACK_BOT_TOKEN = ["xoxb", "123456789012", "1234567890123", "4mt0t4l1YL3g1T5L4cK70k3N"].join("-")
 const SLACK_HOOK = ["https://hooks.slack.com/services", "T00000000", "B00000000", "X".repeat(24)].join("/")
-const SLACK_HOOK_2 = ["https://hooks.slack.com/services", "WNA3PBYV6", "F20DUQND3RQ", "Webc4MAvoacrpPakR8phF0zi"].join("/")
+const SLACK_HOOK_2 = ["https://hooks.slack.com/services", "WNA3PBYV6", "F20DUQND3RQ", "Webc4MAvoacrpPakR8phF0zi"].join(
+	"/"
+)
 
 const svc = (id: string) => {
 	const s = getService(id)

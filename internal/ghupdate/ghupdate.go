@@ -6,6 +6,7 @@ package ghupdate
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -30,6 +31,19 @@ const (
 	colorGray   = "\033[90m"
 )
 
+const (
+	// DefaultOwner is the GitHub account that publishes InfraScope releases.
+	DefaultOwner = "AxiomOperator"
+	// DefaultRepo is the GitHub repository that publishes InfraScope releases.
+	DefaultRepo = "infrascope"
+	// DefaultAPIBaseURL is the base URL of the GitHub REST API.
+	DefaultAPIBaseURL = "https://api.github.com"
+)
+
+// ErrNoReleases is returned when the repository has no published releases
+// (GitHub answers /releases/latest with 404).
+var ErrNoReleases = errors.New("no InfraScope releases published yet")
+
 // buildGOARM is set by GoReleaser for agent builds. An empty value identifies
 // legacy builds, which used GoReleaser's default GOARM value (ARMv6).
 var buildGOARM string
@@ -51,14 +65,18 @@ type HttpClient interface {
 //
 // NB! This plugin is considered experimental and its config options may change in the future.
 type Config struct {
-	// Owner specifies the account owner of the repository (default to "pocketbase").
+	// Owner specifies the account owner of the repository (default to DefaultOwner).
 	Owner string
 
-	// Repo specifies the name of the repository (default to "pocketbase").
+	// Repo specifies the name of the repository (default to DefaultRepo).
 	Repo string
 
+	// APIBaseURL is the base URL of the GitHub REST API (default to
+	// DefaultAPIBaseURL). Mostly useful for tests.
+	APIBaseURL string
+
 	// ArchiveExecutable specifies the name of the executable file in the release archive
-	// (default to "pocketbase"; an additional ".exe" check is also performed as a fallback).
+	// (e.g. "beszel" or "beszel-agent"; an additional ".exe" check is also performed as a fallback).
 	ArchiveExecutable string
 
 	// Optional context to use when fetching and downloading the latest release.
@@ -70,10 +88,6 @@ type Config struct {
 
 	// The data directory to use when fetching and downloading the latest release.
 	DataDir string
-
-	// UseMirror specifies whether to use the beszel.dev mirror instead of GitHub API.
-	// When false (default), always uses api.github.com. When true, uses gh.beszel.dev.
-	UseMirror bool
 }
 
 type updater struct {
@@ -98,11 +112,11 @@ func (p *updater) update() (updated bool, err error) {
 	}
 
 	if p.config.Owner == "" {
-		p.config.Owner = "henrygd"
+		p.config.Owner = DefaultOwner
 	}
 
 	if p.config.Repo == "" {
-		p.config.Repo = "beszel"
+		p.config.Repo = DefaultRepo
 	}
 
 	if p.config.Context == nil {
@@ -115,12 +129,13 @@ func (p *updater) update() (updated bool, err error) {
 
 	var latest *release
 
-	apiURL := getApiURL(p.config.UseMirror, p.config.Owner, p.config.Repo)
-	if p.config.UseMirror {
-		ColorPrint(ColorYellow, "Using mirror for update.")
-	}
+	apiURL := LatestReleaseURL(p.config.APIBaseURL, p.config.Owner, p.config.Repo)
 
 	latest, err = FetchLatestRelease(p.config.Context, p.config.HttpClient, apiURL)
+	if errors.Is(err, ErrNoReleases) {
+		ColorPrintf(ColorYellow, "No InfraScope releases published yet at https://github.com/%s/%s/releases. Nothing to update.", p.config.Owner, p.config.Repo)
+		return false, nil
+	}
 	if err != nil {
 		return false, err
 	}
@@ -155,7 +170,7 @@ func (p *updater) update() (updated bool, err error) {
 	if err != nil {
 		return false, err
 	}
-	if err := downloadFile(p.config.Context, p.config.HttpClient, asset.DownloadUrl, assetPath, p.config.UseMirror); err != nil {
+	if err := downloadFile(p.config.Context, p.config.HttpClient, asset.DownloadUrl, assetPath); err != nil {
 		return false, err
 	}
 	ColorPrint(ColorYellow, "Verifying checksum...")
@@ -234,9 +249,12 @@ func (p *updater) update() (updated bool, err error) {
 	return true, nil
 }
 
+// FetchLatestRelease fetches the latest release from the given GitHub API URL
+// (default: the InfraScope repository). It returns ErrNoReleases when the
+// repository has not published any release yet.
 func FetchLatestRelease(ctx context.Context, client HttpClient, url string) (*release, error) {
 	if url == "" {
-		url = getApiURL(false, "henrygd", "beszel")
+		url = LatestReleaseURL("", DefaultOwner, DefaultRepo)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -253,6 +271,11 @@ func FetchLatestRelease(ctx context.Context, client HttpClient, url string) (*re
 	rawBody, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
+	}
+
+	// GitHub answers /releases/latest with 404 when nothing has been published
+	if res.StatusCode == http.StatusNotFound {
+		return nil, ErrNoReleases
 	}
 
 	// http.Client doesn't treat non 2xx responses as error
@@ -277,11 +300,7 @@ func downloadFile(
 	client HttpClient,
 	url string,
 	destPath string,
-	useMirror bool,
 ) error {
-	if useMirror {
-		url = strings.Replace(url, "github.com", "gh.beszel.dev", 1)
-	}
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return err
@@ -388,9 +407,11 @@ func isGlibc() bool {
 	return false
 }
 
-func getApiURL(useMirror bool, owner, repo string) string {
-	if useMirror {
-		return fmt.Sprintf("https://gh.beszel.dev/repos/%s/%s/releases/latest?api=true", owner, repo)
+// LatestReleaseURL returns the GitHub API URL of the latest release of
+// owner/repo. An empty baseURL means DefaultAPIBaseURL.
+func LatestReleaseURL(baseURL, owner, repo string) string {
+	if baseURL == "" {
+		baseURL = DefaultAPIBaseURL
 	}
-	return fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, repo)
+	return fmt.Sprintf("%s/repos/%s/%s/releases/latest", strings.TrimSuffix(baseURL, "/"), owner, repo)
 }

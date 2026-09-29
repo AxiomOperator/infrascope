@@ -74,9 +74,9 @@ func detectRestarter() restarter {
 	return nil
 }
 
-// Update checks GitHub for a newer release of beszel-agent, applies it,
-// fixes SELinux context if needed, and restarts the service.
-func Update(useMirror bool) error {
+// Update checks the InfraScope GitHub releases for a newer beszel-agent,
+// applies it, fixes SELinux context if needed, and restarts the service.
+func Update() error {
 	exePath, _ := os.Executable()
 
 	dataDir, err := GetDataDir()
@@ -86,7 +86,6 @@ func Update(useMirror bool) error {
 	updated, err := ghupdate.Update(ghupdate.Config{
 		ArchiveExecutable: "beszel-agent",
 		DataDir:           dataDir,
-		UseMirror:         useMirror,
 	})
 	if err != nil {
 		log.Fatal(err)

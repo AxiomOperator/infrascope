@@ -18,11 +18,39 @@ msgstr ""
 "X-Crowdin-File: /main/internal/site/src/locales/en/en.po\n"
 "X-Crowdin-File-ID: 32\n"
 
+#: src/lib/shoutrrr.ts
+msgid "-1 – low"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "-2 – lowest"
+msgstr ""
+
+#. placeholder {0}: day.incidents
+#: src/components/network-monitors-table/daily-uptime-bar.tsx
+msgid "{0, plural, one {# incident} other {# incidents}}"
+msgstr ""
+
+#. placeholder {0}: record.monitors.length
+#: src/components/routes/settings/status-pages.tsx
+msgid "{0, plural, one {# monitor} other {# monitors}}"
+msgstr ""
+
 #. placeholder {0}: newVersion.v
 #: src/components/footer-repo-link.tsx
 msgctxt "New version available"
 msgid "{0} available"
 msgstr "{0} k dispozici"
+
+#. placeholder {0}: days.length
+#: src/components/routes/status-page.tsx
+msgid "{0} days ago"
+msgstr ""
+
+#. placeholder {0}: formatDurationMs(day.downMs)
+#: src/components/network-monitors-table/daily-uptime-bar.tsx
+msgid "{0} down"
+msgstr ""
 
 #. placeholder {0}: table.getFilteredSelectedRowModel().rows.length
 #. placeholder {1}: table.getFilteredRowModel().rows.length
@@ -30,11 +58,30 @@ msgstr "{0} k dispozici"
 msgid "{0} of {1} row(s) selected."
 msgstr "{0} z {1} vybraných řádků."
 
+#. placeholder {0}: selected.length
 #. placeholder {0}: selectedSystemIds.size
-#: src/components/network-monitors-table/monitor-dialog.tsx
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/system-multi-select.tsx
+#: src/components/network-monitors-table/system-multi-select.tsx
+#: src/components/routes/settings/maintenance.tsx
 msgid "{0} selected"
 msgstr "{0} vybráno"
+
+#. placeholder {0}: formatUptime(day.up)
+#. placeholder {0}: formatUptime(day.uptime)
+#. placeholder {0}: formatUptime(overall)
+#: src/components/network-monitors-table/daily-uptime-bar.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/routes/status-page.tsx
+msgid "{0} uptime"
+msgstr ""
+
+#: src/components/active-alerts.tsx
+msgid "{alertCount, plural, one {# active alert} other {# active alerts}}"
+msgstr ""
+
+#: src/components/active-alerts.tsx
+msgid "{alertCount, plural, one {# alert is currently triggered} other {# alerts are currently triggered}}"
+msgstr ""
 
 #: src/components/routes/system/info-bar.tsx
 msgid "{cores, plural, one {# core} other {# cores}}"
@@ -52,6 +99,14 @@ msgstr "{count, plural, one {{countString} Hodina} few {{countString} Hodiny} ma
 msgid "{count, plural, one {{countString} minute} few {{countString} minutes} many {{countString} minutes} other {{countString} minutes}}"
 msgstr "{count, plural, one {{countString} minuta} few {{countString} minuty} many {{countString} minut} other {{countString} minut}}"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "{count, plural, one {# monitor} other {# monitors}}"
+msgstr ""
+
+#: src/components/alerts-history-columns.tsx
+msgid "{days, plural, one {# day} other {# days}}"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 msgid "{daysLeft, plural, one {# day} other {# days}}"
 msgstr ""
@@ -60,8 +115,22 @@ msgstr ""
 msgid "{diskName} I/O"
 msgstr "I/O {diskName}"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "{missing, plural, one {# selected monitor is unavailable} other {# selected monitors are unavailable}}"
+msgstr ""
+
+#: src/components/active-alerts.tsx
+#: src/components/active-alerts.tsx
+msgid "{monitorCount, plural, one {# monitor is down} other {# monitors are down}}"
+msgstr ""
+
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "{numFailed, plural, one {# failed service} other {# failed services}}"
+msgstr ""
+
+#: src/components/active-alerts.tsx
+#: src/components/active-alerts.tsx
+msgid "{systemCount, plural, one {Across # system} other {Across # systems}}"
 msgstr ""
 
 #: src/components/routes/system/info-bar.tsx
@@ -69,7 +138,31 @@ msgid "{threads, plural, one {# thread} other {# threads}}"
 msgstr "{threads, plural, one {# vlákno} few {# vlákna} many {# vláken} other {# vláken}}"
 
 #: src/components/systems-table/systems-table-columns.tsx
+msgid "{total, plural, one {# update} other {# updates}}"
+msgstr ""
+
+#: src/components/systems-table/systems-table-columns.tsx
 msgid "{totalCount, plural, one {# service} other {# services}}"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "0 – at most once"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "0 – normal"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "1 – at least once"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "1 – high"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "1 – min"
 msgstr ""
 
 #: src/lib/utils.ts
@@ -98,21 +191,80 @@ msgstr "12 hodin"
 msgid "15 min"
 msgstr "15 min"
 
+#: src/lib/shoutrrr.ts
+msgid "2 – exactly once"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "2 – low"
+msgstr ""
+
 #: src/lib/utils.ts
 msgid "24 hours"
 msgstr "24 hodin"
 
+#: src/components/routes/status-page.tsx
+msgid "24h"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "3 – default"
+msgstr ""
+
 #: src/lib/utils.ts
 msgid "30 days"
 msgstr "30 dní"
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "30 days ago"
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "30d"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "4 – high"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "5 – max / urgent"
+msgstr ""
 
 #. Load average
 #: src/components/routes/system/charts/load-average-chart.tsx
 msgid "5 min"
 msgstr "5 min"
 
+#: src/components/routes/status-page.tsx
+msgid "7d"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "A password requires a username"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "A status page can show up to {MAX_MONITORS} monitors."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Accepted status codes"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Access token"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Account SID"
+msgstr ""
+
 #. Table column
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
+#: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/routes/system/storage-pools-table.tsx
@@ -131,15 +283,20 @@ msgstr "Aktivní"
 msgid "Active Alerts"
 msgstr "Aktivní výstrahy"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "Active now"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Active state"
 msgstr "Aktivní stav"
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/routes/settings/notification-builder.tsx
 msgid "Add"
 msgstr ""
 
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
@@ -147,6 +304,29 @@ msgstr ""
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Add {foo}"
 msgstr "Přidat {foo}"
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Add header"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
+msgid "Add maintenance"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Add monitor…"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+#: src/components/routes/settings/notifications.tsx
+msgid "Add notification"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "Add status page"
+msgstr ""
 
 #: src/components/add-system.tsx
 #: src/components/add-system.tsx
@@ -156,8 +336,8 @@ msgid "Add System"
 msgstr "Přidat Systém"
 
 #: src/components/routes/settings/notifications.tsx
-msgid "Add URL"
-msgstr "Přidat URL"
+#~ msgid "Add URL"
+#~ msgstr "Přidat URL"
 
 #: src/components/routes/settings/general.tsx
 msgid "Adjust display options for charts."
@@ -181,9 +361,14 @@ msgstr "Po"
 msgid "After setting the environment variables, restart your InfraScope hub for changes to take effect."
 msgstr "Po nastavení proměnných prostředí restartujte hub InfraScope, aby se změny projevily."
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Agent"
 msgstr "Agent"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Agent update required for these options"
+msgstr ""
 
 #: src/components/command-palette.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
@@ -204,6 +389,10 @@ msgstr "Výstrahy"
 msgid "All Containers"
 msgstr "Všechny kontejnery"
 
+#: src/lib/shoutrrr.ts
+msgid "all devices"
+msgstr ""
+
 #: src/components/alerts/alerts-sheet.tsx
 #: src/components/command-palette.tsx
 #: src/components/routes/home.tsx
@@ -213,23 +402,64 @@ msgstr "Všechny kontejnery"
 msgid "All Systems"
 msgstr "Všechny systémy"
 
+#: src/components/routes/status-page.tsx
+msgid "All systems operational"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "An incoming webhook URL, or a bot token like xoxb-… for bot mode."
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Anyone with the link can view the page. Otherwise only you can."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "API key"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "API token"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Application token"
+msgstr ""
+
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Are you sure you want to delete {name}?"
 msgstr "Opravdu chcete odstranit {name}?"
 
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/status-pages.tsx
 msgid "Are you sure?"
 msgstr "Jste si jistý?"
+
+#: src/lib/shoutrrr.ts
+msgid "Auth token"
+msgstr ""
 
 #: src/components/copy-to-clipboard.tsx
 msgid "Automatic copy requires a secure context."
 msgstr "Automatická kopie vyžaduje zabezpečený kontext."
 
+#: src/components/routes/system/package-updates-table.tsx
+msgctxt "Package version available to install"
+msgid "Available"
+msgstr ""
+
 #: src/components/routes/system/storage-pools-table.tsx
 msgctxt "Disk space available"
 msgid "Available"
 msgstr "Dostupné"
+
+#: src/lib/shoutrrr.ts
+msgid "Avatar URL"
+msgstr ""
 
 #: src/components/routes/system/chart-card.tsx
 msgid "Average"
@@ -284,6 +514,10 @@ msgstr "Průměrná, minimální a maximální doba odezvy"
 msgid "Avg 1h"
 msgstr "Prům. 1h"
 
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Back to services"
+msgstr ""
+
 #: src/components/command-palette.tsx
 #: src/components/navbar.tsx
 msgid "Backups"
@@ -293,6 +527,19 @@ msgstr "Zálohy"
 #: src/lib/alerts.ts
 msgid "Bandwidth"
 msgstr "Přenos"
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+#: src/lib/shoutrrr.ts
+msgid "Basic auth password"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Basic auth user"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Basic auth username"
+msgstr ""
 
 #. Battery label in systems table header
 #: src/components/systems-table/systems-table-columns.tsx
@@ -324,14 +571,6 @@ msgstr "Před"
 msgid "Below {0}{1} in last {2, plural, one {# minute} other {# minutes}}"
 msgstr "Pod {0}{1} za {2, plural, one {poslední # minutu} few {poslední # minuty} other {posledních # minut}}"
 
-#: src/components/login/auth-form.tsx
-msgid "InfraScope supports OpenID Connect and many OAuth2 authentication providers."
-msgstr "InfraScope podporuje OpenID Connect a mnoho poskytovatelů OAuth2 ověřování."
-
-#: src/components/routes/settings/notifications.tsx
-msgid "InfraScope uses <0>Shoutrrr</0> to integrate with popular notification services."
-msgstr "InfraScope používá <0>Shoutrrr</0> k integraci s populárními notifikačními službami."
-
 #: src/components/add-system.tsx
 msgid "Binary"
 msgstr "Binární"
@@ -341,18 +580,60 @@ msgstr "Binární"
 msgid "Bits (Kbps, Mbps, Gbps)"
 msgstr "Bity (Kbps, Mbps, Gbps)"
 
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Body"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Boot state"
 msgstr "Stav zavádění"
+
+#: src/lib/shoutrrr.ts
+msgid "Border color"
+msgstr ""
+
+#. placeholder {0}: str(f.channel)
+#: src/lib/shoutrrr.ts
+msgid "bot · {0}"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Bot API key"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Bot email"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Bot name"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Bot token"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Bot token (xoxb)"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Bot webhook key"
+msgstr ""
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Bulk Add"
 msgstr "Hromadné přidání"
 
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 msgid "Bulk Add {foo}"
 msgstr "Hromadné přidání {foo}"
+
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
+msgid "Bulk added monitors run on the selected agents."
+msgstr ""
 
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 msgid "Bulk copy"
@@ -379,9 +660,15 @@ msgstr "Může spustit"
 msgid "Can stop"
 msgstr "Může zastavit"
 
+#: src/components/network-monitors-table/monitor-push-url.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/notification-builder.tsx
 #: src/components/routes/settings/quiet-hours.tsx
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Cancel"
 msgstr "Zrušit"
@@ -416,6 +703,18 @@ msgstr ""
 msgid "Certificate expires {expires}"
 msgstr ""
 
+#: src/lib/alerts.ts
+msgid "Certificate expiring"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Certificate expiry notification (days)"
+msgstr ""
+
+#: src/components/routes/system/package-updates-table.tsx
+msgid "Change"
+msgstr ""
+
 #: src/components/routes/settings/general.tsx
 msgid "Change display units for metrics."
 msgstr "Změnit jednotky zobrazení metrik."
@@ -423,6 +722,31 @@ msgstr "Změnit jednotky zobrazení metrik."
 #: src/components/routes/settings/general.tsx
 msgid "Change general application options."
 msgstr "Změnit obecné nastavení aplikace."
+
+#: src/lib/shoutrrr.ts
+msgid "Channel (stream)"
+msgstr ""
+
+#. placeholder {0}: maskSecret(str(f.channel))
+#: src/lib/shoutrrr.ts
+msgid "channel {0}"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Channel ID"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Channel or user"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Channel override"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Channel token"
+msgstr ""
 
 #: src/components/routes/system/charts/sensor-charts.tsx
 msgid "Charge"
@@ -441,6 +765,14 @@ msgstr "Možnosti grafu"
 msgid "Chart width"
 msgstr "Šířka grafu"
 
+#: src/lib/shoutrrr.ts
+msgid "Chat IDs or @channel names."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Chats"
+msgstr ""
+
 #: src/components/login/forgot-pass-form.tsx
 msgid "Check {email} for a reset link."
 msgstr "Zkontrolujte {email} pro odkaz na obnovení."
@@ -449,20 +781,38 @@ msgstr "Zkontrolujte {email} pro odkaz na obnovení."
 msgid "Check logs for more details."
 msgstr "Pro více informací zkontrolujte logy."
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Check the availability and response time of a service from the hub or an agent."
+msgstr ""
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Check your monitoring service"
 msgstr "Zkontrolujte svou monitorovací službu"
 
-#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notification-builder.tsx
 msgid "Check your notification service"
 msgstr "Zkontrolujte službu upozornění"
+
+#. placeholder {0}: formatShortDate(new Date(data.checkedAt * 1000).toISOString())
+#: src/components/routes/system/package-updates-table.tsx
+msgid "Checked {0}"
+msgstr ""
 
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "Checksum errors"
 msgstr "Chyby kontrolního součtu"
 
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Choose where alerts should be sent."
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Choose which monitors to show and what details are visible."
+msgstr ""
+
 #: src/components/containers-table/containers-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/routes/system/package-updates-table.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/routes/system/storage-pools-table.tsx
 #: src/components/routes/system/storage-pools-table.tsx
@@ -470,11 +820,13 @@ msgstr "Chyby kontrolního součtu"
 msgid "Clear"
 msgstr "Vymazat"
 
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/system-multi-select.tsx
+#: src/components/routes/settings/maintenance.tsx
 msgid "Clear all"
 msgstr "Vymazat vše"
 
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/system-multi-select.tsx
+#: src/components/routes/settings/maintenance.tsx
 msgid "Clear matches"
 msgstr "Vymazat shody"
 
@@ -498,6 +850,22 @@ msgstr "Klikněte na systém pro zobrazení více informací."
 msgid "Click to copy"
 msgstr "Klikněte pro zkopírování"
 
+#: src/lib/shoutrrr.ts
+msgid "Click URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Client ID"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Client key"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Comma separated codes or ranges, e.g. 200-299, 301. Defaults to 200-399."
+msgstr ""
+
 #: src/components/login/forgot-pass-form.tsx
 #: src/components/login/forgot-pass-form.tsx
 msgid "Command line instructions"
@@ -508,8 +876,8 @@ msgid "Configure how you receive alert notifications."
 msgstr "Konfigurace způsobu přijímání upozornění."
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
-msgid "Configure response monitoring from this agent."
-msgstr "Nakonfigurujte sledování odezvy z tohoto agenta."
+#~ msgid "Configure response monitoring from this agent."
+#~ msgstr "Nakonfigurujte sledování odezvy z tohoto agenta."
 
 #: src/components/login/auth-form.tsx
 #: src/components/login/auth-form.tsx
@@ -519,6 +887,10 @@ msgstr "Potvrdit heslo"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Conflicts"
 msgstr "Konflikty"
+
+#: src/lib/shoutrrr.ts
+msgid "Connection"
+msgstr ""
 
 #: src/components/active-alerts.tsx
 msgid "Connection is down"
@@ -536,6 +908,15 @@ msgstr "Zdraví kontejneru"
 msgid "Containers"
 msgstr "Kontejnery"
 
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Contains characters that are not allowed here (/ ? # @ : or spaces)"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Content-Type"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/systems-table/systems-table-columns.tsx
@@ -545,6 +926,11 @@ msgstr "Pokračovat"
 #: src/lib/utils.ts
 msgid "Copied to clipboard"
 msgstr "Zkopírováno do schránky"
+
+#: src/components/network-monitors-table/monitor-push-url.tsx
+#: src/components/network-monitors-table/monitor-push-url.tsx
+msgid "Copy"
+msgstr ""
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
@@ -601,6 +987,12 @@ msgstr "Zkopírujte obsah <0>docker-compose.yml</0> pro agenta níže nebo autom
 msgid "Copy to system"
 msgstr "Kopírovat do systému"
 
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "Copy URL"
+msgstr ""
+
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Copy YAML"
 msgstr "Kopírovat YAML"
@@ -647,9 +1039,15 @@ msgstr "Rozdělení času CPU"
 msgid "CPU Usage"
 msgstr "Využití procesoru"
 
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
+#: src/components/routes/settings/status-pages.tsx
 msgid "Create"
 msgstr "Vytvořit"
+
+#: src/lib/shoutrrr.ts
+msgid "Create a \"Post to a channel when a webhook request is received\" workflow in Teams and paste its URL. Legacy Office 365 connector URLs are no longer supported."
+msgstr ""
 
 #: src/components/login/auth-form.tsx
 msgid "Create account"
@@ -688,6 +1086,11 @@ msgstr "Kumulativní odeslání"
 msgid "Cumulative Write"
 msgstr "Kumulativní zápis"
 
+#: src/components/routes/system/package-updates-table.tsx
+msgctxt "Installed package version"
+msgid "Current"
+msgstr ""
+
 #. Context: Battery state
 #. Context: Battery state
 #: src/components/routes/system/charts/sensor-charts.tsx
@@ -695,20 +1098,48 @@ msgstr "Kumulativní zápis"
 msgid "Current state"
 msgstr "Aktuální stav"
 
+#: src/lib/shoutrrr.ts
+msgid "Custom headers"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+#: src/components/routes/settings/notification-builder.tsx
+#: src/components/routes/settings/notification-builder.tsx
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Custom URL"
+msgstr ""
+
 #. Power Cycles
 #: src/components/routes/system/smart-table.tsx
 msgid "Cycles"
 msgstr "Cykly"
 
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Daily"
 msgstr "Denně"
 
+#: src/components/network-monitors-table/daily-uptime-bar.tsx
+#: src/components/routes/status-page.tsx
+msgid "Daily uptime"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Default"
+msgstr ""
+
 #: src/components/routes/system/info-bar.tsx
 msgctxt "Default system layout option"
 msgid "Default"
 msgstr "Výchozí"
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Default (10)"
+msgstr ""
 
 #: src/components/routes/settings/general.tsx
 msgid "Default time period"
@@ -716,16 +1147,32 @@ msgstr "Výchozí doba"
 
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/notification-builder.tsx
 #: src/components/routes/settings/quiet-hours.tsx
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Delete"
 msgstr "Odstranit"
 
+#. placeholder {0}: info.name
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Delete {0} notification"
+msgstr ""
+
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Delete fingerprint"
 msgstr "Smazat identifikátor"
 
+#: src/lib/shoutrrr.ts
+msgid "Deliver as critical alert"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/status-pages.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Description"
 msgstr "Popis"
@@ -737,6 +1184,26 @@ msgstr "Detail"
 #: src/components/routes/system/smart-table.tsx
 msgid "Device"
 msgstr "Zařízení"
+
+#: src/lib/shoutrrr.ts
+msgid "Device IDs"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Device key"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Device names, #channel tags or email addresses. Leave empty to push to all devices."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Devices"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Direct message"
+msgstr ""
 
 #. Context: Battery state
 #: src/lib/i18n.ts
@@ -766,6 +1233,10 @@ msgctxt "Layout display options"
 msgid "Display"
 msgstr "Zobrazení"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "DNS Server"
+msgstr ""
+
 #: src/components/routes/system/charts/cpu-charts.tsx
 msgid "Docker CPU Usage"
 msgstr "Využití CPU Dockeru"
@@ -783,8 +1254,22 @@ msgstr "Síťové I/O Dockeru"
 msgid "Documentation"
 msgstr "Dokumentace"
 
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Don't follow"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Don't send"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Done"
+msgstr ""
+
 #. Context: System is down
 #: src/components/alerts-history-columns.tsx
+#: src/components/network-monitors-table/monitor-status-badge.tsx
+#: src/components/network-monitors-table/status-bar.tsx
 #: src/components/routes/system/info-bar.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 #: src/lib/alerts.ts
@@ -803,16 +1288,48 @@ msgstr "Stažení"
 msgid "Duration"
 msgstr "Doba trvání"
 
+#: src/lib/shoutrrr.ts
+msgid "Each line must look like key=value"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Each recipient must be a phone number, group.<id> or u:username"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/notification-builder.tsx
 #: src/components/routes/settings/quiet-hours.tsx
+#: src/components/routes/settings/status-pages.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Edit"
 msgstr "Upravit"
+
+#. placeholder {0}: info.name
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Edit {0} notification"
+msgstr ""
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Edit {foo}"
 msgstr "Upravit {foo}"
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Edit as form"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Edit as URL"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Edit maintenance"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Edit status page"
+msgstr ""
 
 #: src/components/add-system.tsx
 msgid "Edit System"
@@ -828,15 +1345,30 @@ msgstr "E-mail"
 msgid "Email notifications"
 msgstr "Emailová upozornění"
 
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Emoji name or image URL"
+msgstr ""
+
 #. Context: Battery state
 #: src/lib/i18n.ts
 msgid "Empty"
 msgstr "Prázdná"
 
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "End Time"
 msgstr "Čas ukončení"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "End time must be after start time."
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Ended"
+msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Endpoint URL"
@@ -845,6 +1377,38 @@ msgstr "URL koncového bodu"
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Endpoint URL to ping (required)"
 msgstr "URL koncového bodu pro ping (vyžadováno)"
+
+#: src/lib/shoutrrr.ts
+msgid "Enter a bot token (xoxb-…)"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Enter a full http(s):// URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Enter a host name, optionally with :port"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Enter a phone number with country code, e.g. +15551234567"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Enter a valid URL, e.g. ntfy://ntfy.sh/topic"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Enter a whole number between {min} and {max}"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Enter an incoming webhook URL"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Enter any <0>Shoutrrr</0> URL."
+msgstr ""
 
 #: src/components/login/login.tsx
 msgid "Enter email address to reset password"
@@ -858,12 +1422,17 @@ msgstr "Zadejte e-mailovou adresu..."
 msgid "Enter your one-time password."
 msgstr "Zadejte Vaše jednorázové heslo."
 
+#: src/lib/shoutrrr.ts
+msgid "Entity"
+msgstr ""
+
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Ephemeral"
 msgstr "Efemérní"
 
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-push-url.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
@@ -872,13 +1441,26 @@ msgstr "Efemérní"
 #: src/components/routes/settings/heartbeat.tsx
 #: src/components/routes/settings/heartbeat.tsx
 #: src/components/routes/settings/heartbeat.tsx
-#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/notification-builder.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
+#: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Error"
 msgstr "Chyba"
+
+#: src/lib/shoutrrr.ts
+msgid "EU (api.eu.opsgenie.com)"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Event names"
+msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Example:"
@@ -903,6 +1485,14 @@ msgstr "Stávající systémy, které nejsou definovány v <0>config.yml</0>, bu
 msgid "Exited active"
 msgstr "Ukončeno aktivně"
 
+#: src/lib/shoutrrr.ts
+msgid "Expected a token like 123456789:ABC-def…"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Expected value"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 msgid "Expired"
 msgstr ""
@@ -923,6 +1513,10 @@ msgstr "Exportovat konfiguraci"
 msgid "Export your current systems configuration."
 msgstr "Exportovat aktuální konfiguraci systémů."
 
+#: src/lib/shoutrrr.ts
+msgid "Extra JSON data"
+msgstr ""
+
 #: src/components/routes/settings/general.tsx
 msgid "Fahrenheit (°F)"
 msgstr "Fahrenheita (°F)"
@@ -930,6 +1524,10 @@ msgstr "Fahrenheita (°F)"
 #: src/components/routes/system/smart-table.tsx
 msgid "Failed Attributes:"
 msgstr "Neúspěšné atributy:"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Failed checks are retried this many times before the monitor is marked down."
+msgstr ""
 
 #: src/lib/alerts.ts
 msgid "Failed Services"
@@ -944,17 +1542,33 @@ msgstr "Ověření se nezdařilo"
 msgid "Failed to delete monitors."
 msgstr "Nepodařilo se odstranit monitory."
 
+#: src/components/routes/system/package-updates-table.tsx
+msgid "Failed to load package updates"
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "Failed to load status page"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Failed to save maintenance"
+msgstr ""
+
 #: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Failed to save settings"
 msgstr "Nepodařilo se uložit nastavení"
 
+#: src/components/routes/settings/status-pages.tsx
+msgid "Failed to save status page"
+msgstr ""
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Failed to send heartbeat"
 msgstr "Nepodařilo se odeslat heartbeat"
 
-#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notification-builder.tsx
 msgid "Failed to send test notification"
 msgstr "Nepodařilo se odeslat testovací oznámení"
 
@@ -975,10 +1589,15 @@ msgstr "Neúspěšné: {0}"
 msgid "Fans"
 msgstr "Ventilátory"
 
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Fields filled from the webhook URL."
+msgstr ""
+
 #: src/components/containers-table/containers-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/system/chart-card.tsx
+#: src/components/routes/system/package-updates-table.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/routes/system/storage-pools-table.tsx
 #: src/components/routes/system/storage-pools-table.tsx
@@ -1014,6 +1633,10 @@ msgstr "Volné"
 msgctxt "Button to copy install command"
 msgid "FreeBSD command"
 msgstr "FreeBSD příkaz"
+
+#: src/lib/shoutrrr.ts
+msgid "From number"
+msgstr ""
 
 #. Context: Battery state
 #: src/components/routes/system/info-bar.tsx
@@ -1052,6 +1675,26 @@ msgstr "Využití GPU"
 msgid "Grid"
 msgstr "Mřížka"
 
+#: src/lib/shoutrrr.ts
+msgid "Group"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Header name"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Header value"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Headers"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Headers, body and credentials aren't visible to you and are kept unchanged."
+msgstr ""
+
 #: src/components/containers-table/containers-table-columns.tsx
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "Health"
@@ -1059,6 +1702,10 @@ msgstr "Zdraví"
 
 #: src/components/routes/settings/layout.tsx
 msgid "Heartbeat"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Heartbeat interval (s)"
 msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
@@ -1069,15 +1716,35 @@ msgstr "Monitorování heartbeat"
 msgid "Heartbeat sent successfully"
 msgstr "Heartbeat úspěšně odeslán"
 
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Hide secrets"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Hide values"
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgctxt "Button to copy install command"
 msgid "Homebrew command"
 msgstr "Homebrew příkaz"
 
+#: src/lib/shoutrrr.ts
+msgid "Host"
+msgstr ""
+
 #: src/components/add-system.tsx
 msgid "Host / IP"
 msgstr "Hostitel / IP"
+
+#: src/lib/shoutrrr.ts
+msgid "Host of your signal-cli-rest-api server."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "HTTP method"
+msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "HTTP Method"
@@ -1086,6 +1753,27 @@ msgstr "HTTP metoda"
 #: src/components/routes/settings/heartbeat.tsx
 msgid "HTTP method: POST, GET, or HEAD (default: POST)"
 msgstr "HTTP metoda: POST, GET nebo HEAD (výchozí: POST)"
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "HTTP options"
+msgstr ""
+
+#. placeholder {0}: outdatedAgents.map((id) => allSystems[id]?.name).join(", ")
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "HTTP options, timeouts and retry intervals need agent version 0.21.0 or newer: {0}"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Hub"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Hub monitors must use an interval of at least {hubMinInterval} seconds."
+msgstr ""
 
 #: src/components/routes/system/disk-io-sheet.tsx
 msgctxt "Disk I/O average operation time (iostat await)"
@@ -1102,6 +1790,17 @@ msgctxt "Percent of time the disk is busy with I/O"
 msgid "I/O Utilization"
 msgstr "I/O Využití"
 
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Icon"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Icon URL"
+msgstr ""
+
 #. Context: Battery state
 #: src/lib/i18n.ts
 msgid "Idle"
@@ -1110,6 +1809,10 @@ msgstr "Neaktivní"
 #: src/components/login/forgot-pass-form.tsx
 msgid "If you've lost the password to your admin account, you may reset it using the following command."
 msgstr "Pokud jste ztratili heslo k vašemu účtu správce, můžete jej obnovit pomocí následujícího příkazu."
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Ignore TLS errors"
+msgstr ""
 
 #: src/components/containers-table/containers-table-columns.tsx
 msgctxt "Docker image"
@@ -1122,9 +1825,29 @@ msgctxt "Docker image"
 msgid "Image update available"
 msgstr "K dispozici je aktualizace obrazu"
 
+#: src/components/routes/status-page.tsx
+msgid "In progress"
+msgstr ""
+
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Inactive"
 msgstr "Neaktivní"
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Incidents"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Incoming webhook"
+msgstr ""
+
+#: src/components/login/auth-form.tsx
+msgid "InfraScope supports OpenID Connect and many OAuth2 authentication providers."
+msgstr "InfraScope podporuje OpenID Connect a mnoho poskytovatelů OAuth2 ověřování."
+
+#: src/components/routes/settings/notifications.tsx
+msgid "InfraScope uses <0>Shoutrrr</0> to integrate with popular notification services."
+msgstr "InfraScope používá <0>Shoutrrr</0> k integraci s populárními notifikačními službami."
 
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
@@ -1140,9 +1863,54 @@ msgstr "Interval (sekundy)"
 msgid "Invalid email address."
 msgstr "Neplatná e-mailová adresa."
 
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Invert keyword (fail when found)"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "JSON"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "JSON message key"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "JSON path"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "JSON title key"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Key"
+msgstr ""
+
+#. placeholder {0}: maskSecret(str(f.key))
+#: src/lib/shoutrrr.ts
+msgid "key {0}"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Keyword"
+msgstr ""
+
 #: src/components/routes/settings/general.tsx
 msgid "Language"
 msgstr "Jazyk"
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Last 30 days"
+msgstr ""
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Last check"
+msgstr ""
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Last error"
+msgstr ""
 
 #: src/components/systems-table/systems-table.tsx
 msgid "Layout"
@@ -1151,6 +1919,15 @@ msgstr "Rozvržení"
 #: src/components/routes/settings/general.tsx
 msgid "Layout width"
 msgstr "Šířka rozvržení"
+
+#: src/lib/shoutrrr.ts
+msgid "Leave empty to send to all devices."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Leave empty when using an access token."
+msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Lifecycle"
@@ -1186,9 +1963,14 @@ msgstr "Prům. zatížení"
 msgid "Load state"
 msgstr "Stav načtení"
 
+#: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Loading..."
 msgstr "Načítání..."
+
+#: src/components/routes/status-page.tsx
+msgid "Loading…"
+msgstr ""
 
 #: src/components/navbar.tsx
 #: src/components/navbar.tsx
@@ -1228,6 +2010,23 @@ msgstr "Ztráta 1h"
 msgid "Main PID"
 msgstr "Hlavní PID"
 
+#: src/components/network-monitors-table/monitor-status-badge.tsx
+#: src/components/routes/settings/layout.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/status-page.tsx
+#: src/components/routes/status-page.tsx
+msgid "Maintenance"
+msgstr ""
+
+#: src/components/routes/system/package-updates-table.tsx
+msgctxt "Version change"
+msgid "Major"
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "Major outage"
+msgstr ""
+
 #: src/components/routes/settings/layout.tsx
 msgid "Manage display and notification preferences."
 msgstr "Správa nastavení zobrazení a oznámení."
@@ -1236,6 +2035,10 @@ msgstr "Správa nastavení zobrazení a oznámení."
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Manual setup instructions"
 msgstr "Pokyny k manuálnímu nastavení"
+
+#: src/lib/shoutrrr.ts
+msgid "Markdown formatting"
+msgstr ""
 
 #. Chart select field. Please try to keep this short.
 #: src/components/routes/system/chart-card.tsx
@@ -1246,6 +2049,10 @@ msgstr "Max. 1 min"
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 msgid "Max 1h"
 msgstr "Max. 1h"
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Max redirects"
+msgstr ""
 
 #: src/components/containers-table/containers-table-columns.tsx
 #: src/components/routes/system/info-bar.tsx
@@ -1273,10 +2080,31 @@ msgstr "Využití paměti"
 msgid "Memory usage of containers"
 msgstr "Využití paměti kontejnery"
 
+#: src/lib/shoutrrr.ts
+msgid "Mention mobile numbers"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Mention users"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Message type"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Method"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 msgid "Min 1h"
 msgstr "Min. 1h"
+
+#: src/components/routes/system/package-updates-table.tsx
+msgctxt "Version change"
+msgid "Minor"
+msgstr ""
 
 #. Device model
 #: src/components/routes/system/smart-table.tsx
@@ -1286,20 +2114,68 @@ msgstr ""
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Monitor"
 msgstr ""
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Monitor created"
+msgstr ""
+
+#: src/lib/alerts.ts
+msgid "Monitor down"
+msgstr ""
+
+#: src/lib/alerts.ts
+msgid "Monitor is down"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "Monitors"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 msgid "Monitors created"
 msgstr "Monitory vytvořeny"
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "More options"
+msgstr ""
 
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "Mountpoint"
 msgstr "Bod připojení"
 
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "Move down"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "Move up"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Must be a Power Automate workflow webhook URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Must not contain \"/\" or spaces"
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/alerts-history-columns.tsx
 #: src/components/containers-table/containers-table-columns.tsx
+#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-http-options.tsx
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/systemd-table/systemd-table-columns.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Name"
@@ -1316,8 +2192,8 @@ msgstr "Síť"
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
-msgid "Network Monitor"
-msgstr "Síťový monitor"
+#~ msgid "Network Monitor"
+#~ msgstr "Síťový monitor"
 
 #: src/lib/alerts.ts
 msgid "Network Monitor Loss"
@@ -1326,8 +2202,8 @@ msgstr "Ztráta síťového monitoru"
 #: src/components/command-palette.tsx
 #: src/components/navbar.tsx
 #: src/components/navbar.tsx
-#: src/components/network-monitors-table/monitor-dialog.tsx
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/routes/monitors.tsx
 msgid "Network Monitors"
@@ -1355,9 +2231,38 @@ msgstr "Síťová jednotka"
 msgid "No"
 msgstr "Ne"
 
+#: src/components/network-monitors-table/daily-uptime-bar.tsx
+#: src/components/routes/status-page.tsx
+msgid "No data"
+msgstr ""
+
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "No detail data for this pool."
 msgstr "Pro tento fond nejsou k dispozici podrobné údaje."
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "No incidents in the last 30 days."
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "No maintenance windows."
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "No matching services."
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "No monitors found."
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "No monitors on this page."
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "No more monitors to add"
+msgstr ""
 
 #: src/components/command-palette.tsx
 #: src/components/systemd-table/systemd-table.tsx
@@ -1369,6 +2274,7 @@ msgstr "Nenalezeny žádné výskyty."
 #: src/components/containers-table/containers-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
+#: src/components/routes/system/package-updates-table.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "No results."
@@ -1378,17 +2284,34 @@ msgstr "Žádné výsledky."
 msgid "No S.M.A.R.T. attributes available for this device."
 msgstr "Pro toto zařízení nejsou k dispozici žádné atributy S.M.A.R.T."
 
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "No status pages."
+msgstr ""
+
+#: src/components/network-monitors-table/system-multi-select.tsx
 #: src/components/systems-table/systems-table.tsx
 #: src/components/systems-table/systems-table.tsx
 msgid "No systems found."
 msgstr "Nenalezeny žádné systémy."
 
+#: src/components/routes/settings/notifications.tsx
+msgid "No webhook or push notifications configured."
+msgstr ""
+
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "None"
 msgstr "Žádné"
 
+#: src/lib/shoutrrr.ts
+msgid "Not a valid Slack webhook URL or token"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Notification services"
+msgstr ""
+
 #: src/components/command-palette.tsx
+#: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Notifications"
@@ -1397,6 +2320,10 @@ msgstr "Upozornění"
 #: src/lib/alerts.ts
 msgid "Notifications may include recent container log excerpts."
 msgstr "Oznámení mohou obsahovat nedávné výňatky z protokolů kontejnerů."
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Notify when the certificate expires within this many days. 0 disables it."
+msgstr ""
 
 #: src/components/login/auth-form.tsx
 msgid "OAuth 2 / OIDC support"
@@ -1419,6 +2346,16 @@ msgstr "Jeden nebo více monitorů překračuje {0}% ztrátu"
 msgid "One or more services are in a failed state"
 msgstr "Jedna nebo více služeb je ve stavu selhání"
 
+#: src/lib/shoutrrr.ts
+msgid "One per line as key=value. Added to JSON payloads."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "One per line as Name=Value."
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "One-time"
@@ -1428,8 +2365,18 @@ msgstr "Jednorázové"
 msgid "One-time password"
 msgstr "Jednorázové heslo"
 
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Ongoing"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Open"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
+#: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1438,17 +2385,47 @@ msgstr "Jednorázové heslo"
 msgid "Open menu"
 msgstr "Otevřít menu"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Optional"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Optional. Defaults to the system resolver."
+msgstr ""
+
 #: src/components/login/auth-form.tsx
 msgid "Or continue with"
 msgstr "Nebo pokračujte s"
+
+#: src/components/routes/system/package-updates-table.tsx
+msgctxt "Version change"
+msgid "Other"
+msgstr ""
 
 #: src/components/routes/system/cpu-sheet.tsx
 msgid "Other"
 msgstr "Jiné"
 
+#. placeholder {0}: state.values.extra.map(([k]) => k).join(", ")
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Other parameters kept from the URL: {0}"
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "Outage"
+msgstr ""
+
 #: src/components/alerts/alerts-sheet.tsx
 msgid "Overwrite existing alerts"
 msgstr "Přepsat existující upozornění"
+
+#: src/components/routes/system/package-updates-table.tsx
+msgid "Package"
+msgstr ""
+
+#: src/components/routes/system/package-updates-table.tsx
+msgid "Package Updates"
+msgstr ""
 
 #: src/components/routes/system/charts/monitors-charts.tsx
 msgid "Packet loss (%)"
@@ -1471,8 +2448,17 @@ msgstr "Stránka {0} z {1}"
 msgid "Pages / Settings"
 msgstr "Stránky / Nastavení"
 
+#: src/lib/shoutrrr.ts
+msgid "Parse mode"
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "Partial outage"
+msgstr ""
+
 #: src/components/login/auth-form.tsx
 #: src/components/login/auth-form.tsx
+#: src/lib/shoutrrr.ts
 msgid "Password"
 msgstr "Heslo"
 
@@ -1484,6 +2470,11 @@ msgstr "Heslo musí obsahovat alespoň 8 znaků."
 msgid "Password must be less than 72 bytes."
 msgstr "Heslo musí být menší než 72 bytů."
 
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Password or access token"
+msgstr ""
+
 #: src/components/login/forgot-pass-form.tsx
 msgid "Password reset request received"
 msgstr "Žádost o obnovu hesla byla přijata"
@@ -1492,11 +2483,39 @@ msgstr "Žádost o obnovu hesla byla přijata"
 msgid "Past"
 msgstr "Minulé"
 
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Paste the bot webhook URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Paste the Discord webhook URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Paste the Google Chat webhook URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Paste the incoming webhook URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Paste the Slack webhook URL"
+msgstr ""
+
+#: src/components/routes/system/package-updates-table.tsx
+msgctxt "Version change"
+msgid "Patch"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Pause"
 msgstr "Pozastavit"
 
+#: src/components/network-monitors-table/monitor-status-badge.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Paused"
 msgstr "Pozastaveno"
@@ -1505,9 +2524,18 @@ msgstr "Pozastaveno"
 msgid "Paused ({pausedSystemsLength})"
 msgstr "Pozastaveno ({pausedSystemsLength})"
 
+#: src/lib/shoutrrr.ts
+msgid "Payload"
+msgstr ""
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Payload format"
 msgstr "Formát payloadu"
+
+#: src/components/network-monitors-table/monitor-status-badge.tsx
+#: src/components/network-monitors-table/status-bar.tsx
+msgid "Pending"
+msgstr ""
 
 #: src/components/routes/system/cpu-sheet.tsx
 #: src/components/routes/system/cpu-sheet.tsx
@@ -1530,9 +2558,29 @@ msgstr "Trvalý"
 msgid "Persistence"
 msgstr "Trvalost"
 
+#: src/lib/shoutrrr.ts
+msgid "Phone number or Messaging Service SID (MG…)."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Phone numbers, group.<id> group IDs or u:username."
+msgstr ""
+
 #: src/components/routes/system/raw-capacity-label.tsx
 msgid "Physical device space. True usable capacity is unknown. Pool disk usage alerts are disabled."
 msgstr "Fyzické místo na zařízení. Skutečná využitelná kapacita není známa. Upozornění na využití disků fondu jsou vypnutá."
+
+#: src/lib/shoutrrr.ts
+msgid "Plain text"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Platform"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Play notification sound"
+msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Please <0>configure an SMTP server</0> to ensure alerts are delivered."
@@ -1577,6 +2625,8 @@ msgstr "Využití fondu"
 
 #: src/components/add-system.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
 msgid "Port"
 msgstr ""
 
@@ -1590,6 +2640,10 @@ msgstr "Porty"
 msgid "Power On"
 msgstr "Zapnutí"
 
+#: src/components/routes/status-page.tsx
+msgid "Powered by <0>InfraScope</0>"
+msgstr ""
+
 #: src/components/routes/system/charts/gpu-charts.tsx
 #: src/components/routes/system/charts/memory-charts.tsx
 msgid "Precise utilization at the recorded time"
@@ -1599,6 +2653,17 @@ msgstr "Přesné využití v zaznamenaném čase"
 msgid "Preferred Language"
 msgstr "Upřednostňovaný jazyk"
 
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Priority"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Private"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Process started"
 msgstr "Proces spuštěn"
@@ -1606,8 +2671,15 @@ msgstr "Proces spuštěn"
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
 msgid "Protocol"
 msgstr "Protokol"
+
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "Public"
+msgstr ""
 
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Public key"
@@ -1617,6 +2689,31 @@ msgstr "Veřejný klíč"
 #: src/components/add-system.tsx
 msgid "Public Key"
 msgstr "Veřejný klíč"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/lib/network-monitor-utils.ts
+msgid "Push monitor"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Push monitors wait for heartbeats sent to a unique URL and go down when none arrives in time."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-push-url.tsx
+msgid "Push URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Pushbullet access tokens are 34 characters"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "QoS"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Query parameters starting with @ or $ are reserved for headers and extra data"
+msgstr ""
 
 #: src/components/routes/system/disk-io-sheet.tsx
 msgctxt "Disk I/O average queue depth"
@@ -1657,6 +2754,26 @@ msgstr "Chyby čtení"
 msgid "Received"
 msgstr "Přijato"
 
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/status-bar.tsx
+msgid "Recent checks"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Recipients"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Recipients can't include the sender number"
+msgstr ""
+
+#. placeholder {0}: rawDetected.service.name
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Recognized as {0}."
+msgstr ""
+
 #: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1664,9 +2781,36 @@ msgstr "Přijato"
 msgid "Refresh"
 msgstr "Aktualizovat"
 
+#: src/components/network-monitors-table/monitor-push-url.tsx
+#: src/components/network-monitors-table/monitor-push-url.tsx
+#: src/components/network-monitors-table/monitor-push-url.tsx
+msgid "Regenerate"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-push-url.tsx
+msgid "Regenerate push URL?"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Region"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Relationships"
 msgstr "Vztahy"
+
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "Remove"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Remove header"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Repeats every day. Windows may span midnight."
+msgstr ""
 
 #: src/components/login/login.tsx
 msgid "Request a one-time password"
@@ -1675,6 +2819,10 @@ msgstr "Požádat o jednorázové heslo"
 #: src/components/login/otp-forms.tsx
 msgid "Request OTP"
 msgstr "Požádat OTP"
+
+#: src/lib/shoutrrr.ts
+msgid "Required"
+msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Required by"
@@ -1694,15 +2842,20 @@ msgstr "Obnovit heslo"
 msgid "Resolved"
 msgstr "Vyřešeno"
 
+#: src/lib/shoutrrr.ts
+msgid "Responders"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/routes/status-page.tsx
 #: src/components/routes/system/charts/monitors-charts.tsx
 msgid "Response"
 msgstr "Odezva"
 
 #: src/components/network-monitors-table/network-monitors-table.tsx
-msgid "Response time monitoring from agents."
-msgstr "Sledování doby odezvy z agentů."
+#~ msgid "Response time monitoring from agents."
+#~ msgstr "Sledování doby odezvy z agentů."
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Restarts"
@@ -1712,6 +2865,35 @@ msgstr "Restarty"
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Resume"
 msgstr "Pokračovat"
+
+#: src/lib/shoutrrr.ts
+msgid "Retain message"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Retries"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Retry interval (s)"
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "Retrying automatically."
+msgstr ""
+
+#: src/components/routes/system/package-updates-table.tsx
+msgctxt "Version change"
+msgid "Revision"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Room IDs (starting with !) or aliases. Leave empty to post to all joined rooms."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Rooms"
+msgstr ""
 
 #: src/components/routes/system/charts/disk-charts.tsx
 #: src/components/routes/system/charts/disk-charts.tsx
@@ -1728,6 +2910,10 @@ msgstr "Změnit token"
 msgid "Rows per page"
 msgstr "Řádků na stránku"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Runs on"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Runtime Metrics"
 msgstr "Metriky běhu"
@@ -1739,6 +2925,10 @@ msgstr "S.M.A.R.T. Detaily"
 #: src/components/routes/system/smart-table.tsx
 msgid "S.M.A.R.T. Self-Test"
 msgstr "S.M.A.R.T. Vlastní test"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Same as interval"
+msgstr ""
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Save {foo}"
@@ -1761,9 +2951,14 @@ msgstr "Uložit Systém"
 msgid "Saved in the database and does not expire until you disable it."
 msgstr "Uložen v databázi a nevyprší, dokud jej nezablokujete."
 
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Schedule"
 msgstr "Plán"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Schedule maintenance windows for monitors. Monitors show as under maintenance, downtime is not counted and no notifications are sent."
+msgstr ""
 
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Schedule quiet hours where notifications will not be sent, such as during maintenance periods."
@@ -1773,6 +2968,11 @@ msgstr "Naplánujte tiché hodiny, kdy se nebudou odesílat oznámení, napřík
 msgid "Schedule quiet hours where notifications will not be sent."
 msgstr "Naplánujte tiché hodiny, kdy se nebudou odesílat oznámení."
 
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/status-page.tsx
+msgid "Scheduled"
+msgstr ""
+
 #: src/components/navbar.tsx
 msgid "Search"
 msgstr "Hledat"
@@ -1781,14 +2981,36 @@ msgstr "Hledat"
 msgid "Search for systems or settings..."
 msgstr "Hledat systémy nebo nastavení..."
 
-#: src/components/network-monitors-table/monitor-dialog.tsx
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
+msgid "Search monitors"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Search services"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Search services..."
+msgstr ""
+
+#: src/components/network-monitors-table/system-multi-select.tsx
+#: src/components/network-monitors-table/system-multi-select.tsx
 msgid "Search systems"
 msgstr "Hledat systémy"
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Seconds between pings (default: 60)"
 msgstr "Sekundy mezi pingy (výchozí: 60)"
+
+#: src/components/routes/system/package-updates-table.tsx
+#: src/components/routes/system/package-updates-table.tsx
+msgid "Security"
+msgstr ""
+
+#: src/components/routes/system/package-updates-table.tsx
+msgid "Security: {securityCount}"
+msgstr ""
 
 #: src/components/alerts/alerts-sheet.tsx
 msgid "See <0>notification settings</0> to configure how you receive alerts."
@@ -1802,12 +3024,22 @@ msgstr "Vybrat {foo}"
 msgid "Select a system"
 msgstr "Vybrat systém"
 
-#: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/system-multi-select.tsx
+#: src/components/routes/settings/maintenance.tsx
 msgid "Select all"
 msgstr "Vybrat vše"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "Select at least one monitor."
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Select at least one system."
+msgstr ""
+
+#: src/components/network-monitors-table/system-multi-select.tsx
+#: src/components/routes/settings/maintenance.tsx
 msgid "Select matches"
 msgstr "Vybrat shody"
 
@@ -1815,29 +3047,85 @@ msgstr "Vybrat shody"
 msgid "Select row"
 msgstr "Vybrat řádek"
 
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/system-multi-select.tsx
 msgid "Select systems"
 msgstr "Vybrat systémy"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Selected monitors are shown as under maintenance during this window."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-push-url.tsx
+msgid "Send a request to this URL at least once per interval. Optional parameters: <0>status=up|down</0>, <1>msg</1>, <2>ping</2> (ms)."
+msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send a single heartbeat ping to verify your endpoint is working."
 msgstr "Odešlete jeden heartbeat ping pro ověření funkčnosti vašeho koncového bodu."
 
+#: src/lib/shoutrrr.ts
+msgid "Send each line as a separate embed"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Send heartbeats to this URL from your service, cron job or script."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Send message as"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Send message as raw JSON payload"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Send notifications when this monitor goes down or recovers."
+msgstr ""
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send periodic outbound pings to an external monitoring service so you can monitor InfraScope without exposing it to the internet."
 msgstr "Odesílejte periodické odchozí pingy na externí monitorovací službu, abyste mohli monitorovat InfraScope bez jeho vystavení internetu."
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Send test"
+msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send test heartbeat"
 msgstr "Odeslat testovací heartbeat"
 
+#: src/lib/shoutrrr.ts
+msgid "Send title as"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Send token in a header instead of the URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Sender number"
+msgstr ""
+
 #: src/components/routes/system/charts/network-charts.tsx
 msgid "Sent"
 msgstr "Odeslat"
 
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Separate with commas"
+msgstr ""
+
 #: src/components/routes/system/smart-table.tsx
 msgid "Serial Number"
 msgstr "Sériové číslo"
+
+#: src/lib/shoutrrr.ts
+msgid "Server path"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Server subpath"
+msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Service Details"
@@ -1870,9 +3158,77 @@ msgstr "Nastavení"
 msgid "Settings saved"
 msgstr "Nastavení uloženo"
 
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Setup guide"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Share the status and uptime of selected monitors on a page that can be viewed without logging in."
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Shoutrrr URL"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Show each monitor's URL, hostname or IP."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Show link previews"
+msgstr ""
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Show more"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Show on status pages"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Show response times"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Show secrets"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Show targets"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Show values"
+msgstr ""
+
 #: src/components/login/auth-form.tsx
 msgid "Sign in"
 msgstr "Přihlásit se"
+
+#: src/components/routes/system/charts/wifi-chart.tsx
+msgid "Signal strength of connected Wi-Fi interfaces"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Signing secret"
+msgstr ""
+
+#. placeholder {0}: formatRelativeTime(monitor.statusChanged)
+#. placeholder {1}: formatShortDate(monitor.statusChanged)
+#: src/components/network-monitors-table/monitor-status-badge.tsx
+msgid "Since {0} ({1})"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Skip TLS certificate verification"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Slug"
+msgstr ""
 
 #: src/components/command-palette.tsx
 msgid "SMTP settings"
@@ -1883,6 +3239,24 @@ msgstr "Nastavení SMTP"
 msgid "Sort By"
 msgstr "Seřadit podle"
 
+#: src/lib/shoutrrr.ts
+msgid "Sound"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Source"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Space path"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Start and end time must differ."
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Start Time"
@@ -1890,6 +3264,7 @@ msgstr "Čas začátku"
 
 #. Context: alert state (active or resolved)
 #: src/components/alerts-history-columns.tsx
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/system/storage-pools-table.tsx
 #: src/components/systemd-table/systemd-table-columns.tsx
@@ -1897,12 +3272,43 @@ msgid "State"
 msgstr "Stav"
 
 #: src/components/containers-table/containers-table-columns.tsx
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/systemd-table/systemd-table.tsx
 #: src/components/systems-table/systems-table.tsx
 #: src/lib/alerts.ts
 msgid "Status"
 msgstr "Stav"
+
+#. placeholder {0}: incident.statusCode
+#. placeholder {0}: monitor.lastStatusCode
+#: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Status code {0}"
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+#: src/components/routes/status-page.tsx
+msgid "Status page not found"
+msgstr ""
+
+#: src/components/routes/settings/layout.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "Status Pages"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Status pages that include these monitors show this notice."
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "Status unknown"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Stream"
+msgstr ""
 
 #: src/components/systemd-table/systemd-table-columns.tsx
 msgid "Sub State"
@@ -1950,7 +3356,7 @@ msgid "Systemd Services"
 msgstr "Služby systemd"
 
 #: src/components/navbar.tsx
-#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Systems"
 msgstr "Systémy"
@@ -1968,15 +3374,31 @@ msgctxt "Tabs system layout option"
 msgid "Tabs"
 msgstr "Karty"
 
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Tags"
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-dialog.tsx
-#: src/components/network-monitors-table/network-monitors-columns.tsx
-#: src/components/network-monitors-table/network-monitors-columns.tsx
 msgid "Target"
 msgstr "Cíl"
 
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
+msgid "target[,protocol[,port[,interval[,server]]]]"
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
-msgid "target[,protocol[,port[,interval]]]"
+#~ msgid "target[,protocol[,port[,interval]]]"
+#~ msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Targets"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Targets (URLs, hostnames, IPs) will be visible to anyone with the link"
 msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
@@ -2002,21 +3424,58 @@ msgstr "Jednotky teploty"
 msgid "Temperatures of system sensors"
 msgstr "Teploty systémových senzorů"
 
+#: src/components/routes/settings/notification-builder.tsx
+msgid "Test"
+msgstr ""
+
 #: src/components/routes/settings/notifications.tsx
-msgid "Test <0>URL</0>"
-msgstr "Testovat <0>URL</0>"
+#~ msgid "Test <0>URL</0>"
+#~ msgstr "Testovat <0>URL</0>"
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Test heartbeat"
 msgstr "Testovat heartbeat"
 
-#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notification-builder.tsx
 msgid "Test notification sent"
 msgstr "Testovací oznámení odesláno"
+
+#: src/components/network-monitors-table/monitor-http-options.tsx
+msgid "Text the response body must contain"
+msgstr ""
+
+#. placeholder {0}: service.name
+#: src/components/routes/settings/notification-builder.tsx
+msgid "That doesn't look like a {0} webhook URL."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-push-url.tsx
+msgid "The current URL will stop working. Anything using it must be updated with the new URL."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "The full URL requests are sent to. Use http:// to disable TLS."
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "The generated URL is not valid."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "The hub checks the target itself. Only you can see this monitor."
+msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "The overall status is <0>ok</0> when all systems are up, <1>warn</1> when alerts are triggered, and <2>error</2> when any system is down."
 msgstr "Celkový stav je <0>ok</0>, když jsou všechny systémy v provozu, <1>warn</1>, když jsou spuštěny výstrahy, a <2>error</2>, když je některý systém mimo provoz."
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "The URL can't be represented by the form"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "The webhook ID is a number"
+msgstr ""
 
 #: src/components/login/forgot-pass-form.tsx
 msgid "Then log into the backend and reset your user account password in the users table."
@@ -2026,10 +3485,44 @@ msgstr "Poté se přihlaste do backendu a obnovte heslo k uživatelskému účtu
 msgid "This action cannot be undone. This will permanently delete all current records for {name} from the database."
 msgstr "Tuto akci nelze vzít zpět. Tím se z databáze trvale odstraní všechny aktuální záznamy pro {name}."
 
+#: src/components/routes/settings/status-pages.tsx
+msgid "This slug is already in use."
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "This status page does not exist or is not public."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "This system"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "This URL can't be edited with the form. It will be saved exactly as entered."
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
 msgid "This will permanently delete all selected records from the database."
 msgstr "Tímto trvale odstraníte všechny vybrané záznamy z databáze."
+
+#. placeholder {0}: deleteRecord?.title
+#: src/components/routes/settings/maintenance.tsx
+msgid "This will permanently delete the maintenance window \"{0}\"."
+msgstr ""
+
+#. placeholder {0}: deleteRecord?.title
+#: src/components/routes/settings/status-pages.tsx
+msgid "This will permanently delete the status page \"{0}\". Its link will stop working."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Thread ID"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Thread timestamp"
+msgstr ""
 
 #: src/components/routes/system/charts/disk-charts.tsx
 msgid "Throughput of {extraFsName}"
@@ -2043,12 +3536,41 @@ msgstr "Propustnost fondu {displayName}"
 msgid "Time format"
 msgstr "Formát času"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Timeout (seconds)"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
+msgid "Title"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Title and message can't use the same value"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Title color"
+msgstr ""
+
 #: src/components/routes/settings/notifications.tsx
 msgid "To email(s)"
 msgstr "Na email(y)"
 
+#: src/lib/shoutrrr.ts
+msgid "To numbers"
+msgstr ""
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/routes/status-page.tsx
+msgid "Today"
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/lib/shoutrrr.ts
 msgid "Token"
 msgstr ""
 
@@ -2065,6 +3587,17 @@ msgstr "Tokeny umožňují agentům připojení a registraci. Otisky jsou stabil
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Tokens and fingerprints are used to authenticate WebSocket connections to the hub."
 msgstr "Tokeny a otisky slouží k ověření připojení WebSocket k uzlu."
+
+#: src/components/routes/status-page.tsx
+#: src/components/routes/status-page.tsx
+msgid "Too many requests, retrying…"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Topic"
+msgstr ""
 
 #: src/components/ui/chart.tsx
 #: src/components/ui/chart.tsx
@@ -2085,6 +3618,8 @@ msgid "Total time spent on read/write (can exceed 100%)"
 msgstr "Celkový čas strávený čtením/zápisem (může přesáhnout 100 %)"
 
 #. placeholder {0}: data.length
+#. placeholder {0}: rows.length
+#: src/components/routes/system/package-updates-table.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Total: {0}"
 msgstr "Celkem: {0}"
@@ -2112,6 +3647,14 @@ msgstr "Spustí se, když využití paměti během 5 minut překročí prahovou 
 #: src/lib/alerts.ts
 msgid "Triggers when a container's health check reports unhealthy"
 msgstr "Spustí se, když kontrola stavu kontejneru oznámí nezdravý stav"
+
+#: src/lib/alerts.ts
+msgid "Triggers when a monitor goes down"
+msgstr ""
+
+#: src/lib/alerts.ts
+msgid "Triggers when a monitored certificate is about to expire"
+msgstr ""
 
 #: src/lib/alerts.ts
 msgid "Triggers when any sensor exceeds a threshold"
@@ -2161,12 +3704,22 @@ msgstr "Spouští se, když se změní dostupnost"
 msgid "Triggers when usage of any disk exceeds a threshold"
 msgstr "Spustí se, když využití disku překročí prahovou hodnotu"
 
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/routes/system/storage-pools-table.tsx
+#: src/lib/shoutrrr.ts
 msgid "Type"
 msgstr "Typ"
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Unavailable monitor"
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "Under maintenance"
+msgstr ""
 
 #: src/lib/alerts.ts
 msgid "Unhealthy"
@@ -2187,7 +3740,9 @@ msgid "Universal token"
 msgstr "Univerzální token"
 
 #. Context: Battery state
+#: src/components/network-monitors-table/monitor-status-badge.tsx
 #: src/components/routes/system/storage-pools-table.tsx
+#: src/components/systems-table/systems-table-columns.tsx
 #: src/lib/i18n.ts
 msgid "Unknown"
 msgstr "Neznámá"
@@ -2198,6 +3753,8 @@ msgid "Unlimited"
 msgstr "Neomezeno"
 
 #. Context: System is up
+#: src/components/network-monitors-table/monitor-status-badge.tsx
+#: src/components/network-monitors-table/status-bar.tsx
 #: src/components/routes/system/info-bar.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Up"
@@ -2207,7 +3764,19 @@ msgstr "Funkční"
 msgid "Up ({upSystemsLength})"
 msgstr "Funkční ({upSystemsLength})"
 
+#: src/components/routes/system/package-updates-table.tsx
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "Up to date"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Upcoming"
+msgstr ""
+
+#: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/notification-builder.tsx
 #: src/components/routes/settings/quiet-hours.tsx
+#: src/components/routes/settings/status-pages.tsx
 msgid "Update"
 msgstr "Aktualizovat"
 
@@ -2220,9 +3789,19 @@ msgstr "Aktualizovat"
 msgid "Updated"
 msgstr "Aktualizováno"
 
+#. placeholder {0}: formatRelativeTime(data.updated, now)
+#: src/components/routes/status-page.tsx
+msgid "Updated {0}"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Updated every 10 minutes."
 msgstr "Aktualizováno každých 10 minut."
+
+#: src/components/routes/system.tsx
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "Updates"
+msgstr ""
 
 #: src/components/routes/system/network-sheet.tsx
 msgid "Upload"
@@ -2232,6 +3811,42 @@ msgstr "Odeslání"
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Uptime"
 msgstr "Doba provozu"
+
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Uptime 24h"
+msgstr ""
+
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Uptime 30d"
+msgstr ""
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Uptime 7d"
+msgstr ""
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Uptime and response time monitoring from the hub and agents."
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "URL fragments (#…) are not supported"
+msgstr ""
+
+#: src/components/routes/settings/notification-builder.tsx
+msgid "URL preview"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "US (api.opsgenie.com)"
+msgstr ""
 
 #: src/components/routes/system/charts/disk-charts.tsx
 #: src/components/routes/system/charts/disk-charts.tsx
@@ -2247,6 +3862,22 @@ msgstr "Využití"
 msgid "Usage of storage pool {displayName}"
 msgstr "Využití fondu {displayName}"
 
+#: src/components/routes/settings/status-pages.tsx
+msgid "Use 2-63 lowercase letters, numbers and hyphens, starting with a letter or number."
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Use plain HTTP (disable TLS)"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Use TLS (mqtts)"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Use type:name, e.g. team:ops or user:jane@example.com"
+msgstr ""
+
 #: src/components/routes/system/charts/memory-charts.tsx
 #: src/components/routes/system/charts/memory-charts.tsx
 #: src/components/routes/system/storage-pools-table.tsx
@@ -2254,6 +3885,27 @@ msgstr "Využití fondu {displayName}"
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "Used"
 msgstr "Využito"
+
+#. placeholder {0}: maskSecret(str(f.userKey))
+#: src/lib/shoutrrr.ts
+msgid "user {0}"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "User key"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Username"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Username override"
+msgstr ""
 
 #: src/components/command-palette.tsx
 #: src/components/navbar.tsx
@@ -2266,13 +3918,39 @@ msgid "Utilization"
 msgstr "Využití"
 
 #: src/components/alerts-history-columns.tsx
+#: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Value"
 msgstr "Hodnota"
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Value {n}"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Value 1"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Value 2"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Value 3"
+msgstr ""
 
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/systems-table/systems-table.tsx
 msgid "View"
 msgstr "Zobrazení"
+
+#: src/components/active-alerts.tsx
+msgid "View alerts"
+msgstr ""
+
+#: src/components/alert-banner-sheet.tsx
+msgid "View details"
+msgstr ""
 
 #: src/components/routes/system/cpu-sheet.tsx
 #: src/components/routes/system/disk-io-sheet.tsx
@@ -2288,6 +3966,10 @@ msgstr "Zobrazit vašich 200 nejnovějších upozornění."
 #: src/components/systems-table/systems-table.tsx
 msgid "Visible Fields"
 msgstr "Viditelné sloupce"
+
+#: src/lib/shoutrrr.ts
+msgid "Visible to"
+msgstr ""
 
 #: src/components/routes/system/chart-card.tsx
 msgid "Waiting for enough records to display"
@@ -2309,9 +3991,47 @@ msgstr "Varování (%)"
 msgid "Warning thresholds"
 msgstr "Prahové hodnoty pro varování"
 
+#: src/lib/shoutrrr.ts
+msgid "webhook"
+msgstr ""
+
+#. placeholder {0}: maskSecret(str(f.webhookId))
+#: src/lib/shoutrrr.ts
+msgid "webhook {0}"
+msgstr ""
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Webhook / Push notifications"
 msgstr "Webhook / Push oznámení"
+
+#: src/lib/shoutrrr.ts
+msgid "Webhook ID"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Webhook token"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Webhook token (part 1)"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Webhook token (part 2)"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Webhook URL"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Webhook URL or token"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Webhooks key"
+msgstr ""
 
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "When enabled, this token allows agents to self-register without prior system creation."
@@ -2321,11 +4041,27 @@ msgstr "Pokud je povoleno, umožňuje tento token agentům samo-registraci bez p
 msgid "When using POST, each heartbeat includes a JSON payload with system status summary, list of down systems, and triggered alerts."
 msgstr "Při použití metody POST obsahuje každý heartbeat JSON payload se souhrnem stavu systému, seznamem nefunkčních systémů a spuštěnými výstrahami."
 
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "Wi-Fi"
+msgstr ""
+
+#: src/components/routes/system/charts/wifi-chart.tsx
+msgid "Wi-Fi signal"
+msgstr ""
+
+#: src/lib/shoutrrr.ts
+msgid "Wildcards (+, #) can't be used when publishing"
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgctxt "Button to copy install command"
 msgid "Windows command"
 msgstr "Windows příkaz"
+
+#: src/lib/shoutrrr.ts
+msgid "Workflow webhook URL"
+msgstr ""
 
 #. Disk write
 #. Disk write
@@ -2355,6 +4091,10 @@ msgstr "YAML konfigurace"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Yes"
 msgstr "Ano"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "You have unsaved changes."
+msgstr ""
 
 #: src/components/routes/settings/layout.tsx
 msgid "Your user settings have been updated."

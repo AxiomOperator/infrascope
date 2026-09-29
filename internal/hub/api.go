@@ -2,6 +2,7 @@ package hub
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -27,8 +28,10 @@ import (
 // UpdateInfo holds information about the latest update check
 type UpdateInfo struct {
 	lastCheck time.Time
-	Version   string `json:"v"`
-	Url       string `json:"url"`
+	// releaseURL overrides the GitHub API URL of the latest release (tests).
+	releaseURL string
+	Version    string `json:"v"`
+	Url        string `json:"url"`
 }
 
 var containerIDPattern = regexp.MustCompile(`^[a-fA-F0-9]{12,64}$`)
@@ -245,7 +248,13 @@ func (info *UpdateInfo) getUpdate(e *core.RequestEvent) error {
 		return e.JSON(http.StatusOK, info)
 	}
 	info.lastCheck = time.Now()
-	latestRelease, err := ghupdate.FetchLatestRelease(context.Background(), http.DefaultClient, "")
+	ctx, cancel := context.WithTimeout(e.Request.Context(), 15*time.Second)
+	defer cancel()
+	latestRelease, err := ghupdate.FetchLatestRelease(ctx, http.DefaultClient, info.releaseURL)
+	if errors.Is(err, ghupdate.ErrNoReleases) {
+		// Nothing published yet: stay quiet and report no new version.
+		return e.JSON(http.StatusOK, info)
+	}
 	if err != nil {
 		return err
 	}

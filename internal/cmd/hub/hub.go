@@ -48,10 +48,13 @@ func getBaseApp() *pocketbase.PocketBase {
 	// add update command
 	updateCmd := &cobra.Command{
 		Use:   "update",
-		Short: "Update " + beszel.AppName + " to the latest version",
+		Short: "Update InfraScope to the latest release",
 		Run:   hub.Update,
 	}
-	updateCmd.Flags().Bool("china-mirrors", false, "Use mirror (gh.beszel.dev) instead of GitHub")
+	// The gh.beszel.dev mirror served upstream Beszel binaries, so it is no
+	// longer used. The flag is kept (hidden, no-op) so existing scripts work.
+	updateCmd.Flags().Bool("china-mirrors", false, "No longer used")
+	_ = updateCmd.Flags().MarkDeprecated("china-mirrors", chinaMirrorsDeprecation)
 	baseApp.RootCmd.AddCommand(updateCmd)
 	// add health command
 	baseApp.RootCmd.AddCommand(newHealthCmd())
@@ -64,6 +67,8 @@ func getBaseApp() *pocketbase.PocketBase {
 
 	return baseApp
 }
+
+const chinaMirrorsDeprecation = "the gh.beszel.dev mirror served upstream Beszel binaries and is no longer used; updates are downloaded from GitHub (AxiomOperator/infrascope)"
 
 func newHealthCmd() *cobra.Command {
 	var baseURL string

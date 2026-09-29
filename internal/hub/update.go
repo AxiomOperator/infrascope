@@ -10,17 +10,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Update updates beszel to the latest version
-func Update(cmd *cobra.Command, _ []string) {
+// Update updates the hub binary to the latest InfraScope release
+func Update(_ *cobra.Command, _ []string) {
 	dataDir := os.TempDir()
 
 	// set dataDir to ./beszel_data if it exists
 	if _, err := os.Stat("./beszel_data"); err == nil {
 		dataDir = "./beszel_data"
 	}
-
-	// Check if china-mirrors flag is set
-	useMirror, _ := cmd.Flags().GetBool("china-mirrors")
 
 	// Get the executable path before update
 	exePath, err := os.Executable()
@@ -31,7 +28,6 @@ func Update(cmd *cobra.Command, _ []string) {
 	updated, err := ghupdate.Update(ghupdate.Config{
 		ArchiveExecutable: "beszel",
 		DataDir:           dataDir,
-		UseMirror:         useMirror,
 	})
 	if err != nil {
 		log.Fatal(err)
