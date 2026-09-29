@@ -79,7 +79,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import ChartTimeSelect from "@/components/charts/chart-time-select"
-import { LossChart, AvgMinMaxResponseChart } from "@/components/routes/system/charts/monitors-charts"
+import { LossChart, AvgMinMaxResponseChart, RecentChecksChart } from "@/components/routes/system/charts/monitors-charts"
 import { useNetworkMonitorStats } from "@/lib/use-network-monitors"
 import { getDailyUptime, useMonitorEvents, useMonitorIncidents } from "@/lib/use-monitor-events"
 import { MonitorStatusBadge } from "./monitor-status-badge"
@@ -804,6 +804,8 @@ function NetworkMonitorSheetContent({
 						</Card>
 					)}
 					<MonitorHistory monitor={monitor} enabled={open} />
+					{/* agents stream realtime stats; hub and push monitors chart their latest checks instead */}
+					{isHub && <RecentChecksChart monitor={monitor} chartData={chartData} />}
 					<ChartTimeSelect
 						className="bg-card"
 						agentVersion={chartData.agentVersion}

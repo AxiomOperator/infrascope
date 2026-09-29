@@ -14,6 +14,7 @@ import { useMemo } from "react"
 import ChartTimeSelect from "@/components/charts/chart-time-select"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { SystemDownReason } from "@/components/system-host-key"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -199,6 +200,7 @@ export default function InfoBar({
 							)
 						})}
 					</div>
+					<SystemDownReason system={system} className="xl:mt-2 max-xl:-mt-1 max-xl:mb-2" />
 				</div>
 				<div className="xl:ms-auto flex items-center gap-2 max-sm:-mb-1">
 					<ChartTimeSelect className="w-full xl:w-40" agentVersion={chartData.agentVersion} />

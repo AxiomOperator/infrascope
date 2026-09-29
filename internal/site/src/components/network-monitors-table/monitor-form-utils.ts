@@ -144,6 +144,11 @@ export function getMonitorIdentityKey({ system, target, protocol, port, server }
 	return `${system}${target}${protocol}${port}${protocol === "dns" ? server : ""}`
 }
 
+/** Whether a bulk line is a push monitor, which can't be bulk added. */
+export function isBulkPushLine(line: string) {
+	return line.split(",")[1]?.trim().toLowerCase() === "push"
+}
+
 export function parseBulkMonitorLine(line: string, lineNumber: number, system: string) {
 	const [rawTarget = "", rawProtocol = "", rawPort = "", rawInterval = "", rawServer = ""] = line.split(",")
 	const parsed = v.safeParse(BulkMonitorSchema, {

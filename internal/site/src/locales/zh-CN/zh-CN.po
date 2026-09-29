@@ -103,6 +103,10 @@ msgstr "{count, plural, one {{countString} 分钟} few {{countString} 分钟} ma
 msgid "{count, plural, one {# monitor} other {# monitors}}"
 msgstr ""
 
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "{created} monitor(s) created, {skipped} skipped."
+msgstr ""
+
 #: src/components/alerts-history-columns.tsx
 msgid "{days, plural, one {# day} other {# days}}"
 msgstr ""
@@ -143,6 +147,14 @@ msgstr ""
 
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "{totalCount, plural, one {# service} other {# services}}"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
+msgid "{totalCreated} monitor(s) added."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
+msgid "{totalCreated} monitor(s) added. {skippedPush} push line(s) skipped."
 msgstr ""
 
 #: src/lib/shoutrrr.ts
@@ -351,6 +363,11 @@ msgstr "调整图表的显示选项。"
 msgid "Adjust the width of the main layout"
 msgstr "调整主布局宽度"
 
+#. Import preview: monitor will be created with changes
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "Adjusted"
+msgstr ""
+
 #: src/components/command-palette.tsx
 #: src/components/command-palette.tsx
 #: src/components/navbar.tsx
@@ -365,6 +382,7 @@ msgstr "之后"
 msgid "After setting the environment variables, restart your InfraScope hub for changes to take effect."
 msgstr "设置环境变量后，重新启动您的 InfraScope hub 以使更改生效。"
 
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Agent"
@@ -451,15 +469,15 @@ msgstr ""
 msgid "Automatic copy requires a secure context."
 msgstr "自动复制所需的安全上下文。"
 
-#: src/components/routes/system/package-updates-table.tsx
-msgctxt "Package version available to install"
-msgid "Available"
-msgstr ""
-
 #: src/components/routes/system/storage-pools-table.tsx
 msgctxt "Disk space available"
 msgid "Available"
 msgstr "可用"
+
+#: src/components/routes/system/package-updates-table.tsx
+msgctxt "Package version available to install"
+msgid "Available"
+msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Avatar URL"
@@ -518,8 +536,16 @@ msgstr "平均、最小和最大响应时间"
 msgid "Avg 1h"
 msgstr "1 小时平均"
 
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "Back"
+msgstr ""
+
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Back to services"
+msgstr ""
+
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "Backup file"
 msgstr ""
 
 #: src/components/command-palette.tsx
@@ -636,7 +662,15 @@ msgid "Bulk Add {foo}"
 msgstr "批量添加{foo}"
 
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
-msgid "Bulk added monitors run on the selected agents."
+msgid "Bulk added monitors are checked by the hub (minimum interval {hubMinInterval}s). Only you can see them. Push lines are skipped."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
+#~ msgid "Bulk added monitors run on the selected agents."
+#~ msgstr ""
+
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
+msgid "Bulk added monitors run on the selected agents. Push lines are skipped."
 msgstr ""
 
 #: src/components/network-monitors-table/network-monitors-columns.tsx
@@ -673,6 +707,7 @@ msgstr "可停止"
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/status-pages.tsx
+#: src/components/system-host-key.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Cancel"
 msgstr "取消"
@@ -1045,6 +1080,8 @@ msgstr "CPU 时间细分"
 msgid "CPU Usage"
 msgstr "CPU 使用率"
 
+#. Import preview: monitor will be created
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/status-pages.tsx
@@ -1187,6 +1224,10 @@ msgstr "描述"
 msgid "Detail"
 msgstr "详情"
 
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "Details"
+msgstr ""
+
 #: src/components/routes/system/smart-table.tsx
 msgid "Device"
 msgstr "设备"
@@ -1285,6 +1326,11 @@ msgstr "离线"
 #: src/components/systems-table/systems-table.tsx
 msgid "Down ({downSystemsLength})"
 msgstr "离线 ({downSystemsLength})"
+
+#: src/components/system-host-key.tsx
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "Down: {reason}"
+msgstr ""
 
 #: src/components/routes/system/network-sheet.tsx
 msgid "Download"
@@ -1416,6 +1462,10 @@ msgstr ""
 msgid "Enter any <0>Shoutrrr</0> URL."
 msgstr ""
 
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
+msgid "Enter at least one monitor."
+msgstr ""
+
 #: src/components/login/login.tsx
 msgid "Enter email address to reset password"
 msgstr "输入电子邮件地址以重置密码"
@@ -1527,6 +1577,11 @@ msgstr ""
 msgid "Fahrenheit (°F)"
 msgstr "华氏度 (°F)"
 
+#. Chart legend: failed monitor checks
+#: src/components/routes/system/charts/monitors-charts.tsx
+msgid "Failed"
+msgstr ""
+
 #: src/components/routes/system/smart-table.tsx
 msgid "Failed Attributes:"
 msgstr "失败属性："
@@ -1558,6 +1613,10 @@ msgstr ""
 
 #: src/components/routes/status-page.tsx
 msgid "Failed to load status page"
+msgstr ""
+
+#: src/components/system-host-key.tsx
+msgid "Failed to reset host key"
 msgstr ""
 
 #: src/components/routes/settings/maintenance.tsx
@@ -1752,6 +1811,10 @@ msgstr ""
 msgid "Host / IP"
 msgstr "主机/IP"
 
+#: src/components/system-host-key.tsx
+msgid "Host key reset"
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 msgid "Host of your signal-cli-rest-api server."
 msgstr ""
@@ -1777,11 +1840,13 @@ msgstr ""
 msgid "HTTP options, timeouts and retry intervals need agent version 0.21.0 or newer: {0}"
 msgstr ""
 
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
 msgid "Hub"
 msgstr ""
 
@@ -1839,6 +1904,24 @@ msgctxt "Docker image"
 msgid "Image update available"
 msgstr "有可用的镜像更新"
 
+#. placeholder {0}: preview.created
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "Import {0} monitor(s)"
+msgstr ""
+
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "Import complete"
+msgstr ""
+
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "Import failed"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "Import from Uptime Kuma"
+msgstr ""
+
 #: src/components/routes/status-page.tsx
 msgid "In progress"
 msgstr ""
@@ -1883,6 +1966,10 @@ msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "JSON"
+msgstr ""
+
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "JSON file, up to 10 MB."
 msgstr ""
 
 #: src/lib/shoutrrr.ts
@@ -1951,6 +2038,10 @@ msgstr "生命周期"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "limit"
 msgstr "限制"
+
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
+msgid "Line {lineNumber}: hub monitors must use an interval of at least {hubMinInterval} seconds."
+msgstr ""
 
 #: src/components/routes/system/charts/load-average-chart.tsx
 msgid "Load Average"
@@ -2194,6 +2285,7 @@ msgstr ""
 #: src/components/network-monitors-table/monitor-http-options.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
 #: src/components/systemd-table/systemd-table-columns.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Name"
@@ -2281,6 +2373,10 @@ msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
 msgid "No more monitors to add"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
+msgid "No new monitors. All entries already exist."
 msgstr ""
 
 #: src/components/command-palette.tsx
@@ -2552,8 +2648,10 @@ msgstr ""
 msgid "Payload format"
 msgstr "有效载荷 (Payload) 格式"
 
+#. Chart legend: pending (retrying) monitor checks
 #: src/components/network-monitors-table/monitor-status-badge.tsx
 #: src/components/network-monitors-table/status-bar.tsx
+#: src/components/routes/system/charts/monitors-charts.tsx
 msgid "Pending"
 msgstr ""
 
@@ -2607,6 +2705,7 @@ msgid "Please <0>configure an SMTP server</0> to ensure alerts are delivered."
 msgstr "请<0>配置 SMTP 服务器</0>以确保警报被传递。"
 
 #: src/components/alerts/alerts-sheet.tsx
+#: src/components/system-host-key.tsx
 msgid "Please check logs for more details."
 msgstr "请检查日志以获取更多详细信息。"
 
@@ -2673,6 +2772,17 @@ msgstr "采集时间下的精确内存使用率"
 msgid "Preferred Language"
 msgstr "首选语言"
 
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "Preview import"
+msgstr ""
+
+#. placeholder {0}: preview.created
+#. placeholder {1}: preview.adjusted?.length ?? 0
+#. placeholder {2}: preview.skipped?.length ?? 0
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "Preview: {0} to create, {1} adjusted, {2} skipped"
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 #: src/lib/shoutrrr.ts
 #: src/lib/shoutrrr.ts
@@ -2713,6 +2823,10 @@ msgstr "公钥"
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/lib/network-monitor-utils.ts
 msgid "Push monitor"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
+msgid "Push monitors can't be bulk added. Add them individually."
 msgstr ""
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
@@ -2777,6 +2891,7 @@ msgstr "接收"
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/status-bar.tsx
+#: src/components/routes/system/charts/monitors-charts.tsx
 msgid "Recent checks"
 msgstr ""
 
@@ -2852,9 +2967,23 @@ msgstr "被需要"
 msgid "Requires"
 msgstr "需要"
 
+#: src/components/system-host-key.tsx
+#: src/components/system-host-key.tsx
+msgid "Reset host key"
+msgstr ""
+
 #: src/components/login/forgot-pass-form.tsx
 msgid "Reset Password"
 msgstr "重置密码"
+
+#: src/components/systems-table/systems-table-columns.tsx
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "Reset SSH host key"
+msgstr ""
+
+#: src/components/system-host-key.tsx
+msgid "Reset SSH host key for {name}?"
+msgstr ""
 
 #: src/components/alerts-history-columns.tsx
 #: src/components/alerts-history-columns.tsx
@@ -2870,6 +2999,7 @@ msgstr ""
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/routes/status-page.tsx
 #: src/components/routes/system/charts/monitors-charts.tsx
+#: src/components/routes/system/charts/monitors-charts.tsx
 msgid "Response"
 msgstr "响应"
 
@@ -2877,9 +3007,18 @@ msgstr "响应"
 #~ msgid "Response time monitoring from agents."
 #~ msgstr "来自客户端的响应时间监控。"
 
+#. placeholder {0}: data.length
+#: src/components/routes/system/charts/monitors-charts.tsx
+msgid "Response time of the latest {0} checks"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Restarts"
 msgstr "重启次数"
+
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "Result"
+msgstr ""
 
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/systems-table/systems-table-columns.tsx
@@ -2930,7 +3069,9 @@ msgstr "轮换令牌"
 msgid "Rows per page"
 msgstr "每页行数"
 
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
 msgid "Runs on"
 msgstr ""
 
@@ -3059,6 +3200,7 @@ msgstr "全选"
 msgid "Select at least one monitor."
 msgstr ""
 
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Select at least one system."
 msgstr ""
@@ -3257,6 +3399,11 @@ msgstr ""
 msgid "Skip TLS certificate verification"
 msgstr ""
 
+#. Import preview: monitor will not be imported
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "Skipped"
+msgstr ""
+
 #: src/components/routes/settings/status-pages.tsx
 msgid "Slug"
 msgstr ""
@@ -3280,6 +3427,10 @@ msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Space path"
+msgstr ""
+
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "SSH host key mismatch. Reset host key"
 msgstr ""
 
 #: src/components/routes/settings/maintenance.tsx
@@ -3480,8 +3631,20 @@ msgstr ""
 msgid "That doesn't look like a {0} webhook URL."
 msgstr ""
 
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "The backup contains no monitors."
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-push-url.tsx
 msgid "The current URL will stop working. Anything using it must be updated with the new URL."
+msgstr ""
+
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "The file is not a valid Uptime Kuma backup (JSON)."
+msgstr ""
+
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "The file is too large. The maximum size is 10 MB."
 msgstr ""
 
 #: src/lib/shoutrrr.ts
@@ -3492,13 +3655,30 @@ msgstr ""
 msgid "The generated URL is not valid."
 msgstr ""
 
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "The hub checks the imported monitors. Only you can see them."
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "The hub checks the target itself. Only you can see this monitor."
+msgstr ""
+
+#: src/components/system-host-key.tsx
+msgid "The hub pins the SSH host key of each agent and refuses to connect if it changes. Reset it only if you reinstalled the agent or otherwise changed its host key. The next key the agent presents will be trusted."
+msgstr ""
+
+#. placeholder {0}: system.name
+#: src/components/system-host-key.tsx
+msgid "The next SSH host key presented by {0} will be trusted."
 msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "The overall status is <0>ok</0> when all systems are up, <1>warn</1> when alerts are triggered, and <2>error</2> when any system is down."
 msgstr "当所有系统都正常运行时，整体状态为 <0>ok</0>；当触发警报时为 <1>警告</1>；当任何系统故障时为 <2>错误</2>。"
+
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "The selected agent checks the imported monitors."
+msgstr ""
 
 #: src/components/routes/settings/notification-builder.tsx
 msgid "The URL can't be represented by the form"
@@ -3524,6 +3704,7 @@ msgstr ""
 msgid "This status page does not exist or is not public."
 msgstr ""
 
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "This system"
 msgstr ""
@@ -3838,6 +4019,10 @@ msgstr ""
 msgid "Upload"
 msgstr "上传"
 
+#: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+msgid "Upload an Uptime Kuma backup (Settings → Backup → Export in Uptime Kuma). You'll see a preview before anything is created."
+msgstr ""
+
 #: src/components/routes/system/info-bar.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Uptime"
@@ -4129,6 +4314,10 @@ msgstr "是"
 
 #: src/components/routes/settings/notifications.tsx
 msgid "You have unsaved changes."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
+msgid "You must be logged in to add hub monitors."
 msgstr ""
 
 #: src/components/routes/settings/layout.tsx

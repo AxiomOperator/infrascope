@@ -1,16 +1,25 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Trans, useLingui } from "@lingui/react/macro"
 import { pb } from "@/lib/api"
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
 import type { NetworkMonitorRecord } from "@/types"
-import { getErrorMessage, getMonitorIdentityKey, parseBulkMonitorLine } from "./monitor-form-utils"
+import {
+	getErrorMessage,
+	getMonitorIdentityKey,
+	hubMinInterval,
+	isBulkPushLine,
+	parseBulkMonitorLine,
+} from "./monitor-form-utils"
 import { SystemMultiSelect } from "./system-multi-select"
 
-/** Sheet that creates agent monitors from CSV-like lines on one or more systems. */
+export type BulkRunsOn = "hub" | "agent"
+
+/** Sheet that creates monitors from CSV-like lines on the hub or on one or more agent systems. */
 export function MonitorBulkAddSheet({
 	open,
 	setOpen,
@@ -18,6 +27,8 @@ export function MonitorBulkAddSheet({
 	monitors,
 	selectedSystemIds,
 	setSelectedSystemIds,
+	initialRunsOn = "agent",
+	systemName,
 }: {
 	open: boolean
 	setOpen: (open: boolean) => void
@@ -25,12 +36,24 @@ export function MonitorBulkAddSheet({
 	monitors: NetworkMonitorRecord[]
 	selectedSystemIds: Set<string>
 	setSelectedSystemIds: (ids: Set<string>) => void
+	/** Runner selected when the sheet opens. */
+	initialRunsOn?: BulkRunsOn
+	/** Name of the current system (on a system page). */
+	systemName?: string
 }) {
 	const [bulkInput, setBulkInput] = useState("")
 	const [bulkLoading, setBulkLoading] = useState(false)
+	const [runsOn, setRunsOn] = useState<BulkRunsOn>(initialRunsOn)
 	const bulkFormRef = useRef<HTMLFormElement>(null)
 	const { toast } = useToast()
 	const { t } = useLingui()
+	const isHub = runsOn === "hub"
+
+	useEffect(() => {
+		if (open) {
+			setRunsOn(initialRunsOn)
+		}
+	}, [open, initialRunsOn])
 
 	async function handleBulkSubmit(e: React.FormEvent) {
 		e.preventDefault()
@@ -38,20 +61,46 @@ export function MonitorBulkAddSheet({
 		let closedForSubmit = false
 
 		try {
-			const targetSystems = systemId ? [systemId] : Array.from(selectedSystemIds)
+			// hub monitors have no system
+			const targetSystems = isHub ? [""] : systemId ? [systemId] : Array.from(selectedSystemIds)
 			if (!targetSystems.length) {
-				throw new Error("Select at least one system.")
+				throw new Error(t`Select at least one system.`)
 			}
-			const rawLines = bulkInput.split(/\r?\n/).filter((line) => line.trim())
+			const allLines = bulkInput
+				.split(/\r?\n/)
+				.map((line, index) => ({ line, lineNumber: index + 1 }))
+				.filter(({ line }) => line.trim())
+			// push monitors have no target and are created one at a time
+			const rawLines = allLines.filter(({ line }) => !isBulkPushLine(line))
+			const skippedPush = allLines.length - rawLines.length
 			if (!rawLines.length) {
-				throw new Error("Enter at least one monitor.")
+				throw new Error(
+					skippedPush ? t`Push monitors can't be bulk added. Add them individually.` : t`Enter at least one monitor.`
+				)
 			}
+			const userId = pb.authStore.record?.id ?? ""
+			if (isHub && !userId) {
+				throw new Error(t`You must be logged in to add hub monitors.`)
+			}
+
+			// validate every line before creating anything
+			const payloadsBySystem = targetSystems.map((system) => {
+				const payloads = rawLines.map(({ line, lineNumber }) => {
+					const payload = parseBulkMonitorLine(line, lineNumber, system)
+					if (isHub && payload.interval < hubMinInterval) {
+						throw new Error(
+							t`Line ${lineNumber}: hub monitors must use an interval of at least ${hubMinInterval} seconds.`
+						)
+					}
+					return isHub ? { ...payload, users: [userId] } : payload
+				})
+				return { system, payloads }
+			})
 
 			let totalCreated = 0
 			closedForSubmit = true
 
-			for (const system of targetSystems) {
-				const payloads = rawLines.map((line, index) => parseBulkMonitorLine(line, index + 1, system))
+			for (const { system, payloads } of payloadsBySystem) {
 				const existingMonitorKeys = new Set(
 					monitors.filter((monitor) => monitor.system === system).map((monitor) => getMonitorIdentityKey(monitor))
 				)
@@ -86,11 +135,14 @@ export function MonitorBulkAddSheet({
 			}
 
 			if (!totalCreated) {
-				throw new Error("No new monitors. All entries already exist.")
+				throw new Error(t`No new monitors. All entries already exist.`)
 			}
 
 			setBulkInput("")
-			toast({ title: t`Monitors created`, description: `${totalCreated} monitor(s) added.` })
+			const description = skippedPush
+				? t`${totalCreated} monitor(s) added. ${skippedPush} push line(s) skipped.`
+				: t`${totalCreated} monitor(s) added.`
+			toast({ title: t`Monitors created`, description })
 		} catch (err: unknown) {
 			if (closedForSubmit) {
 				setOpen(true)
@@ -122,7 +174,23 @@ export function MonitorBulkAddSheet({
 				</SheetHeader>
 				<form ref={bulkFormRef} onSubmit={handleBulkSubmit} className="flex h-full flex-col overflow-hidden">
 					<div className="flex-1 flex flex-col space-y-4 overflow-auto p-4">
-						{!systemId && (
+						<div className="grid gap-2">
+							<Label htmlFor="bulk-monitor-runs-on">
+								<Trans>Runs on</Trans>
+							</Label>
+							<Select value={runsOn} onValueChange={(value) => setRunsOn(value as BulkRunsOn)} disabled={bulkLoading}>
+								<SelectTrigger id="bulk-monitor-runs-on" className="bg-card">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="hub">
+										<Trans>Hub</Trans>
+									</SelectItem>
+									<SelectItem value="agent">{systemId ? systemName || t`This system` : t`Agent`}</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+						{!isHub && !systemId && (
 							<div className="grid gap-2">
 								<Label htmlFor="bulk-monitor-systems" className="sr-only">
 									<Trans>Systems</Trans>
@@ -163,12 +231,19 @@ export function MonitorBulkAddSheet({
 								<Trans>target[,protocol[,port[,interval[,server]]]]</Trans>
 							</p>
 							<p className="text-xs text-muted-foreground">
-								<Trans>Bulk added monitors run on the selected agents.</Trans>
+								{isHub ? (
+									<Trans>
+										Bulk added monitors are checked by the hub (minimum interval {hubMinInterval}s). Only you can see
+										them. Push lines are skipped.
+									</Trans>
+								) : (
+									<Trans>Bulk added monitors run on the selected agents. Push lines are skipped.</Trans>
+								)}
 							</p>
 						</div>
 					</div>
 					<SheetFooter className="border-t">
-						<Button type="submit" disabled={bulkLoading || (!systemId && !selectedSystemIds.size)}>
+						<Button type="submit" disabled={bulkLoading || (!isHub && !systemId && !selectedSystemIds.size)}>
 							<Trans>Add {{ foo: t`Network Monitors` }}</Trans>
 						</Button>
 					</SheetFooter>

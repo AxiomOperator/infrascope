@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Trans, useLingui } from "@lingui/react/macro"
 import { useStore } from "@nanostores/react"
-import { ChevronDownIcon, ListIcon, PlusIcon, TriangleAlertIcon } from "lucide-react"
+import { ChevronDownIcon, ListIcon, PlusIcon, TriangleAlertIcon, UploadIcon } from "lucide-react"
 import { pb } from "@/lib/api"
 import {
 	Dialog,
@@ -36,21 +36,26 @@ import { hasCustomHttpOptions, MonitorHttpOptions, SwitchField } from "./monitor
 import { MonitorPushUrl } from "./monitor-push-url"
 import { MonitorBulkAddSheet } from "./monitor-bulk-add-sheet"
 import { SystemMultiSelect } from "./system-multi-select"
+import { UptimeKumaImportDialog } from "./uptime-kuma-import-dialog"
 
 type RunsOn = "hub" | "agent"
 
 export function AddMonitorDialog({ systemId, monitors }: { systemId?: string; monitors: NetworkMonitorRecord[] }) {
 	const [open, setOpen] = useState(false)
 	const [bulkOpen, setBulkOpen] = useState(false)
+	const [importOpen, setImportOpen] = useState(false)
+	const [bulkRunsOn, setBulkRunsOn] = useState<RunsOn>("agent")
 	const [bulkSelectedSystemIds, setBulkSelectedSystemIds] = useState<Set<string>>(new Set())
 	const { t } = useLingui()
 	const systems = useStore($systems)
+	const allSystems = useStore($allSystemsById)
 	const hasEligibleSystems = systemId ? true : systems.some(supportsNetworkMonitors)
 
-	const openBulkAdd = (selectedSystemIds?: Set<string>) => {
+	const openBulkAdd = (selectedSystemIds?: Set<string>, runsOn?: RunsOn) => {
 		if (!systemId && selectedSystemIds) {
 			setBulkSelectedSystemIds(new Set(selectedSystemIds))
 		}
+		setBulkRunsOn(runsOn ?? (hasEligibleSystems ? "agent" : "hub"))
 		setOpen(false)
 		setBulkOpen(true)
 	}
@@ -75,12 +80,7 @@ export function AddMonitorDialog({ systemId, monitors }: { systemId?: string; mo
 				<div className="w-px h-full bg-muted"></div>
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
-						<Button
-							variant="outline"
-							className="px-2 rounded-s-none border-s-0"
-							aria-label={t`More actions`}
-							disabled={!hasEligibleSystems}
-						>
+						<Button variant="outline" className="px-2 rounded-s-none border-s-0" aria-label={t`More actions`}>
 							<ChevronDownIcon className="size-4" />
 						</Button>
 					</DropdownMenuTrigger>
@@ -89,25 +89,27 @@ export function AddMonitorDialog({ systemId, monitors }: { systemId?: string; mo
 							<ListIcon className="size-4 me-2" />
 							<Trans>Bulk Add</Trans>
 						</DropdownMenuItem>
+						<DropdownMenuItem onClick={() => setImportOpen(true)}>
+							<UploadIcon className="size-4 me-2" />
+							<Trans>Import from Uptime Kuma</Trans>
+						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</div>
 			<Dialog open={open} onOpenChange={setOpen}>
-				<MonitorDialogContent
-					open={open}
-					setOpen={setOpen}
-					systemId={systemId}
-					onOpenBulkAdd={hasEligibleSystems ? openBulkAdd : undefined}
-				/>
+				<MonitorDialogContent open={open} setOpen={setOpen} systemId={systemId} onOpenBulkAdd={openBulkAdd} />
 			</Dialog>
 			<MonitorBulkAddSheet
 				open={bulkOpen}
 				setOpen={setBulkOpen}
 				systemId={systemId}
+				systemName={systemId ? allSystems[systemId]?.name : undefined}
 				monitors={monitors}
 				selectedSystemIds={bulkSelectedSystemIds}
 				setSelectedSystemIds={setBulkSelectedSystemIds}
+				initialRunsOn={bulkRunsOn}
 			/>
+			<UptimeKumaImportDialog open={importOpen} setOpen={setImportOpen} systemId={systemId} />
 		</>
 	)
 }
@@ -152,7 +154,7 @@ function MonitorDialogContent({
 	setOpen: (open: boolean) => void
 	systemId?: string
 	monitor?: NetworkMonitorRecord
-	onOpenBulkAdd?: (selectedSystemIds: Set<string>) => void
+	onOpenBulkAdd?: (selectedSystemIds: Set<string>, runsOn: RunsOn) => void
 }) {
 	const [runsOn, setRunsOn] = useState<RunsOn>(() => initialRunsOn(monitor, systemId))
 	const [name, setName] = useState(monitor?.name ?? "")
@@ -598,11 +600,11 @@ function MonitorDialogContent({
 					</div>
 				)}
 				<DialogFooter>
-					{!isEditing && !isHub && onOpenBulkAdd && (
+					{!isEditing && onOpenBulkAdd && (
 						<Button
 							type="button"
 							variant="outline"
-							onClick={() => onOpenBulkAdd(selectedSystemIds)}
+							onClick={() => onOpenBulkAdd(selectedSystemIds, runsOn)}
 							disabled={loading}
 							className="me-auto"
 						>

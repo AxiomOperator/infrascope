@@ -12,6 +12,7 @@ import {
 	CopyIcon,
 	CpuIcon,
 	HardDriveIcon,
+	KeyRoundIcon,
 	MemoryStickIcon,
 	MoreHorizontalIcon,
 	PackageIcon,
@@ -41,6 +42,7 @@ import { batteryStateTranslations } from "@/lib/i18n"
 import { connectedWiFi, strongestWiFi, strongestWiFiSignal, wifiSignalState } from "@/lib/wifi"
 import type { SystemRecord, WiFi } from "@/types"
 import { SystemDialog } from "../add-system"
+import { canResetHostKey, getDownReason, isHostKeyMismatch, ResetHostKeyDialog } from "../system-host-key"
 import AlertButton from "../alerts/alert-button"
 import { $router, Link } from "../router"
 import {
@@ -152,7 +154,7 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 				return (
 					<>
 						<span className="flex gap-2 items-center font-medium text-sm text-nowrap md:ps-1">
-							<IndicatorDot system={info.row.original} />
+							<SystemStatusDot system={info.row.original} />
 							<Link
 								href={linkUrl}
 								tabIndex={-1}
@@ -172,6 +174,7 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 								</span>
 								<span className="absolute inset-0 truncate">{name}</span>
 							</Link>
+							<HostKeyMismatchButton system={info.row.original} />
 						</span>
 						<Link href={linkUrl} className="inset-0 absolute size-full" aria-label={name}></Link>
 					</>
@@ -727,12 +730,64 @@ export function IndicatorDot({ system, className }: { system: SystemRecord; clas
 	)
 }
 
+/** Status dot with the down reason in a tooltip when the system is down with an error. */
+function SystemStatusDot({ system }: { system: SystemRecord }) {
+	const reason = getDownReason(system)
+	if (!reason) {
+		return <IndicatorDot system={system} />
+	}
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<span className="relative z-10 flex items-center py-1">
+					<IndicatorDot system={system} />
+				</span>
+			</TooltipTrigger>
+			<TooltipContent side="right" className="max-w-xs break-words">
+				<Trans>Down: {reason}</Trans>
+			</TooltipContent>
+		</Tooltip>
+	)
+}
+
+/** Inline host key reset for systems that are down with a host key mismatch. */
+function HostKeyMismatchButton({ system }: { system: SystemRecord }) {
+	const [open, setOpen] = useState(false)
+	const { t } = useLingui()
+	if (!isHostKeyMismatch(getDownReason(system)) || !canResetHostKey(system)) {
+		return null
+	}
+	return (
+		<>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<Button
+						variant="ghost"
+						size="icon"
+						className="relative z-10 -my-1 size-6 text-red-500"
+						aria-label={t`Reset SSH host key`}
+						onClick={() => setOpen(true)}
+					>
+						<KeyRoundIcon className="size-3.5" />
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent>
+					<Trans>SSH host key mismatch. Reset host key</Trans>
+				</TooltipContent>
+			</Tooltip>
+			<ResetHostKeyDialog system={system} open={open} onOpenChange={setOpen} />
+		</>
+	)
+}
+
 export const ActionsButton = memo(({ system }: { system: SystemRecord }) => {
 	const [deleteOpen, setDeleteOpen] = useState(false)
 	const [editOpen, setEditOpen] = useState(false)
 	const editOpened = useRef(false)
 	const { t } = useLingui()
+	const [resetHostKeyOpen, setResetHostKeyOpen] = useState(false)
 	const { id, status, host, name } = system
+	const showResetHostKey = canResetHostKey(system)
 
 	return useMemo(() => {
 		return (
@@ -778,6 +833,12 @@ export const ActionsButton = memo(({ system }: { system: SystemRecord }) => {
 								</>
 							)}
 						</DropdownMenuItem>
+						{showResetHostKey && (
+							<DropdownMenuItem onSelect={() => setResetHostKeyOpen(true)}>
+								<KeyRoundIcon className="me-2.5 size-4" />
+								<Trans>Reset SSH host key</Trans>
+							</DropdownMenuItem>
+						)}
 						<DropdownMenuItem onClick={() => copyToClipboard(name)}>
 							<CopyIcon className="me-2.5 size-4" />
 							<Trans>Copy name</Trans>
@@ -797,6 +858,9 @@ export const ActionsButton = memo(({ system }: { system: SystemRecord }) => {
 				<Dialog open={editOpen} onOpenChange={setEditOpen}>
 					{editOpened.current && <SystemDialog system={system} setOpen={setEditOpen} />}
 				</Dialog>
+				{showResetHostKey && (
+					<ResetHostKeyDialog system={system} open={resetHostKeyOpen} onOpenChange={setResetHostKeyOpen} />
+				)}
 				{/* deletion dialog */}
 				<AlertDialog open={deleteOpen} onOpenChange={(open) => setDeleteOpen(open)}>
 					<AlertDialogContent>
@@ -826,5 +890,5 @@ export const ActionsButton = memo(({ system }: { system: SystemRecord }) => {
 				</AlertDialog>
 			</>
 		)
-	}, [id, status, host, name, system, t, deleteOpen, editOpen])
+	}, [id, status, host, name, system, t, deleteOpen, editOpen, resetHostKeyOpen, showResetHostKey])
 })

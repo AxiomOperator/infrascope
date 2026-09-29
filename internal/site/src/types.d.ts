@@ -31,6 +31,8 @@ export interface SystemRecord extends RecordModel {
 	info: SystemInfo
 	v: string
 	updated: string
+	/** Why the system last went down (e.g. an SSH host key mismatch); empty while up. */
+	downReason?: string
 }
 
 export interface WiFi {

@@ -1,11 +1,36 @@
 import { getMonitorName, monitorGapRecord } from "@/lib/network-monitor-utils"
 import LineChartDefault, { isolatedDot } from "@/components/charts/line-chart"
 import type { DataPoint } from "@/components/charts/line-chart"
-import { decimalString, formatMicroseconds, matchesFilterGroups, parseFilterGroups, toFixedFloat } from "@/lib/utils"
+import { useYAxisWidth } from "@/components/charts/hooks"
+import {
+	ChartContainer,
+	ChartLegend,
+	ChartLegendContent,
+	ChartTooltip,
+	ChartTooltipContent,
+} from "@/components/ui/chart"
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
+import {
+	chartMargin,
+	cn,
+	decimalString,
+	formatMicroseconds,
+	formatShortDate,
+	hourWithSeconds,
+	matchesFilterGroups,
+	parseFilterGroups,
+	toFixedFloat,
+} from "@/lib/utils"
 import { $monitorFilter } from "@/lib/stores"
 import { useLingui } from "@lingui/react/macro"
 import { ChartCard, FilterBar } from "../chart-card"
-import type { ChartData, MonitorStats, NetworkMonitorRecord, NetworkMonitorStatsRecord } from "@/types"
+import type {
+	ChartData,
+	MonitorRecentCheck,
+	MonitorStats,
+	NetworkMonitorRecord,
+	NetworkMonitorStatsRecord,
+} from "@/types"
 import { useMemo } from "react"
 import { useStore } from "@nanostores/react"
 
@@ -223,5 +248,160 @@ export function LossChart({ monitorStats, grid, monitors, chartData, empty, titl
 				return `${decimalString(value, 2)}%`
 			}}
 		/>
+	)
+}
+
+/** One point of the recent checks chart. */
+type RecentCheckPoint = {
+	/** Check time in milliseconds. */
+	created: number
+	/** Response time (ms) of successful and pending checks; null for failures. */
+	res: number | null
+	/** Marker of failed checks, at the response time or 0 without one. */
+	failed: number | null
+	/** Marker of pending (retrying) checks. */
+	pending: number | null
+	/** Raw response time in ms; -1 when the check failed. */
+	ms: number
+}
+
+/** Chart points of a monitor's recent checks; exported for tests. */
+export function recentCheckPoints(recent: MonitorRecentCheck[] | null | undefined): RecentCheckPoint[] {
+	if (!recent?.length) {
+		return []
+	}
+	return recent.map(([unixSec, state, ms]) => {
+		const hasResponse = ms >= 0
+		const isDown = state === 0 || !hasResponse
+		return {
+			created: unixSec * 1000,
+			res: !isDown ? ms : null,
+			failed: isDown ? (hasResponse ? ms : 0) : null,
+			pending: state === 2 ? (hasResponse ? ms : 0) : null,
+			ms,
+		}
+	})
+}
+
+const formatMs = (ms: number, fixedDigits = true) => formatMicroseconds(Math.round(ms * 1000), fixedDigits)
+
+const markerDot =
+	(fill: string) =>
+	({ key, cx, cy, value }: { key?: string; cx?: number; cy?: number; value?: unknown }) => {
+		if (value == null || cx == null || cy == null) {
+			return <g key={key} />
+		}
+		return <circle key={key} cx={cx} cy={cy} r={3} fill={fill} stroke="var(--card)" strokeWidth={1} />
+	}
+
+const failedDot = markerDot("var(--color-red-500, #ef4444)")
+const pendingDot = markerDot("var(--color-yellow-500, #eab308)")
+
+/**
+ * Response time of a monitor's latest checks (the `recent` field), with failed and pending
+ * checks marked. Updates live with the monitor record, so it serves as the realtime chart of
+ * hub and push monitors, whose checks aren't streamed by an agent.
+ */
+export function RecentChecksChart({ monitor, chartData }: { monitor: NetworkMonitorRecord; chartData: ChartData }) {
+	const { t } = useLingui()
+	const { yAxisWidth, updateYAxisWidth } = useYAxisWidth()
+	const data = useMemo(() => recentCheckPoints(monitor.recent), [monitor.recent])
+	const hasFailed = data.some((point) => point.failed != null)
+	const hasPending = data.some((point) => point.pending != null)
+	const responseLabel = t`Response`
+	const failedLabel = t({ message: "Failed", comment: "Chart legend: failed monitor checks" })
+	const pendingLabel = t({ message: "Pending", comment: "Chart legend: pending (retrying) monitor checks" })
+
+	return (
+		<ChartCard
+			legend={true}
+			empty={!data.length}
+			title={t`Recent checks`}
+			description={t`Response time of the latest ${data.length} checks`}
+			grid={false}
+		>
+			{data.length > 0 && (
+				<ChartContainer
+					className={cn("h-full w-full absolute aspect-auto bg-card opacity-0 transition-opacity", {
+						"opacity-100": yAxisWidth,
+					})}
+				>
+					<LineChart accessibilityLayer data={data} margin={chartMargin}>
+						<CartesianGrid vertical={false} />
+						<YAxis
+							direction="ltr"
+							orientation={chartData.orientation}
+							className="tracking-tighter"
+							width={yAxisWidth}
+							domain={[0, "auto"]}
+							tickFormatter={(value) => updateYAxisWidth(formatMs(value, false))}
+							tickLine={false}
+							axisLine={false}
+						/>
+						<XAxis
+							dataKey="created"
+							type="number"
+							scale="time"
+							domain={["dataMin", "dataMax"]}
+							minTickGap={12}
+							tickMargin={8}
+							axisLine={false}
+							tickFormatter={hourWithSeconds}
+						/>
+						<ChartTooltip
+							animationEasing="ease-out"
+							animationDuration={150}
+							content={
+								<ChartTooltipContent
+									labelFormatter={(_, payload) => formatShortDate(new Date(payload[0].payload.created).toISOString())}
+									contentFormatter={(value: unknown) => {
+										const item = value as { dataKey?: string; payload: RecentCheckPoint }
+										const { ms } = item.payload
+										if (item.dataKey !== "res" && ms < 0) {
+											return "—"
+										}
+										return formatMs(ms)
+									}}
+								/>
+							}
+						/>
+						<Line
+							dataKey="res"
+							name={responseLabel}
+							type="monotoneX"
+							stroke="var(--chart-1)"
+							strokeWidth={1.5}
+							dot={isolatedDot}
+							isAnimationActive={false}
+						/>
+						{hasPending && (
+							<Line
+								dataKey="pending"
+								name={pendingLabel}
+								stroke="var(--color-yellow-500, #eab308)"
+								strokeWidth={0}
+								dot={pendingDot}
+								activeDot={false}
+								legendType="circle"
+								isAnimationActive={false}
+							/>
+						)}
+						{hasFailed && (
+							<Line
+								dataKey="failed"
+								name={failedLabel}
+								stroke="var(--color-red-500, #ef4444)"
+								strokeWidth={0}
+								dot={failedDot}
+								activeDot={false}
+								legendType="circle"
+								isAnimationActive={false}
+							/>
+						)}
+						<ChartLegend content={<ChartLegendContent />} />
+					</LineChart>
+				</ChartContainer>
+			)}
+		</ChartCard>
 	)
 }
