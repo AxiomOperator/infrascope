@@ -26,7 +26,7 @@ type ConnectionManager struct {
 	// read and written from the main event loop, the goroutine spawned by
 	// connect() and stats collection.
 	mu             sync.Mutex
-	State          ConnectionState      // Current connection state
+	State          ConnectionState      // Current connection state; read via GetState (guarded by mu)
 	eventChan      chan ConnectionEvent // Channel for connection events
 	wsClient       *WebSocketClient     // WebSocket client for hub communication
 	serverOptions  ServerOptions        // Configuration for SSH server
@@ -121,8 +121,9 @@ func (c *ConnectionManager) tryStartConnecting() bool {
 	return true
 }
 
-// getState returns the current connection state.
-func (c *ConnectionManager) getState() ConnectionState {
+// GetState returns the current connection state. Use it instead of reading
+// the State field directly, which is written concurrently by the event loop.
+func (c *ConnectionManager) GetState() ConnectionState {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.State
@@ -237,15 +238,15 @@ func (c *ConnectionManager) handleEvent(event ConnectionEvent) {
 	case WebSocketConnect:
 		c.handleStateChange(WebSocketConnected)
 	case SSHConnect:
-		if c.getState() == Disconnected {
+		if c.GetState() == Disconnected {
 			c.handleStateChange(SSHConnected)
 		}
 	case WebSocketDisconnect:
-		if c.getState() == WebSocketConnected {
+		if c.GetState() == WebSocketConnected {
 			c.handleStateChange(Disconnected)
 		}
 	case SSHDisconnect:
-		if c.getState() == SSHConnected {
+		if c.GetState() == SSHConnected {
 			c.handleStateChange(Disconnected)
 		}
 	}
@@ -314,7 +315,7 @@ func (c *ConnectionManager) connect() {
 			_ = c.stop()
 			os.Exit(1)
 		}
-		if c.getState() == Disconnected {
+		if c.GetState() == Disconnected {
 			c.startSSHServer()
 			c.startWsTicker()
 		}
@@ -323,7 +324,7 @@ func (c *ConnectionManager) connect() {
 
 // startWebSocketConnection attempts to establish a WebSocket connection to the hub.
 func (c *ConnectionManager) startWebSocketConnection() error {
-	if c.getState() != Disconnected {
+	if c.GetState() != Disconnected {
 		return errors.New("already connected")
 	}
 	if c.wsClient == nil {
@@ -343,7 +344,7 @@ func (c *ConnectionManager) startWebSocketConnection() error {
 
 // startSSHServer starts the SSH server if the agent is currently disconnected.
 func (c *ConnectionManager) startSSHServer() {
-	if c.getState() == Disconnected {
+	if c.GetState() == Disconnected {
 		go c.agent.StartServer(c.serverOptions)
 	}
 }

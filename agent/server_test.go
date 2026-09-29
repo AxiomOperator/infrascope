@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -25,6 +26,67 @@ import (
 	"github.com/stretchr/testify/require"
 	gossh "golang.org/x/crypto/ssh"
 )
+
+// freeAddr reserves a free local port for network and returns its address.
+func freeAddr(t *testing.T, network, host string) string {
+	t.Helper()
+	ln, err := net.Listen(network, net.JoinHostPort(host, "0"))
+	if err != nil {
+		t.Skipf("%s not available: %v", network, err)
+	}
+	addr := ln.Addr().String()
+	require.NoError(t, ln.Close())
+	return addr
+}
+
+// startTestServer starts agent's SSH server in the background, waits until it
+// is listening and stops it when the test ends.
+func startTestServer(t *testing.T, agent *Agent, opts ServerOptions) {
+	t.Helper()
+	errChan := make(chan error, 1)
+	go func() { errChan <- agent.StartServer(opts) }()
+	t.Cleanup(func() {
+		_ = agent.StopServer()
+		select {
+		case <-errChan:
+		case <-time.After(5 * time.Second):
+			t.Error("SSH server did not stop")
+		}
+	})
+	// a.server is set only after the listener is open.
+	require.Eventually(t, func() bool {
+		select {
+		case err := <-errChan:
+			errChan <- err
+			return true
+		default:
+		}
+		agent.serverMu.Lock()
+		defer agent.serverMu.Unlock()
+		return agent.server != nil
+	}, 5*time.Second, 5*time.Millisecond)
+	select {
+	case err := <-errChan:
+		t.Fatalf("StartServer returned early: %v", err)
+	default:
+	}
+}
+
+func dialTestServer(opts ServerOptions, signer gossh.Signer, hostKeyCallback gossh.HostKeyCallback) (*gossh.Client, error) {
+	if hostKeyCallback == nil {
+		hostKeyCallback = gossh.InsecureIgnoreHostKey()
+	}
+	network := "tcp"
+	if opts.Network == "unix" {
+		network = "unix"
+	}
+	return gossh.Dial(network, opts.Addr, &gossh.ClientConfig{
+		User:            "a",
+		Auth:            []gossh.AuthMethod{gossh.PublicKeys(signer)},
+		HostKeyCallback: hostKeyCallback,
+		Timeout:         4 * time.Second,
+	})
+}
 
 func TestStartServer(t *testing.T) {
 	// Generate a test key pair
@@ -43,142 +105,209 @@ func TestStartServer(t *testing.T) {
 	sshBadPubKey, err := gossh.NewPublicKey(badPubKey)
 	require.NoError(t, err)
 
-	socketFile := filepath.Join(t.TempDir(), "beszel-test.sock")
-
 	tests := []struct {
 		name        string
-		config      ServerOptions
+		network     string
+		host        string // for tcp: host to bind; port is chosen freely
+		clientKey   gossh.Signer
+		serverKey   gossh.PublicKey
 		wantErr     bool
 		errContains string
-		setup       func() error
-		cleanup     func() error
 	}{
-		{
-			name: "tcp port only",
-			config: ServerOptions{
-				Network: "tcp",
-				Addr:    ":45987",
-				Keys:    []gossh.PublicKey{sshPubKey},
-			},
-		},
-		{
-			name: "tcp with ipv4",
-			config: ServerOptions{
-				Network: "tcp4",
-				Addr:    "127.0.0.1:45988",
-				Keys:    []gossh.PublicKey{sshPubKey},
-			},
-		},
-		{
-			name: "tcp with ipv6",
-			config: ServerOptions{
-				Network: "tcp6",
-				Addr:    "[::1]:45989",
-				Keys:    []gossh.PublicKey{sshPubKey},
-			},
-		},
-		{
-			name: "unix socket",
-			config: ServerOptions{
-				Network: "unix",
-				Addr:    socketFile,
-				Keys:    []gossh.PublicKey{sshPubKey},
-			},
-			setup: func() error {
-				// Create a socket file that should be removed
-				f, err := os.Create(socketFile)
-				if err != nil {
-					return err
-				}
-				return f.Close()
-			},
-			cleanup: func() error {
-				return os.Remove(socketFile)
-			},
-		},
-		{
-			name: "bad key should fail",
-			config: ServerOptions{
-				Network: "tcp",
-				Addr:    ":45987",
-				Keys:    []gossh.PublicKey{sshBadPubKey},
-			},
-			wantErr:     true,
-			errContains: "ssh: handshake failed",
-		},
-		{
-			name: "good key still good",
-			config: ServerOptions{
-				Network: "tcp",
-				Addr:    ":45987",
-				Keys:    []gossh.PublicKey{sshPubKey},
-			},
-		},
+		{name: "tcp port only", network: "tcp", host: ""},
+		{name: "tcp with ipv4", network: "tcp4", host: "127.0.0.1"},
+		{name: "tcp with ipv6", network: "tcp6", host: "::1"},
+		{name: "unix socket", network: "unix"},
+		{name: "bad key should fail", network: "tcp", host: "127.0.0.1", clientKey: badSigner, serverKey: sshBadPubKey, wantErr: true, errContains: "ssh: handshake failed"},
+		{name: "wrong client key should fail", network: "tcp", host: "127.0.0.1", clientKey: badSigner, wantErr: true, errContains: "ssh: handshake failed"},
+		{name: "good key still good", network: "tcp", host: "127.0.0.1"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				err := tt.setup()
+			opts := ServerOptions{Network: tt.network, Keys: []gossh.PublicKey{sshPubKey}}
+			if tt.serverKey != nil {
+				// server trusts a key the client doesn't hold
+				opts.Keys = []gossh.PublicKey{tt.serverKey}
+				tt.clientKey = signer
+			}
+			if tt.network == "unix" {
+				opts.Addr = filepath.Join(t.TempDir(), "beszel-test.sock")
+				// a stale socket file should be removed
+				f, err := os.Create(opts.Addr)
 				require.NoError(t, err)
-			}
-
-			if tt.cleanup != nil {
-				defer tt.cleanup()
-			}
-
-			agent, err := NewAgent("")
-			require.NoError(t, err)
-
-			// Start server in a goroutine since it blocks
-			errChan := make(chan error, 1)
-			go func() {
-				errChan <- agent.StartServer(tt.config)
-			}()
-
-			// Add a short delay to allow the server to start
-			time.Sleep(100 * time.Millisecond)
-
-			// Try to connect to verify server is running
-			var client *gossh.Client
-
-			// Choose the appropriate signer based on the test case
-			testSigner := signer
-			if tt.name == "bad key should fail" {
-				testSigner = badSigner
-			}
-
-			sshClientConfig := &gossh.ClientConfig{
-				User: "a",
-				Auth: []gossh.AuthMethod{
-					gossh.PublicKeys(testSigner),
-				},
-				HostKeyCallback: gossh.InsecureIgnoreHostKey(),
-				Timeout:         4 * time.Second,
-			}
-
-			switch tt.config.Network {
-			case "unix":
-				client, err = gossh.Dial("unix", tt.config.Addr, sshClientConfig)
-			default:
-				if !strings.Contains(tt.config.Addr, ":") {
-					tt.config.Addr = ":" + tt.config.Addr
+				require.NoError(t, f.Close())
+			} else {
+				opts.Addr = freeAddr(t, tt.network, tt.host)
+				if tt.host == "" {
+					_, port, _ := net.SplitHostPort(opts.Addr)
+					opts.Addr = ":" + port
 				}
-				client, err = gossh.Dial("tcp", tt.config.Addr, sshClientConfig)
+			}
+			clientKey := tt.clientKey
+			if clientKey == nil {
+				clientKey = signer
 			}
 
+			agent := createTestAgent(t)
+			startTestServer(t, agent, opts)
+
+			client, err := dialTestServer(opts, clientKey, nil)
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.errContains != "" {
 					assert.Contains(t, err.Error(), tt.errContains)
 				}
 				return
 			}
-
 			require.NoError(t, err)
 			require.NotNil(t, client)
 			client.Close()
 		})
+	}
+}
+
+func TestStartServerUnixSocketPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix socket permissions not applicable on windows")
+	}
+	signer, sshPubKey := newTestClientKey(t)
+	opts := ServerOptions{
+		Network: "unix",
+		Addr:    filepath.Join(t.TempDir(), "agent.sock"),
+		Keys:    []gossh.PublicKey{sshPubKey},
+	}
+	agent := createTestAgent(t)
+	startTestServer(t, agent, opts)
+
+	info, err := os.Stat(opts.Addr)
+	require.NoError(t, err)
+	assert.Equal(t, os.ModeSocket, info.Mode().Type())
+	assert.Equal(t, os.FileMode(0o666), info.Mode().Perm())
+
+	client, err := dialTestServer(opts, signer, nil)
+	require.NoError(t, err)
+	client.Close()
+}
+
+func newTestClientKey(t *testing.T) (gossh.Signer, gossh.PublicKey) {
+	t.Helper()
+	_, priv, err := ed25519.GenerateKey(nil)
+	require.NoError(t, err)
+	signer, err := gossh.NewSignerFromKey(priv)
+	require.NoError(t, err)
+	return signer, signer.PublicKey()
+}
+
+func TestStartServerPersistentHostKey(t *testing.T) {
+	signer, sshPubKey := newTestClientKey(t)
+	dataDir := t.TempDir()
+	keyPath := filepath.Join(dataDir, hostKeyFileName)
+
+	// dial starts a fresh agent on dataDir and returns the host key it presents.
+	dial := func() gossh.PublicKey {
+		opts := ServerOptions{
+			Network: "tcp",
+			Addr:    freeAddr(t, "tcp", "127.0.0.1"),
+			Keys:    []gossh.PublicKey{sshPubKey},
+		}
+		agent, err := NewAgent(dataDir)
+		require.NoError(t, err)
+		startTestServer(t, agent, opts)
+
+		var hostKey gossh.PublicKey
+		client, err := dialTestServer(opts, signer, func(_ string, _ net.Addr, key gossh.PublicKey) error {
+			hostKey = key
+			return nil
+		})
+		require.NoError(t, err)
+		client.Close()
+		require.NoError(t, agent.StopServer())
+		return hostKey
+	}
+
+	first := dial()
+	require.NotNil(t, first)
+	assert.Equal(t, gossh.KeyAlgoED25519, first.Type(), "handshake should present ed25519 host key")
+
+	info, err := os.Stat(keyPath)
+	require.NoError(t, err, "host key should be persisted")
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+	}
+	persisted, err := readHostSigner(keyPath)
+	require.NoError(t, err)
+	assert.Equal(t, first.Marshal(), persisted.PublicKey().Marshal())
+
+	// restart with the same data dir: same host key
+	second := dial()
+	assert.Equal(t, first.Marshal(), second.Marshal(), "host key should be reused across restarts")
+}
+
+func TestLoadOrCreateHostSigner(t *testing.T) {
+	t.Run("no data dir uses ephemeral key", func(t *testing.T) {
+		a, err := loadOrCreateHostSigner("")
+		require.NoError(t, err)
+		b, err := loadOrCreateHostSigner("")
+		require.NoError(t, err)
+		assert.Equal(t, gossh.KeyAlgoED25519, a.PublicKey().Type())
+		assert.NotEqual(t, a.PublicKey().Marshal(), b.PublicKey().Marshal())
+	})
+
+	t.Run("creates then reuses key", func(t *testing.T) {
+		dir := t.TempDir()
+		a, err := loadOrCreateHostSigner(dir)
+		require.NoError(t, err)
+		b, err := loadOrCreateHostSigner(dir)
+		require.NoError(t, err)
+		assert.Equal(t, a.PublicKey().Marshal(), b.PublicKey().Marshal())
+		entries, err := os.ReadDir(dir)
+		require.NoError(t, err)
+		require.Len(t, entries, 1, "no temp files should be left behind")
+	})
+
+	t.Run("tightens loose permissions", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("permissions not applicable on windows")
+		}
+		dir := t.TempDir()
+		_, err := loadOrCreateHostSigner(dir)
+		require.NoError(t, err)
+		path := filepath.Join(dir, hostKeyFileName)
+		require.NoError(t, os.Chmod(path, 0o644))
+		_, err = loadOrCreateHostSigner(dir)
+		require.NoError(t, err)
+		info, err := os.Stat(path)
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+	})
+
+	t.Run("corrupt key is not overwritten", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, hostKeyFileName)
+		require.NoError(t, os.WriteFile(path, []byte("garbage"), 0o600))
+		s, err := loadOrCreateHostSigner(dir)
+		require.NoError(t, err)
+		assert.Equal(t, gossh.KeyAlgoED25519, s.PublicKey().Type())
+		data, err := os.ReadFile(path)
+		require.NoError(t, err)
+		assert.Equal(t, "garbage", string(data))
+	})
+}
+
+func TestStartServerNoGlobalHandler(t *testing.T) {
+	// Two agents serving concurrently must each dispatch to their own handler.
+	for range 2 {
+		signer, pub := newTestClientKey(t)
+		agent := createTestAgent(t)
+		opts := ServerOptions{Network: "tcp", Addr: freeAddr(t, "tcp", "127.0.0.1"), Keys: []gossh.PublicKey{pub}}
+		startTestServer(t, agent, opts)
+		agent.serverMu.Lock()
+		assert.NotNil(t, agent.server.Handler)
+		agent.serverMu.Unlock()
+		client, err := dialTestServer(opts, signer, nil)
+		require.NoError(t, err)
+		client.Close()
 	}
 }
 

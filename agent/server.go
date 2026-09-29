@@ -55,6 +55,14 @@ func (a *Agent) StartServer(opts ServerOptions) error {
 		}
 	}
 
+	// Load the persistent host key before listening so a key error doesn't
+	// leave a half-started server behind.
+	hostSigner, err := loadOrCreateHostSigner(a.dataDir)
+	if err != nil {
+		a.serverMu.Unlock()
+		return err
+	}
+
 	// start listening on the address
 	ln, err := net.Listen(opts.Network, opts.Addr)
 	if err != nil {
@@ -63,19 +71,34 @@ func (a *Agent) StartServer(opts ServerOptions) error {
 	}
 	defer ln.Close()
 
-	// base config (limit to allowed algorithms)
-	config := &gossh.ServerConfig{
-		ServerVersion: fmt.Sprintf("SSH-2.0-%s_%s", beszel.AppName, beszel.Version),
+	if opts.Network == "unix" {
+		// The hub container runs as uid 1000, which usually differs from the
+		// agent's user, so the socket must be connectable by others. Access is
+		// still gated by SSH public key authentication below.
+		if err := os.Chmod(opts.Addr, 0o666); err != nil {
+			a.serverMu.Unlock()
+			return err
+		}
 	}
-	config.KeyExchanges = common.DefaultKeyExchanges
-	config.MACs = common.DefaultMACs
-	config.Ciphers = common.DefaultCiphers
-
-	// set default handler
-	ssh.Handle(a.handleSession)
 
 	server := &ssh.Server{
+		// Per-server handler; the gliderlabs package-level ssh.Handle would be
+		// shared (and raced on) by every server in the process.
+		Handler: a.handleSession,
+		// Only offer the persistent ed25519 host key (no RSA fallback) so the
+		// hub pins a key that stays stable across restarts.
+		HostSigners: []ssh.Signer{hostSigner},
+		// gliderlabs mutates the returned config per connection (host keys,
+		// auth callbacks bound to that connection's context), so each
+		// connection must get its own copy.
 		ServerConfigCallback: func(ctx ssh.Context) *gossh.ServerConfig {
+			config := &gossh.ServerConfig{
+				ServerVersion: fmt.Sprintf("SSH-2.0-%s_%s", beszel.AppName, beszel.Version),
+			}
+			// limit to allowed algorithms
+			config.KeyExchanges = common.DefaultKeyExchanges
+			config.MACs = common.DefaultMACs
+			config.Ciphers = common.DefaultCiphers
 			return config
 		},
 		// check public key(s)
