@@ -236,13 +236,13 @@ func TestMonitorConfigFromRecordOmitsUnusedHTTPOptions(t *testing.T) {
 	)
 	record := core.NewRecord(collection)
 	record.Load(map[string]any{"protocol": "http", "http": map[string]any{"acceptedCodes": []string{}}, "httpSecrets": nil})
-	config, err := MonitorConfigFromRecord(record)
+	config, err := MonitorConfigFromRecord(nil, record)
 	require.NoError(t, err)
 	require.Nil(t, config.HTTP, "default options must not be sent")
 
 	record.Set("protocol", "tcp")
 	record.Set("http", map[string]any{"keyword": "ok"})
-	config, err = MonitorConfigFromRecord(record)
+	config, err = MonitorConfigFromRecord(nil, record)
 	require.NoError(t, err)
 	require.Nil(t, config.HTTP, "only http monitors have http options")
 }

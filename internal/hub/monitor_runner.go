@@ -47,12 +47,14 @@ const (
 )
 
 // newHubMonitorRunner returns the runner selected by HUB_MONITORS (enabled
-// unless "false").
-func newHubMonitorRunner(app core.App, engine *uptime.Engine) hubMonitorRunner {
+// unless "false"). onSaved, if not nil, receives the results after each save.
+func newHubMonitorRunner(app core.App, engine *uptime.Engine, onSaved func(map[string]monitor.Result)) hubMonitorRunner {
 	if value, _ := utils.GetEnv("HUB_MONITORS"); value == "false" {
 		return noopHubMonitorRunner{}
 	}
-	return newHubRunner(app, engine)
+	r := newHubRunner(app, engine)
+	r.onSaved = onSaved
+	return r
 }
 
 // hubRunner probes hub monitors with a netmon.Manager, feeds every check to
@@ -96,6 +98,8 @@ type hubRunner struct {
 	// Only the collector uses it (collectMu).
 	collectMu   sync.Mutex
 	savedProbes map[string]int64
+	// onSaved, if set, receives the results after each committed save.
+	onSaved func(results map[string]monitor.Result)
 }
 
 type queuedCheck struct {
@@ -154,7 +158,7 @@ func (r *hubRunner) start() error {
 	r.limits = newPushLimiter()
 	configs := make([]monitor.Config, 0, len(records))
 	for _, record := range records {
-		config, err := systems.MonitorConfigFromRecord(record)
+		config, err := systems.MonitorConfigFromRecord(r.app, record)
 		if err != nil {
 			r.app.Logger().Warn("Skipping hub monitor with invalid config", "monitor", record.Id, "err", err)
 			continue
@@ -201,7 +205,7 @@ func (r *hubRunner) Sync(record *core.Record) {
 		r.Remove(record.Id)
 		return
 	}
-	config, err := systems.MonitorConfigFromRecord(record)
+	config, err := systems.MonitorConfigFromRecord(r.app, record)
 	if err != nil {
 		r.app.Logger().Warn("Failed to sync hub monitor", "monitor", record.Id, "err", err)
 		r.Remove(record.Id)
@@ -399,6 +403,16 @@ func (r *hubRunner) collectLoop() {
 // collect stores the default-interval results of all hub monitors. Their
 // checks were already applied through the callback and are dropped here.
 func (r *hubRunner) collect() error {
+	results, err := r.saveResults()
+	if err == nil && len(results) > 0 && r.onSaved != nil {
+		// Outside collectMu: alert delivery may be slow.
+		r.onSaved(results)
+	}
+	return err
+}
+
+// saveResults stores the current results and returns those it stored.
+func (r *hubRunner) saveResults() (map[string]monitor.Result, error) {
 	r.collectMu.Lock()
 	defer r.collectMu.Unlock()
 	results := r.mgr.GetResults(hubMonitorResultsMs)
@@ -413,19 +427,19 @@ func (r *hubRunner) collect() error {
 		}
 	}
 	if len(results) == 0 {
-		return nil
+		return nil, nil
 	}
 	saved := map[string]int64{}
 	err := r.app.RunInTransaction(func(txApp core.App) error {
 		return systems.SaveMonitorResults(txApp, "", results, r.savedProbes, saved)
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for id, at := range saved {
 		r.savedProbes[id] = at
 	}
-	return nil
+	return results, nil
 }
 
 func (r *hubRunner) deadlineLoop() {

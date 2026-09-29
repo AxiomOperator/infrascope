@@ -25,6 +25,10 @@ type AlertManager struct {
 	pendingAlerts   sync.Map
 	alertsCache     *AlertsCache
 	networkMonitors *networkMonitorCache
+	// monitorThresholds caches monitor threshold alert configuration.
+	monitorThresholds *monitorThresholdCache
+	// inMaintenance reports whether a monitor is in a maintenance window; nil for never.
+	inMaintenance func(monitorID string, now time.Time) bool
 }
 
 type AlertMessageData struct {
@@ -110,9 +114,10 @@ var supportsTitle = map[string]struct{}{
 // NewAlertManager creates a new AlertManager instance.
 func NewAlertManager(app hubLike) *AlertManager {
 	am := &AlertManager{
-		hub:             app,
-		alertsCache:     NewAlertsCache(app),
-		networkMonitors: newNetworkMonitorCache(app),
+		hub:               app,
+		alertsCache:       NewAlertsCache(app),
+		networkMonitors:   newNetworkMonitorCache(app),
+		monitorThresholds: newMonitorThresholdCache(app),
 	}
 	am.bindEvents()
 	return am
@@ -124,6 +129,7 @@ func (am *AlertManager) bindEvents() {
 	am.hub.OnRecordAfterUpdateSuccess("alerts").BindFunc(updateHistoryOnAlertUpdate)
 	am.hub.OnRecordAfterDeleteSuccess("alerts").BindFunc(resolveHistoryOnAlertDelete)
 	am.hub.OnRecordAfterDeleteSuccess("network_monitors").BindFunc(resolveDeletedMonitorHistory)
+	am.hub.OnRecordAfterUpdateSuccess("network_monitors").BindFunc(am.resolveMonitorThresholdsOnUpdate)
 	am.hub.OnRecordAfterUpdateSuccess("smart_devices").BindFunc(am.handleSmartDeviceAlert)
 	am.hub.OnRecordAfterCreateSuccess("zfs_pools").BindFunc(am.handleZfsPoolCreateAlert)
 	am.hub.OnRecordAfterUpdateSuccess("zfs_pools").BindFunc(am.handleZfsPoolAlert)

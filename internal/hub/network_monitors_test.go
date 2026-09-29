@@ -16,6 +16,7 @@ import (
 	"github.com/henrygd/beszel/internal/common"
 	"github.com/henrygd/beszel/internal/entities/monitor"
 	esystem "github.com/henrygd/beszel/internal/entities/system"
+	"github.com/henrygd/beszel/internal/hub/systems"
 	"github.com/henrygd/beszel/internal/hub/ws"
 	"github.com/lxzan/gws"
 	"github.com/pocketbase/pocketbase/apis"
@@ -228,11 +229,14 @@ func TestMonitorNormalizesProtocolOptions(t *testing.T) {
 	assert.Empty(t, record.GetString("server"))
 	assert.Empty(t, record.GetStringSlice("users"), "agent monitors follow the system's users")
 	assert.JSONEq(t, `{"method":"POST","keyword":"ok"}`, record.GetString("http"))
-	assert.JSONEq(t, `{"headers":[["X-Token","secret"]],"basicUser":"admin"}`, record.GetString("httpSecrets"))
+	assert.NotContains(t, record.GetString("httpSecrets"), "secret", "secrets are stored encrypted")
+	secrets, err := systems.HTTPSecretsJSON(env.hub, record)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"headers":[["X-Token","secret"]],"basicUser":"admin"}`, secrets)
 
 	response := env.updateMonitor(t, record.Id, env.owner, map[string]any{"protocol": "icmp"})
 	require.Equal(t, http.StatusOK, response.Code, response.Body.String())
-	record, err := env.hub.FindRecordById("network_monitors", record.Id)
+	record, err = env.hub.FindRecordById("network_monitors", record.Id)
 	require.NoError(t, err)
 	assert.Contains(t, []string{"", "null"}, record.GetString("http"))
 	assert.Contains(t, []string{"", "null"}, record.GetString("httpSecrets"))

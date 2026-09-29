@@ -200,6 +200,8 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	apiNoAuth.POST("/push/{token}", h.handlePush)
 	apiNoAuth.GET("/status-pages/{slug}", h.handleStatusPage)
 	apiAuth.POST("/monitors/{id}/push-token", h.regeneratePushToken).BindFunc(excludeReadOnlyRole)
+	// import monitors from an Uptime Kuma backup
+	apiAuth.POST("/import/uptime-kuma", h.importUptimeKuma).BindFunc(excludeReadOnlyRole)
 	// clear a system's pinned SSH host key (trust the next key on first use)
 	apiAuth.POST("/systems/{id}/reset-host-key", h.resetSystemHostKey).BindFunc(excludeReadOnlyRole)
 	// handle agent websocket connection

@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/henrygd/beszel/internal/entities/monitor"
 	"github.com/henrygd/beszel/internal/hub/uptime"
 	"github.com/henrygd/beszel/internal/netmon"
 	"github.com/pocketbase/dbx"
@@ -366,4 +368,58 @@ func TestRegeneratePushToken(t *testing.T) {
 	response = regenerate(record.Id, superuser)
 	require.Equal(t, http.StatusOK, response.Code, response.Body.String())
 	assert.Len(t, runner.tokens, 1)
+}
+
+func TestHubRunnerEvaluatesThresholdAlerts(t *testing.T) {
+	t.Setenv("HUB_MONITOR_MIN_INTERVAL", "1")
+	env := newMonitorTestEnv(t)
+	runner := newHubRunner(env.hub, env.hub.uptime)
+	var evaluations atomic.Int32
+	runner.onSaved = func(results map[string]monitor.Result) {
+		evaluations.Add(1)
+		env.hub.HandleMonitorResults("", results)
+	}
+	env.hub.hubMonitors = runner
+	require.NoError(t, runner.start())
+	t.Cleanup(runner.Stop)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	record := env.createMonitor(t, env.hubMonitor(map[string]any{
+		"target": server.URL, "interval": 1, "timeout": 1, "lossThreshold": 50,
+	}))
+	require.Eventually(t, func() bool {
+		require.NoError(t, runner.collect())
+		rows, err := env.hub.FindAllRecords("alerts_history", dbx.HashExp{"alert_id": record.Id, "name": "MonitorLoss"})
+		require.NoError(t, err)
+		return len(rows) == 1 && rows[0].GetString("user") == env.owner.Id && rows[0].GetFloat("value") == 100
+	}, 10*time.Second, 200*time.Millisecond)
+	assert.Positive(t, evaluations.Load())
+}
+
+func TestThresholdAlertsUseMaintenanceWindows(t *testing.T) {
+	env := newMonitorTestEnv(t)
+	record := env.createMonitor(t, env.hubMonitor(map[string]any{"lossThreshold": 10}))
+	now := time.Now().UTC()
+	window, err := createTestRecord(env.hub, "monitor_maintenance", map[string]any{
+		"user": env.owner.Id, "title": "Upgrade", "type": "one-time",
+		"start": now.Add(-time.Hour), "end": now.Add(time.Hour), "monitors": []string{record.Id},
+	})
+	require.NoError(t, err)
+	_, err = env.hub.DB().Update("network_monitors", dbx.Params{"loss1h": 50}, dbx.HashExp{"id": record.Id}).Execute()
+	require.NoError(t, err)
+	results := map[string]monitor.Result{record.Id: {LastProbeAt: time.Now().UnixMilli(), SampleCount: 60, PacketLoss1h: 50}}
+	history := func() int {
+		count, err := env.hub.CountRecords("alerts_history", dbx.HashExp{"alert_id": record.Id, "name": "MonitorLoss"})
+		require.NoError(t, err)
+		return int(count)
+	}
+
+	env.hub.HandleMonitorResults("", results)
+	assert.Zero(t, history(), "held during the hub's maintenance window")
+	require.NoError(t, env.hub.Delete(window))
+	env.hub.HandleMonitorResults("", results)
+	assert.Equal(t, 1, history(), "opened once the window is gone")
 }

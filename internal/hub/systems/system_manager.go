@@ -451,7 +451,7 @@ func (sm *SystemManager) GetMonitorConfigsForSystem(systemID string) ([]monitor.
 		if record.GetString("protocol") == monitor.ProtocolPush {
 			continue
 		}
-		config, err := MonitorConfigFromRecord(record)
+		config, err := MonitorConfigFromRecord(sm.hub, record)
 		if err != nil {
 			sm.hub.Logger().Warn("skipping monitor with invalid config", "system", systemID, "monitor", record.Id, "err", err)
 			continue

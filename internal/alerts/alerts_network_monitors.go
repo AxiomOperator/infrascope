@@ -80,9 +80,12 @@ func (am *AlertManager) bindNetworkMonitorAlertEvents() {
 }
 
 // HandleNetworkMonitorAlerts runs after the full monitoring transaction commits,
+// and also evaluates the monitors' own threshold alerts (HandleMonitorResults),
 // using its exact payload (dashboard requests can replace the cached payload).
 // Omitted results and disconnected systems never imply recovery.
 func (am *AlertManager) HandleNetworkMonitorAlerts(systemRecord *core.Record, results map[string]monitor.Result) error {
+	// Monitor-level threshold alerts are evaluated for every saved result.
+	am.HandleMonitorResults(systemRecord.Id, results)
 	if systemRecord.GetString("status") != "up" {
 		return nil
 	}

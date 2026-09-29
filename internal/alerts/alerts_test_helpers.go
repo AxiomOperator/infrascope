@@ -11,9 +11,10 @@ import (
 
 func NewTestAlertManagerWithoutWorker(app hubLike) *AlertManager {
 	return &AlertManager{
-		hub:             app,
-		alertsCache:     NewAlertsCache(app),
-		networkMonitors: newNetworkMonitorCache(app),
+		hub:               app,
+		alertsCache:       NewAlertsCache(app),
+		networkMonitors:   newNetworkMonitorCache(app),
+		monitorThresholds: newMonitorThresholdCache(app),
 	}
 }
 

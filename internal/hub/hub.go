@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/henrygd/beszel/internal/alerts"
+	"github.com/henrygd/beszel/internal/entities/monitor"
 	"github.com/henrygd/beszel/internal/hub/config"
 	"github.com/henrygd/beszel/internal/hub/heartbeat"
 	"github.com/henrygd/beszel/internal/hub/systems"
@@ -63,12 +64,15 @@ func NewHub(app core.App) *Hub {
 	hub.rm = records.NewRecordManager(hub)
 	hub.sm = systems.NewSystemManager(hub)
 	hub.maintenance = newMaintenanceWindows(app)
+	hub.AlertManager.SetMaintenanceCheck(hub.maintenance.Active)
 	hub.monitorNotices = newTransitionQueue(hub.AlertManager.HandleMonitorTransitions)
 	hub.uptime = uptime.New(app,
 		uptime.WithNotifier(hub.monitorNotices.push),
 		uptime.WithMaintenanceCheck(hub.maintenance.Active),
 	)
-	hub.hubMonitors = newHubMonitorRunner(app, hub.uptime)
+	hub.hubMonitors = newHubMonitorRunner(app, hub.uptime, func(results map[string]monitor.Result) {
+		hub.HandleMonitorResults("", results)
+	})
 	hub.statusPages = newStatusPages()
 	hub.hb = heartbeat.New(app, utils.GetEnv)
 	if hub.hb != nil {
@@ -119,6 +123,10 @@ func (h *Hub) StartHub() error {
 		// start server
 		if err := h.startServer(e); err != nil {
 			return err
+		}
+		// encrypt monitor secrets stored before encryption at rest
+		if err := h.sealStoredMonitorSecrets(); err != nil {
+			h.Logger().Error("Failed to encrypt stored monitor secrets", "err", err)
 		}
 		// restore monitor status before systems deliver monitor results
 		if err := h.uptime.Load(); err != nil {

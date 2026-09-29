@@ -1,0 +1,67 @@
+{
+  "version": "1.23.16",
+  "notificationList": [
+    {"id": 1, "name": "Ops Discord", "active": 1, "userId": 1, "isDefault": 0, "config": "{\"name\":\"Ops Discord\",\"type\":\"discord\",\"discordWebhookUrl\":\"https://discord.example/webhook\"}"}
+  ],
+  "monitorList": [
+    {
+      "id": 1, "name": "Website", "description": null, "parent": null, "type": "http", "active": 1,
+      "url": "https://example.com", "method": "GET", "hostname": null, "port": null, "interval": 60,
+      "retryInterval": 30, "resendInterval": 0, "maxretries": 2, "weight": 2000, "keyword": null,
+      "invertKeyword": false, "expiryNotification": true, "ignoreTls": false, "upsideDown": false,
+      "packetSize": 56, "maxredirects": 10, "accepted_statuscodes": ["200-299"], "dns_resolve_type": "A",
+      "dns_resolve_server": "1.1.1.1", "dns_last_result": null, "docker_container": "", "docker_host": null,
+      "proxyId": null, "notificationIDList": {"1": true}, "tags": [{"tag_id": 1, "name": "prod", "value": ""}],
+      "maintenance": false, "mqttTopic": "", "databaseConnectionString": null, "authMethod": "basic",
+      "basic_auth_user": "admin", "basic_auth_pass": "hunter2", "pushToken": null, "timeout": 48,
+      "headers": "{\"X-Api-Key\": \"kuma-secret-key\", \"Accept\": \"application/json\"}", "body": null,
+      "jsonPath": null, "expectedValue": null
+    },
+    {
+      "id": 2, "name": "Health keyword", "parent": null, "type": "keyword", "active": 1,
+      "url": "https://example.com/health", "method": "POST", "interval": 20, "retryInterval": 20, "maxretries": 15,
+      "keyword": "DOWN", "invertKeyword": true, "ignoreTls": true, "upsideDown": false, "maxredirects": 0,
+      "accepted_statuscodes": ["200-299", "301"], "authMethod": null, "basic_auth_user": null, "basic_auth_pass": null,
+      "headers": null, "body": "{\"ping\":true}", "timeout": 16, "notificationIDList": {}
+    },
+    {
+      "id": 3, "name": "API status", "parent": null, "type": "json-query", "active": true,
+      "url": "https://api.example.com/status", "method": "GET", "interval": 120, "retryInterval": 120, "maxretries": 0,
+      "jsonPath": "data.status", "expectedValue": "ok", "accepted_statuscodes": ["200-299"], "maxredirects": 50,
+      "timeout": 96, "upsideDown": false, "notificationIDList": {"1": true}
+    },
+    {
+      "id": 4, "name": "SSH", "parent": 9, "type": "port", "active": 1, "hostname": "10.0.0.5", "port": 22,
+      "interval": 60, "retryInterval": 60, "maxretries": 1, "timeout": 48, "upsideDown": false
+    },
+    {
+      "id": 5, "name": "Gateway", "parent": 9, "type": "ping", "active": 0, "hostname": "10.0.0.1",
+      "interval": 30, "retryInterval": 30, "maxretries": 0, "timeout": 24, "upsideDown": false
+    },
+    {
+      "id": 6, "name": "DNS", "parent": null, "type": "dns", "active": 1, "hostname": "example.com",
+      "dns_resolve_server": "9.9.9.9", "dns_resolve_type": "MX", "port": 5353, "interval": 300,
+      "retryInterval": 300, "maxretries": 1, "timeout": 48, "upsideDown": false
+    },
+    {
+      "id": 7, "name": "Backup job", "parent": null, "type": "push", "active": 1,
+      "pushToken": "Ab3dEf6hIj9kLm2nOp5qRs8tUv1wXy4Z", "interval": 3600, "retryInterval": 3600, "maxretries": 0,
+      "upsideDown": false
+    },
+    {
+      "id": 8, "name": "Cron heartbeat", "parent": null, "type": "push", "active": 1,
+      "pushToken": "short-token", "interval": 600, "retryInterval": 600, "maxretries": 0, "upsideDown": false
+    },
+    {"id": 9, "name": "Network", "parent": null, "type": "group", "active": 1, "interval": 60, "upsideDown": false},
+    {"id": 10, "name": "Postgres", "parent": null, "type": "postgres", "active": 1, "interval": 60,
+      "databaseConnectionString": "postgres://user:pass@db:5432/app", "upsideDown": false},
+    {"id": 11, "name": "Container", "parent": null, "type": "docker", "active": 1, "interval": 60,
+      "docker_container": "web", "docker_host": 1, "upsideDown": false},
+    {"id": 12, "name": "Inverted", "parent": null, "type": "http", "active": 1, "url": "https://down.example.com",
+      "interval": 60, "upsideDown": true},
+    {"id": 13, "name": "NTLM intranet", "parent": null, "type": "http", "active": 1, "url": "https://intranet.example.com",
+      "interval": 60, "authMethod": "ntlm", "basic_auth_user": "DOMAIN\\user", "basic_auth_pass": "pw", "upsideDown": false},
+    {"id": 14, "name": "Bad method", "parent": null, "type": "http", "active": 1, "url": "https://example.org",
+      "method": "TRACE", "interval": 60, "upsideDown": false}
+  ]
+}

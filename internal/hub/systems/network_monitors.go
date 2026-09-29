@@ -3,6 +3,7 @@ package systems
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/henrygd/beszel"
 	"github.com/henrygd/beszel/internal/common"
 	"github.com/henrygd/beszel/internal/entities/monitor"
+	"github.com/henrygd/beszel/internal/hub/monitorsecrets"
 	"github.com/pocketbase/pocketbase/core"
 )
 
@@ -57,10 +59,29 @@ func SplitHTTPOptions(options *monitor.HTTPOptions) (MonitorHTTPFields, MonitorH
 		}
 }
 
+// HTTPSecretsJSON returns the plaintext JSON of a record's httpSecrets field,
+// opening it with the key in app's data dir when it is sealed. Plaintext
+// values (stored before encryption, or not yet saved) are returned as is.
+func HTTPSecretsJSON(app core.App, record *core.Record) (string, error) {
+	raw := record.GetString("httpSecrets")
+	if !monitorsecrets.IsSealedJSON(raw) {
+		return raw, nil
+	}
+	if app == nil {
+		return "", errors.New("sealed http secrets require the hub key")
+	}
+	box, err := monitorsecrets.ForDataDir(app.DataDir())
+	if err != nil {
+		return "", err
+	}
+	return box.OpenJSON(raw)
+}
+
 // MonitorConfigFromRecord builds the probe config of a network_monitors record.
 // HTTP options are only set for http monitors with non-default options. It
-// fails when the stored HTTP options are not valid JSON of the expected shape.
-func MonitorConfigFromRecord(record *core.Record) (monitor.Config, error) {
+// fails when the stored HTTP options are not valid JSON of the expected shape,
+// or sealed secrets cannot be opened with the key of app's data dir.
+func MonitorConfigFromRecord(app core.App, record *core.Record) (monitor.Config, error) {
 	config := monitor.Config{
 		ID:            record.Id,
 		Target:        record.GetString("target"),
@@ -79,7 +100,11 @@ func MonitorConfigFromRecord(record *core.Record) (monitor.Config, error) {
 	if err := unmarshalJSONField(record, "http", &fields); err != nil {
 		return config, fmt.Errorf("invalid http options: %w", err)
 	}
-	if err := unmarshalJSONField(record, "httpSecrets", &secrets); err != nil {
+	rawSecrets, err := HTTPSecretsJSON(app, record)
+	if err != nil {
+		return config, fmt.Errorf("http secrets: %w", err)
+	}
+	if err := unmarshalJSON(rawSecrets, &secrets); err != nil {
 		return config, fmt.Errorf("invalid http secrets: %w", err)
 	}
 	options := monitor.HTTPOptions{
@@ -110,7 +135,11 @@ func MonitorConfigFromRecord(record *core.Record) (monitor.Config, error) {
 
 // unmarshalJSONField decodes a JSON field, treating an empty or null value as unset.
 func unmarshalJSONField(record *core.Record, field string, dest any) error {
-	raw := record.GetString(field)
+	return unmarshalJSON(record.GetString(field), dest)
+}
+
+// unmarshalJSON decodes raw JSON, treating an empty or null value as unset.
+func unmarshalJSON(raw string, dest any) error {
 	if raw == "" || raw == "null" {
 		return nil
 	}

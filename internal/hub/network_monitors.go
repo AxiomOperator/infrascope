@@ -1,7 +1,10 @@
 package hub
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"slices"
 	"strconv"
@@ -9,8 +12,10 @@ import (
 	"time"
 
 	"github.com/henrygd/beszel/internal/entities/monitor"
+	"github.com/henrygd/beszel/internal/hub/monitorsecrets"
 	"github.com/henrygd/beszel/internal/hub/systems"
 	"github.com/henrygd/beszel/internal/hub/utils"
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/security"
 	"github.com/pocketbase/pocketbase/tools/types"
@@ -26,7 +31,7 @@ const (
 
 // monitorServerFields are network_monitors fields written only by the hub.
 var monitorServerFields = []string{
-	"status", "statusChanged", "lastCheck", "lastError", "lastStatusCode", "recent", "uptime", "state", "certState",
+	"status", "statusChanged", "lastCheck", "lastError", "lastStatusCode", "recent", "uptime", "state", "certState", "alertState",
 	"res", "resAvg1h", "resMin1h", "resMax1h", "loss1h", "certInfo", "updated",
 }
 
@@ -61,7 +66,8 @@ func bindNetworkMonitorsEvents(hub *Hub) {
 		// from the manager; their monitors will sync when they reconnect.
 		system, err := hub.sm.GetSystem(systemID)
 		if err == nil && system.GetStatus() == "up" {
-			go hub.upsertNetworkMonitor(e.Record, true)
+			// A copy, so the response enrichment cannot race the save.
+			go hub.upsertNetworkMonitor(e.Record.Fresh(), true)
 		}
 		return nil
 	})
@@ -100,10 +106,36 @@ func bindNetworkMonitorsEvents(hub *Hub) {
 		return e.Next()
 	})
 
+	// Model-level, so every write path stores secrets sealed.
+	sealSecrets := func(e *core.RecordEvent) error {
+		if err := hub.sealMonitorSecrets(e.Record); err != nil {
+			return err
+		}
+		return e.Next()
+	}
+	hub.OnRecordCreate("network_monitors").BindFunc(sealSecrets)
+	hub.OnRecordUpdate("network_monitors").BindFunc(func(e *core.RecordEvent) error {
+		if err := keepAlertStateFields(e.App, e.Record); err != nil {
+			return err
+		}
+		return sealSecrets(e)
+	})
+
 	// Enrich runs for API responses, realtime events and expanded relations.
 	hub.OnRecordEnrich("network_monitors").BindFunc(func(e *core.RecordEnrichEvent) error {
 		if !canSeeMonitorSecrets(e.App, e.RequestInfo, e.Record) {
 			e.Record.Hide(monitorSecretFields...)
+			return e.Next()
+		}
+		// Users who can see secrets receive them in plaintext.
+		if raw := e.Record.GetString("httpSecrets"); monitorsecrets.IsSealedJSON(raw) {
+			plaintext, err := systems.HTTPSecretsJSON(e.App, e.Record)
+			if err != nil {
+				e.App.Logger().Error("Failed to decrypt monitor secrets", "monitor", e.Record.Id, "err", err)
+				e.Record.Hide("httpSecrets")
+			} else {
+				e.Record.Set("httpSecrets", types.JSONRaw(plaintext))
+			}
 		}
 		return e.Next()
 	})
@@ -120,10 +152,27 @@ func bindNetworkMonitorsEvents(hub *Hub) {
 	}
 }
 
+// monitorInputError is a validation error of a submitted monitor, shown to the client.
+type monitorInputError string
+
+func (e monitorInputError) Error() string { return string(e) }
+
 // prepareMonitorRecord validates and normalizes a network_monitors record
 // submitted through the API. original is nil for new records.
 func prepareMonitorRecord(e *core.RecordRequestEvent, original *core.Record) error {
-	record := e.Record
+	err := prepareMonitor(e.App, e.Record, original, e.Auth, e.HasSuperuserAuth())
+	var inputErr monitorInputError
+	if errors.As(err, &inputErr) {
+		return e.BadRequestError(inputErr.Error(), nil)
+	}
+	return err
+}
+
+// prepareMonitor validates and normalizes a submitted network_monitors
+// record: the API hooks and the importer use it. original is nil for new
+// records; auth is the requester (nil for superusers). Invalid input is
+// reported as a monitorInputError.
+func prepareMonitor(app core.App, record, original *core.Record, auth *core.Record, superuser bool) error {
 	isNew := original == nil
 	protocol := record.GetString("protocol")
 	systemID := record.GetString("system")
@@ -140,6 +189,13 @@ func prepareMonitorRecord(e *core.RecordRequestEvent, original *core.Record) err
 		record.Set("status", "unknown")
 	}
 
+	// Sealed secrets are only accepted unchanged (e.g. a client echoing
+	// the stored value); clients submit plaintext.
+	if raw := record.GetString("httpSecrets"); monitorsecrets.IsSealedJSON(raw) &&
+		(isNew || raw != original.GetString("httpSecrets")) {
+		return monitorInputError("Invalid http secrets")
+	}
+
 	// Clear options the protocol does not use.
 	if protocol != "tcp" {
 		record.Set("port", 0)
@@ -154,7 +210,7 @@ func prepareMonitorRecord(e *core.RecordRequestEvent, original *core.Record) err
 
 	if protocol == monitor.ProtocolPush {
 		if systemID != "" {
-			return e.BadRequestError("Push monitors cannot run on a system", nil)
+			return monitorInputError("Push monitors cannot run on a system")
 		}
 		record.Set("target", "")
 		token := ""
@@ -168,41 +224,99 @@ func prepareMonitorRecord(e *core.RecordRequestEvent, original *core.Record) err
 	} else {
 		record.Set("pushToken", "")
 		if strings.TrimSpace(record.GetString("target")) == "" {
-			return e.BadRequestError("Target is required", nil)
+			return monitorInputError("Target is required")
 		}
+	}
+
+	if loss := record.GetFloat("lossThreshold"); math.IsNaN(loss) || loss < 0 || loss >= 100 {
+		return monitorInputError("Loss threshold must be at least 0 and below 100")
+	}
+	if latency := record.GetFloat("latencyThreshold"); math.IsNaN(latency) || latency < 0 {
+		return monitorInputError("Latency threshold must be at least 0")
 	}
 
 	if systemID == "" {
 		if minInterval := hubMonitorMinInterval(); record.GetInt("interval") < minInterval {
-			return e.BadRequestError(fmt.Sprintf("Hub monitors must use an interval of at least %d seconds", minInterval), nil)
+			return monitorInputError(fmt.Sprintf("Hub monitors must use an interval of at least %d seconds", minInterval))
 		}
 		users := record.GetStringSlice("users")
 		if len(users) == 0 {
-			return e.BadRequestError("Hub monitors must have at least one user", nil)
+			return monitorInputError("Hub monitors must have at least one user")
 		}
 		// Rules check the stored users; new, changed or moved hub monitors must keep the requester.
 		ownershipChanged := isNew || systemID != original.GetString("system") ||
 			!slices.Equal(users, original.GetStringSlice("users"))
-		if ownershipChanged && !e.HasSuperuserAuth() && (e.Auth == nil || !slices.Contains(users, e.Auth.Id)) {
-			return e.BadRequestError("Hub monitors must include you as a user", nil)
+		if ownershipChanged && !superuser && (auth == nil || !slices.Contains(users, auth.Id)) {
+			return monitorInputError("Hub monitors must include you as a user")
 		}
 	} else {
 		// Access to agent monitors follows the system's users.
 		record.Set("users", []string{})
 	}
 
-	config, err := systems.MonitorConfigFromRecord(record)
+	config, err := systems.MonitorConfigFromRecord(app, record)
 	if err == nil {
 		err = config.Validate()
 	}
 	if err != nil {
-		return e.BadRequestError(err.Error(), nil)
+		return monitorInputError(err.Error())
 	}
-	// Store only known HTTP options, each in its field.
+	// Store only known HTTP options, each in its field. The model hook
+	// seals the secrets before they are written.
 	if protocol == "http" {
 		fields, secrets := systems.SplitHTTPOptions(config.HTTP)
 		record.Set("http", nilIfZero(fields))
 		record.Set("httpSecrets", nilIfZero(secrets))
+	}
+	return nil
+}
+
+// validPushToken reports whether token has the format of generated push tokens.
+func validPushToken(token string) bool {
+	if len(token) != pushTokenLength {
+		return false
+	}
+	for _, c := range token {
+		if !strings.ContainsRune(pushTokenAlphabet, c) {
+			return false
+		}
+	}
+	return true
+}
+
+// pushTokenInUse reports whether another monitor has the push token.
+func pushTokenInUse(app core.App, token, id string) bool {
+	var count int
+	err := app.DB().Select("count(*)").From("network_monitors").
+		Where(dbx.HashExp{"pushToken": token}).AndWhere(dbx.Not(dbx.HashExp{"id": id})).Row(&count)
+	return err != nil || count > 0
+}
+
+// alertStateFields are hidden network_monitors fields that only the alert
+// manager writes, with direct updates. Record saves keep their stored values.
+var alertStateFields = []string{"certState", "alertState"}
+
+// keepAlertStateFields sets the alert state fields of record to their
+// stored values, so a save of a record loaded earlier cannot revert them.
+func keepAlertStateFields(app core.App, record *core.Record) error {
+	var row struct {
+		CertState  sql.NullString `db:"certState"`
+		AlertState sql.NullString `db:"alertState"`
+	}
+	err := app.DB().Select(alertStateFields...).From("network_monitors").
+		Where(dbx.HashExp{"id": record.Id}).One(&row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	for field, value := range map[string]sql.NullString{"certState": row.CertState, "alertState": row.AlertState} {
+		if value.Valid && value.String != "" {
+			record.Set(field, types.JSONRaw(value.String))
+		} else {
+			record.Set(field, nil)
+		}
 	}
 	return nil
 }
@@ -329,7 +443,7 @@ func (h *Hub) upsertNetworkMonitor(record *core.Record, runNow bool) error {
 	if err != nil {
 		return err
 	}
-	config, err := systems.MonitorConfigFromRecord(record)
+	config, err := systems.MonitorConfigFromRecord(h, record)
 	if err != nil {
 		return err
 	}

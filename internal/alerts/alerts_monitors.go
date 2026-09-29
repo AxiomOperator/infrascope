@@ -29,6 +29,8 @@ import (
 //     expired). Resolved when a certificate outside the window replaces it,
 //     or certExpiryDays is cleared. Certificate alerts are opted into with
 //     certExpiryDays > 0 alone, independently of notify.
+//   - MonitorLoss and MonitorLatency: the monitor's own one-hour loss and
+//     latency thresholds (see alerts_monitor_thresholds.go).
 //
 // Recipients are the users of the monitor's system for agent monitors and
 // the monitor's users for hub (and push) monitors. Delivery uses SendAlert, so
@@ -42,7 +44,11 @@ const (
 // isMonitorAlertName reports whether name is a monitor alert, whose history
 // rows are not tied to an `alerts` record.
 func isMonitorAlertName(name string) bool {
-	return name == alertNameMonitorDown || name == alertNameMonitorCert
+	switch name {
+	case alertNameMonitorDown, alertNameMonitorCert, alertNameMonitorLoss, alertNameMonitorLatency:
+		return true
+	}
+	return false
 }
 
 // monitorCertState is stored in the hidden network_monitors.certState field.
@@ -279,7 +285,7 @@ func resolveDeletedMonitorHistory(e *core.RecordEvent) error {
 		return err
 	}
 	now := time.Now().UTC()
-	for _, name := range []string{alertNameMonitorDown, alertNameMonitorCert} {
+	for _, name := range []string{alertNameMonitorDown, alertNameMonitorCert, alertNameMonitorLoss, alertNameMonitorLatency} {
 		if err := resolveMonitorHistory(e.App, e.Record.Id, name, now); err != nil {
 			e.App.Logger().Error("Failed to resolve monitor alerts", "monitor", e.Record.Id, "err", err)
 		}
