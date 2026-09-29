@@ -249,6 +249,10 @@ msgstr ""
 msgid "A status page can show up to {MAX_MONITORS} monitors."
 msgstr ""
 
+#: src/components/routes/system/raw-capacity-label.tsx
+msgid "About raw capacity"
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Accepted status codes"
 msgstr ""
@@ -812,6 +816,7 @@ msgstr ""
 
 #: src/components/containers-table/containers-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/routes/system/chart-card.tsx
 #: src/components/routes/system/package-updates-table.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/routes/system/storage-pools-table.tsx
@@ -904,6 +909,7 @@ msgstr "Kontejner"
 msgid "Container Health"
 msgstr "Zdravlje kontejnera"
 
+#: src/components/navbar.tsx
 #: src/components/routes/system.tsx
 msgid "Containers"
 msgstr "Kontejneri"
@@ -1542,6 +1548,10 @@ msgstr "Neuspješna provjera autentičnosti"
 msgid "Failed to delete monitors."
 msgstr "Brisanje monitora nije uspjelo."
 
+#: src/components/routes/settings/quiet-hours.tsx
+msgid "Failed to delete quiet hours."
+msgstr ""
+
 #: src/components/routes/system/package-updates-table.tsx
 msgid "Failed to load package updates"
 msgstr ""
@@ -1724,11 +1734,15 @@ msgstr ""
 msgid "Hide values"
 msgstr ""
 
+#: src/components/navbar.tsx
+msgid "Home"
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
-msgctxt "Button to copy install command"
-msgid "Homebrew command"
-msgstr "Homebrew naredba"
+#~ msgctxt "Button to copy install command"
+#~ msgid "Homebrew command"
+#~ msgstr "Homebrew naredba"
 
 #: src/lib/shoutrrr.ts
 msgid "Host"
@@ -2142,6 +2156,10 @@ msgstr ""
 msgid "Monitors created"
 msgstr "Monitori su izrađeni"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "More actions"
+msgstr ""
+
 #: src/components/routes/settings/notification-builder.tsx
 msgid "More options"
 msgstr ""
@@ -2200,6 +2218,7 @@ msgid "Network Monitor Loss"
 msgstr "Gubitak mrežnog monitora"
 
 #: src/components/command-palette.tsx
+#: src/components/navbar.tsx
 #: src/components/navbar.tsx
 #: src/components/navbar.tsx
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
@@ -2373,6 +2392,7 @@ msgstr ""
 msgid "Open"
 msgstr ""
 
+#: src/components/navbar.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -2918,6 +2938,10 @@ msgstr ""
 msgid "Runtime Metrics"
 msgstr "Metrike izvršavanja"
 
+#: src/components/navbar.tsx
+msgid "S.M.A.R.T."
+msgstr ""
+
 #: src/components/routes/system/smart-table.tsx
 msgid "S.M.A.R.T. Details"
 msgstr "S.M.A.R.T. Detalji"
@@ -3026,6 +3050,7 @@ msgstr "Odaberite sustav"
 
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/system-multi-select.tsx
+#: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/settings/maintenance.tsx
 msgid "Select all"
 msgstr "Odaberi sve"
@@ -3043,7 +3068,12 @@ msgstr ""
 msgid "Select matches"
 msgstr "Odaberi podudaranja"
 
+#: src/components/routes/settings/sidebar-nav.tsx
+msgid "Select page"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/routes/settings/alerts-history-data-table.tsx
 msgid "Select row"
 msgstr "Odaberi redak"
 
@@ -3146,6 +3176,7 @@ msgstr "Postavite sljedeće varijable okruženja na svom InfraScope hubu kako bi
 
 #: src/components/command-palette.tsx
 #: src/components/command-palette.tsx
+#: src/components/navbar.tsx
 #: src/components/navbar.tsx
 #: src/components/navbar.tsx
 #: src/components/routes/settings/layout.tsx
@@ -3891,6 +3922,10 @@ msgstr "Iskorišteno"
 msgid "user {0}"
 msgstr ""
 
+#: src/components/navbar.tsx
+msgid "User actions"
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 msgid "User key"
 msgstr ""
@@ -4055,9 +4090,9 @@ msgstr ""
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
-msgctxt "Button to copy install command"
-msgid "Windows command"
-msgstr "Windows naredba"
+#~ msgctxt "Button to copy install command"
+#~ msgid "Windows command"
+#~ msgstr "Windows naredba"
 
 #: src/lib/shoutrrr.ts
 msgid "Workflow webhook URL"

@@ -38,8 +38,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
 import { pb } from "@/lib/api"
-import { $systems } from "@/lib/stores"
-import { formatShortDate } from "@/lib/utils"
+import { $systems, $userSettings } from "@/lib/stores"
+import { formatShortDate, hourWithMinutes } from "@/lib/utils"
 import type { QuietHoursRecord, SystemRecord } from "@/types"
 
 const quietHoursTranslation = t`Quiet Hours`
@@ -50,6 +50,8 @@ export function QuietHours() {
 	const [editingRecord, setEditingRecord] = useState<QuietHoursRecord | null>(null)
 	const { toast } = useToast()
 	const systems = useStore($systems)
+	// re-render when the user changes the 12h / 24h setting
+	useStore($userSettings, { keys: ["hourFormat"] })
 	useEffect(() => {
 		let unsubscribe: (() => void) | undefined
 		let cancelled = false
@@ -103,7 +105,7 @@ export function QuietHours() {
 			toast({
 				variant: "destructive",
 				title: t`Error`,
-				description: (e as Error).message || "Failed to delete quiet hours.",
+				description: (e as Error).message || t`Failed to delete quiet hours.`,
 			})
 		}
 	}
@@ -121,9 +123,7 @@ export function QuietHours() {
 	const formatDateTime = (record: QuietHoursRecord) => {
 		if (record.type === "daily") {
 			// For daily windows, show only time
-			const startTime = new Date(record.start).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
-			const endTime = new Date(record.end).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
-			return `${startTime} - ${endTime}`
+			return `${hourWithMinutes(record.start)} - ${hourWithMinutes(record.end)}`
 		}
 		// For one-time windows, show full date and time
 		const start = formatShortDate(record.start)

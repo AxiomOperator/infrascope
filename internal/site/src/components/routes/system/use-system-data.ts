@@ -200,7 +200,7 @@ export function useSystemData(id: string) {
 			orientation: direction === "rtl" ? "right" : "left",
 			agentVersion,
 		}
-	}, [systemStats, containerData, direction])
+	}, [systemStats, containerData, chartTime, direction, agentVersion])
 
 	// Share chart config computation for all container charts
 	const containerChartConfigs = useContainerChartConfigs(containerData)

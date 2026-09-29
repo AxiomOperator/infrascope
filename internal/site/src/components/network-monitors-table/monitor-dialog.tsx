@@ -78,7 +78,7 @@ export function AddMonitorDialog({ systemId, monitors }: { systemId?: string; mo
 						<Button
 							variant="outline"
 							className="px-2 rounded-s-none border-s-0"
-							aria-label={`More actions`}
+							aria-label={t`More actions`}
 							disabled={!hasEligibleSystems}
 						>
 							<ChevronDownIcon className="size-4" />

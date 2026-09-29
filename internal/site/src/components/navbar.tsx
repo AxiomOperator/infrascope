@@ -1,3 +1,4 @@
+import { t } from "@lingui/core/macro"
 import { Trans } from "@lingui/react/macro"
 import { getPagePath } from "@nanostores/router"
 import {
@@ -56,7 +57,7 @@ export default function Navbar() {
 
 			<Link
 				href={basePath}
-				aria-label="Home"
+				aria-label={t`Home`}
 				className="p-2 ps-0 me-3 group"
 				onMouseEnter={runOnce(() => import("@/components/routes/home"))}
 			>
@@ -87,7 +88,7 @@ export default function Navbar() {
 					<DropdownMenuTrigger
 						onMouseEnter={() => import("@/components/routes/settings/general")}
 						className="ms-3"
-						aria-label="Open Menu"
+						aria-label={t`Open menu`}
 					>
 						<MenuIcon />
 					</DropdownMenuTrigger>
@@ -163,7 +164,7 @@ export default function Navbar() {
 						<Link
 							href={getPagePath($router, "containers")}
 							className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
-							aria-label="Containers"
+							aria-label={t`Containers`}
 						>
 							<ContainerIcon className="h-[1.2rem] w-[1.2rem]" strokeWidth={1.5} />
 						</Link>
@@ -177,7 +178,7 @@ export default function Navbar() {
 						<Link
 							href={getPagePath($router, "smart")}
 							className={cn("hidden md:grid", buttonVariants({ variant: "ghost", size: "icon" }))}
-							aria-label="S.M.A.R.T."
+							aria-label={t`S.M.A.R.T.`}
 						>
 							<HardDriveIcon className="h-[1.2rem] w-[1.2rem]" strokeWidth={1.5} />
 						</Link>
@@ -189,7 +190,7 @@ export default function Navbar() {
 						<Link
 							href={getPagePath($router, "monitors")}
 							className={cn("hidden md:grid", buttonVariants({ variant: "ghost", size: "icon" }))}
-							aria-label="Network Monitors"
+							aria-label={t`Network Monitors`}
 							onMouseEnter={() => import("@/components/routes/monitors")}
 						>
 							<NetworkIcon className="h-[1.2rem] w-[1.2rem]" strokeWidth={1.5} />
@@ -204,7 +205,7 @@ export default function Navbar() {
 					<TooltipTrigger asChild>
 						<Link
 							href={getPagePath($router, "settings", { name: "general" })}
-							aria-label="Settings"
+							aria-label={t`Settings`}
 							className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
 						>
 							<SettingsIcon className="h-[1.2rem] w-[1.2rem]" />
@@ -216,7 +217,7 @@ export default function Navbar() {
 				</Tooltip>
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
-						<button aria-label="User Actions" className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}>
+						<button aria-label={t`User actions`} className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}>
 							<UserIcon className="h-[1.2rem] w-[1.2rem]" />
 						</button>
 					</DropdownMenuTrigger>

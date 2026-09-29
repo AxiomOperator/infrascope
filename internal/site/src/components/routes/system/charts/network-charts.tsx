@@ -1,6 +1,7 @@
-import { useMemo } from "react"
+import { useCallback, useMemo } from "react"
+import { useStore } from "@nanostores/react"
 import { t } from "@lingui/core/macro"
-import AreaChartDefault from "@/components/charts/area-chart"
+import AreaChartDefault, { type DataPoint } from "@/components/charts/area-chart"
 import { useContainerDataPoints } from "@/components/charts/hooks"
 import { $userSettings } from "@/lib/stores"
 import { decimalString, formatBytes, toFixedFloat } from "@/lib/utils"
@@ -30,7 +31,55 @@ export function BandwidthChart({
 	systemStats: SystemStatsRecord[]
 }) {
 	const maxValSelect = isLongerChart ? <SelectAvgMax max={maxValues} /> : null
-	const userSettings = $userSettings.get()
+	const { unitNet } = useStore($userSettings)
+	const lastRecord = systemStats.at(-1)
+
+	const dataPoints = useMemo(() => {
+		const points: DataPoint[] = [
+			{
+				label: t`Sent`,
+				dataKey(data: SystemStatsRecord) {
+					if (showMax) {
+						return data?.stats?.bm?.[0] ?? (data?.stats?.nsm ?? 0) * 1024 * 1024
+					}
+					return data?.stats?.b?.[0] ?? (data?.stats?.ns ?? 0) * 1024 * 1024
+				},
+				color: 5,
+				opacity: 0.2,
+			},
+			{
+				label: t`Received`,
+				dataKey(data: SystemStatsRecord) {
+					if (showMax) {
+						return data?.stats?.bm?.[1] ?? (data?.stats?.nrm ?? 0) * 1024 * 1024
+					}
+					return data?.stats?.b?.[1] ?? (data?.stats?.nr ?? 0) * 1024 * 1024
+				},
+				color: 2,
+				opacity: 0.2,
+			},
+		]
+		if (!lastRecord) {
+			return points
+		}
+		// draw the larger series first so the lesser one is in front for better visibility
+		return points.sort((a, b) => (b.dataKey(lastRecord) ?? 0) - (a.dataKey(lastRecord) ?? 0))
+	}, [showMax, lastRecord])
+
+	const tickFormatter = useCallback(
+		(val: number) => {
+			const { value, unit } = formatBytes(val, true, unitNet, false)
+			return `${toFixedFloat(value, value >= 10 ? 0 : 1)} ${unit}`
+		},
+		[unitNet]
+	)
+	const contentFormatter = useCallback(
+		(data: { value: number }) => {
+			const { value, unit } = formatBytes(data.value, true, unitNet, false)
+			return `${decimalString(value, value >= 100 ? 1 : 2)} ${unit}`
+		},
+		[unitNet]
+	)
 
 	return (
 		<ChartCard
@@ -48,40 +97,9 @@ export function BandwidthChart({
 			<AreaChartDefault
 				chartData={chartData}
 				maxToggled={showMax}
-				dataPoints={[
-					{
-						label: t`Sent`,
-						dataKey(data: SystemStatsRecord) {
-							if (showMax) {
-								return data?.stats?.bm?.[0] ?? (data?.stats?.nsm ?? 0) * 1024 * 1024
-							}
-							return data?.stats?.b?.[0] ?? (data?.stats?.ns ?? 0) * 1024 * 1024
-						},
-						color: 5,
-						opacity: 0.2,
-					},
-					{
-						label: t`Received`,
-						dataKey(data: SystemStatsRecord) {
-							if (showMax) {
-								return data?.stats?.bm?.[1] ?? (data?.stats?.nrm ?? 0) * 1024 * 1024
-							}
-							return data?.stats?.b?.[1] ?? (data?.stats?.nr ?? 0) * 1024 * 1024
-						},
-						color: 2,
-						opacity: 0.2,
-					},
-				]
-					// try to place the lesser number in front for better visibility
-					.sort(() => (systemStats.at(-1)?.stats.b?.[1] ?? 0) - (systemStats.at(-1)?.stats.b?.[0] ?? 0))}
-				tickFormatter={(val) => {
-					const { value, unit } = formatBytes(val, true, userSettings.unitNet, false)
-					return `${toFixedFloat(value, value >= 10 ? 0 : 1)} ${unit}`
-				}}
-				contentFormatter={(data) => {
-					const { value, unit } = formatBytes(data.value, true, userSettings.unitNet, false)
-					return `${decimalString(value, value >= 100 ? 1 : 2)} ${unit}`
-				}}
+				dataPoints={dataPoints}
+				tickFormatter={tickFormatter}
+				contentFormatter={contentFormatter}
 				showTotal={true}
 			/>
 		</ChartCard>
@@ -101,7 +119,7 @@ export function ContainerNetworkChart({
 	isPodman: boolean
 	networkConfig: ChartConfig
 }) {
-	const userSettings = $userSettings.get()
+	const { unitNet } = useStore($userSettings)
 	const { filter, dataPoints, filteredKeys } = useContainerDataPoints(networkConfig, (key, data) => {
 		const payload = data[key]
 		if (!payload) return null
@@ -118,8 +136,8 @@ export function ContainerNetworkChart({
 			return [(record?.ns ?? 0) * 1024 * 1024, (record?.nr ?? 0) * 1024 * 1024]
 		}
 		const formatRxTx = (recv: number, sent: number) => {
-			const { value: receivedValue, unit: receivedUnit } = formatBytes(recv, true, userSettings.unitNet, false)
-			const { value: sentValue, unit: sentUnit } = formatBytes(sent, true, userSettings.unitNet, false)
+			const { value: receivedValue, unit: receivedUnit } = formatBytes(recv, true, unitNet, false)
+			const { value: sentValue, unit: sentUnit } = formatBytes(sent, true, unitNet, false)
 			return (
 				<span className="flex">
 					{decimalString(receivedValue)} {receivedUnit}
@@ -152,7 +170,15 @@ export function ContainerNetworkChart({
 				return null
 			}
 		}
-	}, [filteredKeys, userSettings.unitNet])
+	}, [filteredKeys, unitNet])
+
+	const tickFormatter = useCallback(
+		(val: number) => {
+			const { value, unit } = formatBytes(val, true, unitNet, false)
+			return `${toFixedFloat(value, value >= 10 ? 0 : 1)} ${unit}`
+		},
+		[unitNet]
+	)
 
 	return (
 		<ChartCard
@@ -166,10 +192,7 @@ export function ContainerNetworkChart({
 				chartData={chartData}
 				customData={chartData.containerData}
 				dataPoints={dataPoints}
-				tickFormatter={(val) => {
-					const { value, unit } = formatBytes(val, true, userSettings.unitNet, false)
-					return `${toFixedFloat(value, value >= 10 ? 0 : 1)} ${unit}`
-				}}
+				tickFormatter={tickFormatter}
 				contentFormatter={contentFormatter}
 				domain={pinnedAxisDomain()}
 				showTotal={true}

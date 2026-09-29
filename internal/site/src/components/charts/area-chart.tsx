@@ -169,5 +169,27 @@ export default function AreaChartDefault({
 				</AreaChart>
 			</ChartContainer>
 		)
-	}, [displayData, yAxisWidth, filter, Areas, XAxis])
+	}, [
+		displayData,
+		yAxisWidth,
+		filter,
+		Areas,
+		XAxis,
+		chartData.orientation,
+		max,
+		showTotal,
+		truncate,
+		legend,
+		hideYAxis,
+		reverseStackOrder,
+		// Callers usually pass these inline, so their identity changes on every parent render. Only track
+		// them while the chart is visible to keep offscreen charts from redrawing; the memo recomputes
+		// with the latest values as soon as the chart scrolls back into view.
+		isIntersecting,
+		isIntersecting ? tickFormatter : undefined,
+		isIntersecting ? contentFormatter : undefined,
+		isIntersecting ? itemSorter : undefined,
+		isIntersecting ? domain : undefined,
+		isIntersecting ? chartProps : undefined,
+	])
 }

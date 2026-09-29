@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import { useStore } from "@nanostores/react"
 import type { ChartConfig } from "@/components/ui/chart"
 import type { ChartData, SystemStats, SystemStatsRecord } from "@/types"
@@ -19,6 +19,7 @@ export interface ContainerChartConfigs {
  */
 export function useContainerChartConfigs(containerData: ChartData["containerData"]): ContainerChartConfigs {
 	return useMemo(() => {
+		const data = containerData ?? []
 		const configs = {
 			cpu: {} as ChartConfig,
 			memory: {} as ChartConfig,
@@ -33,8 +34,8 @@ export function useContainerChartConfigs(containerData: ChartData["containerData
 		}
 
 		// Process each data point to calculate totals
-		for (let i = 0; i < containerData.length; i++) {
-			const stats = containerData[i]
+		for (let i = 0; i < data.length; i++) {
+			const stats = data[i]
 			const containerNames = Object.keys(stats)
 
 			for (let j = 0; j < containerNames.length; j++) {
@@ -85,29 +86,81 @@ export function useContainerChartConfigs(containerData: ChartData["containerData
 	}, [containerData])
 }
 
-/** Sets the correct width of the y axis in recharts based on the longest label */
+/** Horizontal space around the widest tick label (tick margin + breathing room), in px */
+const Y_AXIS_LABEL_PADDING = 20
+/** Upper bound for cached label widths before the cache is reset */
+const LABEL_WIDTH_CACHE_LIMIT = 2000
+
+let labelMeasureContext: CanvasRenderingContext2D | null | undefined
+const labelWidthCache = new Map<string, number>()
+
+if (typeof document !== "undefined") {
+	// widths measured with a fallback font are wrong once the real font arrives
+	document.fonts?.addEventListener?.("loadingdone", () => labelWidthCache.clear())
+}
+
+/**
+ * Measures the rendered width of a y axis tick label (text-xs, tabular-nums, tracking-tighter)
+ * using a shared canvas context. Results are cached per label.
+ */
+function measureTickLabel(label: string): number {
+	const cached = labelWidthCache.get(label)
+	if (cached !== undefined) {
+		return cached
+	}
+	if (labelMeasureContext === undefined) {
+		labelMeasureContext = typeof document === "undefined" ? null : document.createElement("canvas").getContext("2d")
+	}
+	const ctx = labelMeasureContext
+	let width: number
+	if (ctx) {
+		const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+		const fontSize = rootFontSize * 0.75 // text-xs
+		ctx.font = `${fontSize}px ${getComputedStyle(document.body).fontFamily || "sans-serif"}`
+		if ("letterSpacing" in ctx) {
+			ctx.letterSpacing = `${fontSize * -0.05}px` // tracking-tighter
+		}
+		// canvas can't enable tabular-nums, so measure every digit as "0" (a full-width figure)
+		width = ctx.measureText(label.replace(/\d/g, "0")).width
+	} else {
+		// no canvas (e.g. tests): rough estimate for a 12px font
+		width = label.length * 7
+	}
+	width = Math.ceil(width)
+	if (labelWidthCache.size >= LABEL_WIDTH_CACHE_LIMIT) {
+		labelWidthCache.clear()
+	}
+	labelWidthCache.set(label, width)
+	return width
+}
+
+/**
+ * Sets the correct width of the y axis in recharts based on the longest label.
+ *
+ * Pass tick labels through `updateYAxisWidth` from the axis `tickFormatter`. All labels formatted
+ * in one render pass are collected and the width is set to fit the widest of them once the pass
+ * is done, so the axis grows and shrinks with its labels.
+ */
 export function useYAxisWidth() {
 	const [yAxisWidth, setYAxisWidth] = useState(0)
-	let maxChars = 0
-	let timeout: ReturnType<typeof setTimeout>
-	function updateYAxisWidth(str: string) {
-		if (str.length > maxChars) {
-			maxChars = str.length
-			const div = document.createElement("div")
-			div.className = "text-xs tabular-nums tracking-tighter table sr-only"
-			div.innerHTML = str
-			clearTimeout(timeout)
-			timeout = setTimeout(() => {
-				document.body.appendChild(div)
-				const width = div.offsetWidth + 20 
-				if (width > yAxisWidth) {
-					setYAxisWidth(width)
-				}
-				document.body.removeChild(div)
+	const pass = useRef({ max: 0, scheduled: false })
+
+	const updateYAxisWidth = useCallback((str: string) => {
+		const current = pass.current
+		current.max = Math.max(current.max, measureTickLabel(str) + Y_AXIS_LABEL_PADDING)
+		if (!current.scheduled) {
+			current.scheduled = true
+			// tick formatters run while recharts renders, so commit the result after the pass finishes
+			setTimeout(() => {
+				const width = current.max
+				current.max = 0
+				current.scheduled = false
+				setYAxisWidth(width)
 			})
 		}
 		return str
-	}
+	}, [])
+
 	return { yAxisWidth, updateYAxisWidth }
 }
 

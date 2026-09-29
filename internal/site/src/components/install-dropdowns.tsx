@@ -1,31 +1,21 @@
-import { i18n } from "@lingui/core"
 import { memo } from "react"
 import { copyToClipboard, getHubURL } from "@/lib/utils"
 import { DropdownMenuContent, DropdownMenuItem } from "./ui/dropdown-menu"
 
-// const isbeta = beszel.hub_version.includes("beta")
-// const imagetag = isbeta ? ":edge" : ""
+const SCRIPTS_BASE_URL = "https://raw.githubusercontent.com/AxiomOperator/infrascope/main/supplemental/scripts"
+const AGENT_IMAGE = "ghcr.io/axiomoperator/infrascope/beszel-agent"
 
 /**
- * Get the URL of the script to install the agent.
- * @param path - The path to the script (e.g. "/brew").
+ * Get the URL of an install script in the InfraScope repository.
+ * @param name - The script file name (e.g. "install-agent.sh").
  * @returns The URL for the script.
  */
-const getScriptUrl = (path: string = "") => {
-	return `https://get.beszel.dev${path}`
-	// no beta for now
-	// const url = new URL("https://get.beszel.dev")
-	// url.pathname = path
-	// if (isBeta) {
-	// 	url.searchParams.set("beta", "1")
-	// }
-	// return url.toString()
-}
+const getScriptUrl = (name: string) => `${SCRIPTS_BASE_URL}/${name}`
 
 export function copyDockerCompose(port = "45876", publicKey: string, token: string) {
 	copyToClipboard(`services:
   beszel-agent:
-    image: henrygd/beszel-agent
+    image: ${AGENT_IMAGE}
     container_name: beszel-agent
     restart: unless-stopped
     network_mode: host
@@ -43,24 +33,23 @@ export function copyDockerCompose(port = "45876", publicKey: string, token: stri
 
 export function copyDockerRun(port = "45876", publicKey: string, token: string) {
 	copyToClipboard(
-		`docker run -d --name beszel-agent --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock:ro -v beszel_agent_data:/var/lib/beszel-agent -e KEY="${publicKey}" -e LISTEN=${port} -e TOKEN="${token}" -e HUB_URL="${getHubURL()}" henrygd/beszel-agent`
+		`docker run -d --name beszel-agent --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock:ro -v beszel_agent_data:/var/lib/beszel-agent -e KEY="${publicKey}" -e LISTEN=${port} -e TOKEN="${token}" -e HUB_URL="${getHubURL()}" ${AGENT_IMAGE}`
 	)
 }
 
-export function copyLinuxCommand(port = "45876", publicKey: string, token: string, brew = false) {
-	let cmd = `curl -sL ${getScriptUrl(
-		brew ? "/brew" : ""
-	)} -o /tmp/install-agent.sh && chmod +x /tmp/install-agent.sh && /tmp/install-agent.sh -p ${port} -k "${publicKey}" -t "${token}" -url "${getHubURL()}"`
-	// brew script does not support --china-mirrors
-	if (!brew && (i18n.locale + navigator.language).includes("zh-CN")) {
-		cmd += ` --china-mirrors`
-	}
-	copyToClipboard(cmd)
+export function copyLinuxCommand(port = "45876", publicKey: string, token: string) {
+	copyToClipboard(
+		`curl -sL ${getScriptUrl("install-agent.sh")} -o /tmp/install-agent.sh && chmod +x /tmp/install-agent.sh && /tmp/install-agent.sh -p ${port} -k "${publicKey}" -t "${token}" -url "${getHubURL()}"`
+	)
 }
 
+/**
+ * Not offered in the UI yet: install-agent.ps1 still installs the agent from the upstream
+ * Beszel scoop bucket / winget package rather than InfraScope releases.
+ */
 export function copyWindowsCommand(port = "45876", publicKey: string, token: string) {
 	copyToClipboard(
-		`& iwr -useb ${getScriptUrl()} -OutFile "$env:TEMP\\install-agent.ps1"; & Powershell -ExecutionPolicy Bypass -File "$env:TEMP\\install-agent.ps1" -Key "${publicKey}" -Port ${port} -Token "${token}" -Url "${getHubURL()}"`
+		`& iwr -useb ${getScriptUrl("install-agent.ps1")} -OutFile "$env:TEMP\\install-agent.ps1"; & Powershell -ExecutionPolicy Bypass -File "$env:TEMP\\install-agent.ps1" -Key "${publicKey}" -Port ${port} -Token "${token}" -Url "${getHubURL()}"`
 	)
 }
 

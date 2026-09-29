@@ -123,7 +123,9 @@ export default function LineChartDefault({
 	}, [displayData, displayMaxToggled, isIntersecting, maxToggled, sourceData])
 
 	// Use a stable key derived from data point identities and visual properties
-	const linesKey = dataPoints?.map((d) => `${d.label}:${d.strokeOpacity}${d.dot}${d.yAxisId}${d.strokeDasharray}`).join("\0")
+	const linesKey = dataPoints
+		?.map((d) => `${d.label}:${d.strokeOpacity}${d.dot}${d.yAxisId}${d.strokeDasharray}`)
+		.join("\0")
 
 	const XAxis = xAxis(chartData.chartTime, displayData.at(-1)?.created)
 
@@ -153,7 +155,7 @@ export default function LineChartDefault({
 				/>
 			)
 		})
-	}, [linesKey, displayMaxToggled])
+	}, [linesKey, displayMaxToggled, connectNulls])
 
 	return useMemo(() => {
 		if (displayData.length === 0) {
@@ -225,5 +227,31 @@ export default function LineChartDefault({
 				</LineChart>
 			</ChartContainer>
 		)
-	}, [displayData, yAxisWidth, hasRightAxis, filter, Lines, XAxis])
+	}, [
+		displayData,
+		yAxisWidth,
+		hasRightAxis,
+		filter,
+		Lines,
+		XAxis,
+		chartData.orientation,
+		max,
+		max2,
+		showTotal,
+		truncate,
+		legend,
+		hideYAxis,
+		reverseStackOrder,
+		// Callers usually pass these inline, so their identity changes on every parent render. Only track
+		// them while the chart is visible to keep offscreen charts from redrawing; the memo recomputes
+		// with the latest values as soon as the chart scrolls back into view.
+		isIntersecting,
+		isIntersecting ? tickFormatter : undefined,
+		isIntersecting ? tickFormatter2 : undefined,
+		isIntersecting ? contentFormatter : undefined,
+		isIntersecting ? itemSorter : undefined,
+		isIntersecting ? domain : undefined,
+		isIntersecting ? domain2 : undefined,
+		isIntersecting ? chartProps : undefined,
+	])
 }

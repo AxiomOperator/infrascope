@@ -25,13 +25,12 @@ import {
 	copyDockerCompose,
 	copyDockerRun,
 	copyLinuxCommand,
-	copyWindowsCommand,
 	type DropdownItem,
 	InstallDropdown,
 } from "./install-dropdowns"
 import { $router, basePath, Link, navigate } from "./router"
 import { DropdownMenu, DropdownMenuTrigger } from "./ui/dropdown-menu"
-import { AppleIcon, DockerIcon, FreeBsdIcon, TuxIcon, WindowsIcon } from "./ui/icons"
+import { DockerIcon, FreeBsdIcon, TuxIcon } from "./ui/icons"
 import { InputCopy } from "./ui/input-copy"
 
 // To avoid a refactor of the dialog, we will just keep this function as a "skeleton" for the actual dialog
@@ -126,11 +125,7 @@ export const SystemDialog = ({ setOpen, system }: { setOpen: (open: boolean) => 
 			<Tabs defaultValue={tab} onValueChange={setTab}>
 				<DialogHeader>
 					<DialogTitle className="mb-1 pb-1 max-w-100 truncate pr-8">
-						{system ? (
-							<Trans>Edit System</Trans>
-						) : (
-							<Trans>Add System</Trans>
-						)}
+						{system ? <Trans>Edit System</Trans> : <Trans>Add System</Trans>}
 					</DialogTitle>
 					<TabsList className="grid w-full grid-cols-2">
 						<TabsTrigger value="docker">Docker</TabsTrigger>
@@ -238,18 +233,6 @@ export const SystemDialog = ({ setOpen, system }: { setOpen: (open: boolean) => 
 								onClick={async () => copyLinuxCommand(isUnixSocket ? hostValue : port.current?.value, publicKey, token)}
 								dropdownItems={[
 									{
-										text: t({ message: "Homebrew command", context: "Button to copy install command" }),
-										onClick: async () =>
-											copyLinuxCommand(isUnixSocket ? hostValue : port.current?.value, publicKey, token, true),
-										icons: [AppleIcon, TuxIcon],
-									},
-									{
-										text: t({ message: "Windows command", context: "Button to copy install command" }),
-										onClick: async () =>
-											copyWindowsCommand(isUnixSocket ? hostValue : port.current?.value, publicKey, token),
-										icons: [WindowsIcon],
-									},
-									{
 										text: t({ message: "FreeBSD command", context: "Button to copy install command" }),
 										onClick: async () =>
 											copyLinuxCommand(isUnixSocket ? hostValue : port.current?.value, publicKey, token),
@@ -264,13 +247,7 @@ export const SystemDialog = ({ setOpen, system }: { setOpen: (open: boolean) => 
 							/>
 						</TabsContent>
 						{/* Save */}
-						<Button>
-							{system ? (
-								<Trans>Save System</Trans>
-							) : (
-								<Trans>Add System</Trans>
-							)}
-						</Button>
+						<Button>{system ? <Trans>Save System</Trans> : <Trans>Add System</Trans>}</Button>
 					</DialogFooter>
 				</form>
 			</Tabs>

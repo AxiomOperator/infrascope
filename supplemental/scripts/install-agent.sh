@@ -138,13 +138,13 @@ generate_freebsd_rc_service() {
 # BEFORE: LOGIN
 # KEYWORD: shutdown
 
-# Add the following lines to /etc/rc.conf to configure Beszel Agent:
+# Add the following lines to /etc/rc.conf to configure InfraScope Agent:
 #
-# beszel_agent_enable (bool):   Set to YES to enable Beszel Agent
+# beszel_agent_enable (bool):   Set to YES to enable InfraScope Agent
 #                               Default: YES
-# beszel_agent_env_file (str):  Beszel Agent env configuration file
+# beszel_agent_env_file (str):  InfraScope Agent env configuration file
 #                               Default: /usr/local/etc/beszel-agent/env
-# beszel_agent_user (str):      Beszel Agent daemon user
+# beszel_agent_user (str):      InfraScope Agent daemon user
 #                               Default: beszel
 # beszel_agent_bin (str):       Path to the beszel-agent binary
 #                               Default: /usr/local/sbin/beszel-agent
@@ -347,7 +347,7 @@ configure_openwrt_account() (
   [ -n "$account_gid" ] || fail "The beszel group was not created."
   if ! grep -q '^beszel:' /etc/passwd; then
     account_uid=$(openwrt_unused_id /etc/passwd) || fail "No unused service UID available."
-    user_add beszel "$account_uid" "$account_gid" "Beszel agent" /nonexistent /bin/false || fail "Could not create the beszel user."
+    user_add beszel "$account_uid" "$account_gid" "InfraScope agent" /nonexistent /bin/false || fail "Could not create the beszel user."
   fi
   grep -q '^beszel:' /etc/passwd || fail "The beszel account is incomplete."
   validate_openwrt_account
@@ -404,7 +404,7 @@ validate_platform() {
     FreeBSD)
       command -v service >/dev/null && command -v sysrc >/dev/null || fail "FreeBSD service and sysrc commands are required."
       ;;
-    Darwin) fail "For macOS, use the Homebrew installer: https://github.com/henrygd/beszel/blob/main/supplemental/scripts/install-agent-brew.sh" ;;
+    Darwin) fail "For macOS, use the Homebrew installer: https://github.com/AxiomOperator/infrascope/blob/main/supplemental/scripts/install-agent-brew.sh" ;;
     *) fail "Unsupported operating system: $(uname -s)" ;;
   esac
 }
@@ -508,7 +508,8 @@ prompt_auto_update() {
 PORT=45876
 UNINSTALL=false
 GITHUB_URL="https://github.com"
-GITHUB_PROXY_URL=""
+# GitHub repository that publishes the release assets (asset names keep the beszel_* / beszel-agent_* prefix)
+GITHUB_REPO="AxiomOperator/infrascope"
 KEY=""
 TOKEN=""
 HUB_URL=""
@@ -524,7 +525,7 @@ VERSION="latest"
 # Check for help flag
 case "${1-}" in
 -h | --help)
-  printf "Beszel Agent installation script\n\n"
+  printf "InfraScope Agent installation script\n\n"
   printf "Usage: ./install-agent.sh [options]\n\n"
   printf "Options: \n"
   printf "  -k                    : SSH key (required, or interactive if not provided)\n"
@@ -532,11 +533,11 @@ case "${1-}" in
   printf "  -t                    : Token (optional for backwards compatibility)\n"
   printf "  -url                  : Hub URL (optional for backwards compatibility)\n"
   printf "  -v, --version         : Version to install (default: latest)\n"
-  printf "  -u                    : Uninstall Beszel Agent\n"
+  printf "  -u                    : Uninstall InfraScope Agent\n"
   printf "  --auto-update [VALUE] : Control automatic daily updates\n"
   printf "                          VALUE can be true (enable) or false (disable). If not specified, will prompt.\n"
-  printf "  --mirror [URL]        : Use GitHub proxy to resolve network timeout issues in mainland China\n"
-  printf "                          URL: optional custom proxy URL (default: https://gh.beszel.dev)\n"
+  printf "  --mirror URL          : Download from GitHub through a proxy URL (e.g. https://proxy.example.com/)\n"
+  printf "                          Without a URL the flag is ignored (the old default mirror is not available).\n"
   printf "  -h, --help            : Display this help message\n"
   exit 0
   ;;
@@ -607,26 +608,19 @@ while [ $# -gt 0 ]; do
     UNINSTALL=true
     ;;
   --mirror* | --china-mirrors*)
-    # Check if there's a value after the = sign
+    # Kept for backward compatibility. The upstream default mirror (gh.beszel.dev) does not serve
+    # InfraScope releases, so only an explicit proxy URL is honored.
+    CUSTOM_PROXY=""
     if echo "$1" | grep -q "="; then
-      # Extract the value after =
-      CUSTOM_PROXY=$(echo "$1" | cut -d'=' -f2)
-      if [ -n "$CUSTOM_PROXY" ]; then
-        GITHUB_PROXY_URL="$CUSTOM_PROXY"
-        GITHUB_URL="$(ensure_trailing_slash "$CUSTOM_PROXY")https://github.com"
-      else
-        GITHUB_PROXY_URL="https://gh.beszel.dev"
-        GITHUB_URL="$GITHUB_PROXY_URL"
-      fi
+      CUSTOM_PROXY=$(echo "$1" | cut -d'=' -f2-)
     elif [ "${2-}" != "" ] && ! echo "$2" | grep -q '^-'; then
-      # use custom proxy URL provided as next argument
-      GITHUB_PROXY_URL="$2"
-      GITHUB_URL="$(ensure_trailing_slash "$2")https://github.com"
+      CUSTOM_PROXY="$2"
       shift
+    fi
+    if [ -n "$CUSTOM_PROXY" ]; then
+      GITHUB_URL="$(ensure_trailing_slash "$CUSTOM_PROXY")https://github.com"
     else
-      # No value specified, use default
-      GITHUB_PROXY_URL="https://gh.beszel.dev"
-      GITHUB_URL="$GITHUB_PROXY_URL"
+      warn "Ignoring $1: no default mirror is available. Pass a proxy URL (--mirror <url>) to use one."
     fi
     ;;
   --auto-update*)
@@ -754,10 +748,10 @@ if [ "$UNINSTALL" = true ]; then
     systemctl daemon-reload
   fi
 
-  echo "Removing the Beszel Agent directory..."
+  echo "Removing the InfraScope Agent directory..."
   rm -rf "$AGENT_DIR"
 
-  echo "Removing the Beszel Agent data directory..."
+  echo "Removing the InfraScope Agent data directory..."
   rm -rf /var/lib/beszel-agent
 
   echo "Removing the dedicated user for the agent service..."
@@ -774,7 +768,7 @@ if [ "$UNINSTALL" = true ]; then
     fi
   fi
 
-  echo "Beszel Agent has been uninstalled successfully!"
+  echo "InfraScope Agent has been uninstalled successfully!"
   exit 0
 fi
 
@@ -852,7 +846,7 @@ fi
 INSTALL_STEP="configuring the service user"
 # Create a dedicated user for the service if it doesn't exist
 AGENT_USER="beszel"
-echo "Configuring the dedicated user for the Beszel Agent service..."
+echo "Configuring the dedicated user for the InfraScope Agent service..."
 if is_alpine; then
   if ! id -u beszel >/dev/null 2>&1; then
     addgroup beszel
@@ -904,10 +898,10 @@ else
 fi
 
 INSTALL_STEP="creating installation directories"
-# Create the directory for the Beszel Agent
+# Create the directory for the InfraScope Agent
 
 if [ ! -d "$AGENT_DIR" ]; then
-  echo "Creating the directory for the Beszel Agent..."
+  echo "Creating the directory for the InfraScope Agent..."
   mkdir -p "$AGENT_DIR"
   chown "${AGENT_USER}:${AGENT_USER}" "$AGENT_DIR"
   chmod 755 "$AGENT_DIR"
@@ -918,7 +912,7 @@ if [ ! -d "$BIN_DIR" ]; then
 fi
 
 INSTALL_STEP="downloading and verifying the agent"
-# Download and install the Beszel Agent
+# Download and install the InfraScope Agent
 
 OS=$(uname -s | sed -e 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
 ARCH=$(detect_architecture)
@@ -929,13 +923,9 @@ fi
 
 # Determine version to install
 if [ "$VERSION" = "latest" ]; then
-  INSTALL_VERSION=$(curl -fsS --connect-timeout 10 --max-time 30 "https://get.beszel.dev/latest-version") || INSTALL_VERSION=""
-  if [ -z "$INSTALL_VERSION" ]; then
-    # Fallback to GitHub API
-    API_RELEASE_URL="https://api.github.com/repos/henrygd/beszel/releases/latest"
-    RELEASE_JSON=$(curl -fsS --connect-timeout 10 --max-time 30 "$API_RELEASE_URL") || fail "Could not fetch the latest release from GitHub."
-    INSTALL_VERSION=$(printf '%s\n' "$RELEASE_JSON" | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4 | tr -d 'v')
-  fi
+  API_RELEASE_URL="https://api.github.com/repos/$GITHUB_REPO/releases/latest"
+  RELEASE_JSON=$(curl -fsS --connect-timeout 10 --max-time 30 "$API_RELEASE_URL") || fail "Could not fetch the latest release from GitHub."
+  INSTALL_VERSION=$(printf '%s\n' "$RELEASE_JSON" | grep -o '"tag_name": *"v[^"]*"' | cut -d'"' -f4 | tr -d 'v')
   if [ -z "$INSTALL_VERSION" ]; then
     echo "Failed to get latest version"
     exit 1
@@ -951,25 +941,25 @@ echo "Downloading beszel-agent v${INSTALL_VERSION}..."
 # Download checksums file
 TEMP_DIR=$(mktemp -d)
 cd "$TEMP_DIR" || exit 1
-curl -fsSL --connect-timeout 10 --max-time 60 "$GITHUB_URL/henrygd/beszel/releases/download/v${INSTALL_VERSION}/beszel_${INSTALL_VERSION}_checksums.txt" -o checksums.txt || fail "Could not download checksums. Try --mirror if GitHub is unreachable."
+curl -fsSL --connect-timeout 10 --max-time 60 "$GITHUB_URL/$GITHUB_REPO/releases/download/v${INSTALL_VERSION}/beszel_${INSTALL_VERSION}_checksums.txt" -o checksums.txt || fail "Could not download checksums. Try --mirror <url> if GitHub is unreachable."
 CHECKSUM=$(awk -v name="$FILE_NAME" '$2 == name { print $1 }' checksums.txt)
 if [ -z "$CHECKSUM" ] || ! echo "$CHECKSUM" | grep -qE "^[a-fA-F0-9]{64}$"; then
   echo "Failed to get checksum or invalid checksum format"
-  echo "Try again with --mirror (or --mirror <url>) if GitHub is not reachable."
+  echo "Try again with --mirror <url> if GitHub is not reachable."
   rm -rf "$TEMP_DIR"
   exit 1
 fi
 
-if ! curl -fL# --retry 3 --retry-delay 2 --connect-timeout 10 "$GITHUB_URL/henrygd/beszel/releases/download/v${INSTALL_VERSION}/$FILE_NAME" -o "$FILE_NAME"; then
-  echo "Failed to download the agent from $GITHUB_URL/henrygd/beszel/releases/download/v${INSTALL_VERSION}/$FILE_NAME"
-  echo "Try again with --mirror (or --mirror <url>) if GitHub is not reachable."
+if ! curl -fL# --retry 3 --retry-delay 2 --connect-timeout 10 "$GITHUB_URL/$GITHUB_REPO/releases/download/v${INSTALL_VERSION}/$FILE_NAME" -o "$FILE_NAME"; then
+  echo "Failed to download the agent from $GITHUB_URL/$GITHUB_REPO/releases/download/v${INSTALL_VERSION}/$FILE_NAME"
+  echo "Try again with --mirror <url> if GitHub is not reachable."
   rm -rf "$TEMP_DIR"
   exit 1
 fi
 
 if ! tar -tzf "$FILE_NAME" >/dev/null 2>&1; then
   echo "Downloaded archive is invalid or incomplete (possible network/proxy issue)."
-  echo "Try again with --mirror (or --mirror <url>) if the download path is unstable."
+  echo "Try again with --mirror <url> if the download path is unstable."
   rm -rf "$TEMP_DIR"
   exit 1
 fi
@@ -1053,7 +1043,7 @@ if is_alpine; then
 #!/sbin/openrc-run
 
 name="beszel-agent"
-description="Beszel Agent Service"
+description="InfraScope Agent Service"
 command="$BIN_PATH"
 command_user="beszel"
 command_background="yes"
@@ -1099,7 +1089,7 @@ EOF
   # Check if service started successfully
   sleep 2
   if ! rc-service beszel-agent status | grep -q "started"; then
-    echo "Error: The Beszel Agent service failed to start. Checking logs..."
+    echo "Error: The InfraScope Agent service failed to start. Checking logs..."
     tail -n 20 /var/log/beszel-agent.err
     exit 1
   fi
@@ -1127,7 +1117,7 @@ EOF
 
   # Check service status
   if ! rc-service beszel-agent status >/dev/null 2>&1; then
-    echo "Error: The Beszel Agent service is not running."
+    echo "Error: The InfraScope Agent service is not running."
     rc-service beszel-agent status
     exit 1
   fi
@@ -1155,8 +1145,8 @@ start_service() {
 
 # Extra command to trigger agent update
 EXTRA_COMMANDS="update restart"
-EXTRA_HELP="        update          Update the Beszel agent
-        restart         Restart the Beszel agent"
+EXTRA_HELP="        update          Update the InfraScope agent
+        restart         Restart the InfraScope agent"
 
 update() {
     $BIN_PATH update
@@ -1216,7 +1206,7 @@ EOF
 
   # Check service status
   if ! /etc/init.d/beszel-agent running >/dev/null 2>&1; then
-    echo "Error: The Beszel Agent service is not running."
+    echo "Error: The InfraScope Agent service is not running."
     /etc/init.d/beszel-agent status
     exit 1
   fi
@@ -1301,7 +1291,7 @@ EOF
   # Check if service started successfully
   sleep 2
   if ! service beszel-agent status | grep -q "is running"; then
-    echo "Error: The Beszel Agent service failed to start. Checking logs..."
+    echo "Error: The InfraScope Agent service failed to start. Checking logs..."
     tail -n 20 /var/log/beszel_agent.log
     exit 1
   fi
@@ -1320,7 +1310,7 @@ EOF
 
     # Create cron job in /etc/cron.d 
     cat >/etc/cron.d/beszel-agent <<EOF
-# Beszel Agent daily update job
+# InfraScope Agent daily update job
 12 0 * * * root $BIN_PATH update >/dev/null 2>&1
 EOF
     chmod 644 /etc/cron.d/beszel-agent
@@ -1330,7 +1320,7 @@ EOF
 
   # Check service status
   if ! service beszel-agent status >/dev/null 2>&1; then
-    echo "Error: The Beszel Agent service is not running."
+    echo "Error: The InfraScope Agent service is not running."
     service beszel-agent status
     exit 1
   fi
@@ -1345,7 +1335,7 @@ else
 
     cat >/etc/systemd/system/beszel-agent.service <<EOF
 [Unit]
-Description=Beszel Agent Service
+Description=InfraScope Agent Service
 Wants=network-online.target
 After=network-online.target
 
@@ -1445,7 +1435,7 @@ EOF
 
   # Wait for the service to start or fail
   if [ "$(systemctl is-active beszel-agent.service)" != "active" ]; then
-    echo "Error: The Beszel Agent service is not running."
+    echo "Error: The InfraScope Agent service is not running."
     echo "$(systemctl status beszel-agent.service)"
     exit 1
   fi
@@ -1455,4 +1445,4 @@ UPGRADE_PENDING=false
 RUNNING_ADDRESS=$(configured_address)
 [ -n "$RUNNING_ADDRESS" ] || RUNNING_ADDRESS=$PORT
 
-printf "\n\033[32mBeszel Agent has been installed successfully! It is now running on $RUNNING_ADDRESS.\033[0m\n"
+printf "\n\033[32mInfraScope Agent has been installed successfully! It is now running on $RUNNING_ADDRESS.\033[0m\n"

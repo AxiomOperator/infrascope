@@ -244,6 +244,10 @@ msgstr "A password requires a username"
 msgid "A status page can show up to {MAX_MONITORS} monitors."
 msgstr "A status page can show up to {MAX_MONITORS} monitors."
 
+#: src/components/routes/system/raw-capacity-label.tsx
+msgid "About raw capacity"
+msgstr "About raw capacity"
+
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Accepted status codes"
 msgstr "Accepted status codes"
@@ -807,6 +811,7 @@ msgstr "Choose which monitors to show and what details are visible."
 
 #: src/components/containers-table/containers-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/routes/system/chart-card.tsx
 #: src/components/routes/system/package-updates-table.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/routes/system/storage-pools-table.tsx
@@ -899,6 +904,7 @@ msgstr "Container"
 msgid "Container Health"
 msgstr "Container Health"
 
+#: src/components/navbar.tsx
 #: src/components/routes/system.tsx
 msgid "Containers"
 msgstr "Containers"
@@ -1537,6 +1543,10 @@ msgstr "Failed to authenticate"
 msgid "Failed to delete monitors."
 msgstr "Failed to delete monitors."
 
+#: src/components/routes/settings/quiet-hours.tsx
+msgid "Failed to delete quiet hours."
+msgstr "Failed to delete quiet hours."
+
 #: src/components/routes/system/package-updates-table.tsx
 msgid "Failed to load package updates"
 msgstr "Failed to load package updates"
@@ -1719,11 +1729,15 @@ msgstr "Hide secrets"
 msgid "Hide values"
 msgstr "Hide values"
 
+#: src/components/navbar.tsx
+msgid "Home"
+msgstr "Home"
+
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
-msgctxt "Button to copy install command"
-msgid "Homebrew command"
-msgstr "Homebrew command"
+#~ msgctxt "Button to copy install command"
+#~ msgid "Homebrew command"
+#~ msgstr "Homebrew command"
 
 #: src/lib/shoutrrr.ts
 msgid "Host"
@@ -2137,6 +2151,10 @@ msgstr "Monitors"
 msgid "Monitors created"
 msgstr "Monitors created"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "More actions"
+msgstr "More actions"
+
 #: src/components/routes/settings/notification-builder.tsx
 msgid "More options"
 msgstr "More options"
@@ -2195,6 +2213,7 @@ msgid "Network Monitor Loss"
 msgstr "Network Monitor Loss"
 
 #: src/components/command-palette.tsx
+#: src/components/navbar.tsx
 #: src/components/navbar.tsx
 #: src/components/navbar.tsx
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
@@ -2368,6 +2387,7 @@ msgstr "Ongoing"
 msgid "Open"
 msgstr "Open"
 
+#: src/components/navbar.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -2913,6 +2933,10 @@ msgstr "Runs on"
 msgid "Runtime Metrics"
 msgstr "Runtime Metrics"
 
+#: src/components/navbar.tsx
+msgid "S.M.A.R.T."
+msgstr "S.M.A.R.T."
+
 #: src/components/routes/system/smart-table.tsx
 msgid "S.M.A.R.T. Details"
 msgstr "S.M.A.R.T. Details"
@@ -3021,6 +3045,7 @@ msgstr "Select a system"
 
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/system-multi-select.tsx
+#: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/settings/maintenance.tsx
 msgid "Select all"
 msgstr "Select all"
@@ -3038,7 +3063,12 @@ msgstr "Select at least one system."
 msgid "Select matches"
 msgstr "Select matches"
 
+#: src/components/routes/settings/sidebar-nav.tsx
+msgid "Select page"
+msgstr "Select page"
+
 #: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/routes/settings/alerts-history-data-table.tsx
 msgid "Select row"
 msgstr "Select row"
 
@@ -3141,6 +3171,7 @@ msgstr "Set the following environment variables on your InfraScope hub to enable
 
 #: src/components/command-palette.tsx
 #: src/components/command-palette.tsx
+#: src/components/navbar.tsx
 #: src/components/navbar.tsx
 #: src/components/navbar.tsx
 #: src/components/routes/settings/layout.tsx
@@ -3886,6 +3917,10 @@ msgstr "Used"
 msgid "user {0}"
 msgstr "user {0}"
 
+#: src/components/navbar.tsx
+msgid "User actions"
+msgstr "User actions"
+
 #: src/lib/shoutrrr.ts
 msgid "User key"
 msgstr "User key"
@@ -4050,9 +4085,9 @@ msgstr "Wildcards (+, #) can't be used when publishing"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
-msgctxt "Button to copy install command"
-msgid "Windows command"
-msgstr "Windows command"
+#~ msgctxt "Button to copy install command"
+#~ msgid "Windows command"
+#~ msgstr "Windows command"
 
 #: src/lib/shoutrrr.ts
 msgid "Workflow webhook URL"

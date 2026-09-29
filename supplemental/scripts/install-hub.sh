@@ -26,13 +26,13 @@ generate_freebsd_rc_service() {
 # BEFORE: LOGIN
 # KEYWORD: shutdown
 
-# Add the following lines to /etc/rc.conf to configure Beszel Hub:
+# Add the following lines to /etc/rc.conf to configure InfraScope Hub:
 #
-# beszel_hub_enable (bool):   Set to YES to enable Beszel Hub
+# beszel_hub_enable (bool):   Set to YES to enable InfraScope Hub
 #                             Default: YES
 # beszel_hub_port (str):      Port to listen on
 #                             Default: 8090
-# beszel_hub_user (str):      Beszel Hub daemon user
+# beszel_hub_user (str):      InfraScope Hub daemon user
 #                             Default: beszel
 # beszel_hub_bin (str):       Path to the beszel binary
 #                             Default: /usr/local/sbin/beszel
@@ -157,6 +157,8 @@ fi
 # Define default values
 PORT=8090
 GITHUB_URL="https://github.com"
+# GitHub repository that publishes the release assets (asset names keep the beszel_* prefix)
+GITHUB_REPO="AxiomOperator/infrascope"
 AUTO_UPDATE_FLAG="false"
 UNINSTALL=false
 
@@ -168,12 +170,12 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     -h|--help)
-      printf "Beszel Hub installation script\n\n"
+      printf "InfraScope Hub installation script\n\n"
       printf "Usage: ./install-hub.sh [options]\n\n"
       printf "Options: \n"
-      printf "  -u           : Uninstall the Beszel Hub\n"
+      printf "  -u           : Uninstall the InfraScope Hub\n"
       printf "  -p <port>    : Specify a port number (default: 8090)\n"
-      printf "  -c, --mirror [URL] : Use a GitHub mirror/proxy URL (default: https://gh.beszel.dev)\n"
+      printf "  -c, --mirror URL : Download from GitHub through a proxy URL (ignored without a URL)\n"
       printf "  --auto-update : Enable automatic daily updates (disabled by default)\n"
       printf "  -h, --help   : Display this help message\n"
       exit 0
@@ -185,11 +187,12 @@ while [ $# -gt 0 ]; do
       ;;
     -c | --mirror)
       shift
-      if [ -n "$1" ] && ! echo "$1" | grep -q '^-'; then
+      if [ -n "${1-}" ] && ! echo "$1" | grep -q '^-'; then
         GITHUB_URL="$(ensure_trailing_slash "$1")https://github.com"
         shift
       else
-        GITHUB_URL="https://gh.beszel.dev"
+        # the upstream default mirror (gh.beszel.dev) does not serve InfraScope releases
+        echo "Warning: ignoring --mirror without a URL; no default mirror is available." >&2
       fi
       ;;
     --auto-update)
@@ -215,7 +218,7 @@ fi
 # Uninstall process
 if [ "$UNINSTALL" = true ]; then
   if is_freebsd; then
-    echo "Stopping and disabling the Beszel Hub service..."
+    echo "Stopping and disabling the InfraScope Hub service..."
     service beszel-hub stop 2>/dev/null
     sysrc beszel_hub_enable="NO" 2>/dev/null
 
@@ -228,18 +231,18 @@ if [ "$UNINSTALL" = true ]; then
     echo "Removing log files..."
     rm -f /var/log/beszel_hub.log
 
-    echo "Removing the Beszel Hub binary and data..."
+    echo "Removing the InfraScope Hub binary and data..."
     rm -f "$BIN_PATH"
     rm -rf "$HUB_DIR"
 
     echo "Removing the dedicated user..."
     pw user del beszel 2>/dev/null
 
-    echo "The Beszel Hub has been uninstalled successfully!"
+    echo "The InfraScope Hub has been uninstalled successfully!"
     exit 0
   else
-    # Stop and disable the Beszel Hub service
-    echo "Stopping and disabling the Beszel Hub service..."
+    # Stop and disable the InfraScope Hub service
+    echo "Stopping and disabling the InfraScope Hub service..."
     systemctl stop beszel-hub.service
     systemctl disable beszel-hub.service
 
@@ -258,15 +261,15 @@ if [ "$UNINSTALL" = true ]; then
     echo "Reloading the systemd daemon..."
     systemctl daemon-reload
 
-    # Remove the Beszel Hub binary and data
-    echo "Removing the Beszel Hub binary and data..."
+    # Remove the InfraScope Hub binary and data
+    echo "Removing the InfraScope Hub binary and data..."
     rm -rf "$HUB_DIR"
 
     # Remove the dedicated user
     echo "Removing the dedicated user..."
     userdel beszel 2>/dev/null
 
-    echo "The Beszel Hub has been uninstalled successfully!"
+    echo "The InfraScope Hub has been uninstalled successfully!"
     exit 0
   fi
 fi
@@ -300,7 +303,7 @@ else
 fi
 
 # Create a dedicated user for the service if it doesn't exist
-echo "Creating a dedicated user for the Beszel Hub service..."
+echo "Creating a dedicated user for the InfraScope Hub service..."
 if is_freebsd; then
   if ! id -u beszel >/dev/null 2>&1; then
     pw user add beszel -d /nonexistent -s /usr/sbin/nologin -c "beszel user"
@@ -311,14 +314,14 @@ else
   fi
 fi
 
-# Create the directory for the Beszel Hub
-echo "Creating the directory for the Beszel Hub..."
+# Create the directory for the InfraScope Hub
+echo "Creating the directory for the InfraScope Hub..."
 mkdir -p "$HUB_DIR/beszel_data"
 chown -R beszel:beszel "$HUB_DIR"
 chmod 755 "$HUB_DIR"
 
-# Download and install the Beszel Hub
-echo "Downloading and installing the Beszel Hub..."
+# Download and install the InfraScope Hub
+echo "Downloading and installing the InfraScope Hub..."
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(detect_architecture)
@@ -326,19 +329,19 @@ FILE_NAME="beszel_${OS}_${ARCH}.tar.gz"
 
 TEMP_DIR=$(mktemp -d)
 ARCHIVE_PATH="$TEMP_DIR/$FILE_NAME"
-DOWNLOAD_URL="$GITHUB_URL/henrygd/beszel/releases/latest/download/$FILE_NAME"
+DOWNLOAD_URL="$GITHUB_URL/$GITHUB_REPO/releases/latest/download/$FILE_NAME"
 
 if ! curl -fL# --retry 3 --retry-delay 2 --connect-timeout 10 "$DOWNLOAD_URL" -o "$ARCHIVE_PATH"; then
-  echo "Failed to download the Beszel Hub from:"
+  echo "Failed to download the InfraScope Hub from:"
   echo "$DOWNLOAD_URL"
-  echo "Try again with --mirror (or --mirror <url>) if GitHub is not reachable."
+  echo "Try again with --mirror <url> if GitHub is not reachable."
   rm -rf "$TEMP_DIR"
   exit 1
 fi
 
 if ! tar -tzf "$ARCHIVE_PATH" >/dev/null 2>&1; then
   echo "Downloaded archive is invalid or incomplete (possible network/proxy issue)."
-  echo "Try again with --mirror (or --mirror <url>) if the download path is unstable."
+  echo "Try again with --mirror <url> if the download path is unstable."
   rm -rf "$TEMP_DIR"
   exit 1
 fi
@@ -373,14 +376,14 @@ if is_freebsd; then
   sysrc beszel_hub_port="$PORT"
 
   # Enable and start the service
-  echo "Enabling and starting the Beszel Hub service..."
+  echo "Enabling and starting the InfraScope Hub service..."
   sysrc beszel_hub_enable="YES"
   service beszel-hub restart
 
   # Check if service started successfully
   sleep 2
   if ! service beszel-hub status | grep -q "is running"; then
-    echo "Error: The Beszel Hub service failed to start. Checking logs..."
+    echo "Error: The InfraScope Hub service failed to start. Checking logs..."
     tail -n 20 /var/log/beszel_hub.log
     exit 1
   fi
@@ -391,7 +394,7 @@ if is_freebsd; then
 
     # Create cron job in /etc/cron.d
     cat >/etc/cron.d/beszel-hub <<EOF
-# Beszel Hub daily update job
+# InfraScope Hub daily update job
 12 8 * * * root $BIN_PATH update >/dev/null 2>&1
 EOF
     chmod 644 /etc/cron.d/beszel-hub
@@ -400,17 +403,17 @@ EOF
 
   # Check service status
   if ! service beszel-hub status >/dev/null 2>&1; then
-    echo "Error: The Beszel Hub service is not running."
+    echo "Error: The InfraScope Hub service is not running."
     service beszel-hub status
     exit 1
   fi
 
 else
   # Original systemd service installation code
-  printf "Creating the systemd service for the Beszel Hub...\n"
+  printf "Creating the systemd service for the InfraScope Hub...\n"
   cat >/etc/systemd/system/beszel-hub.service <<EOF
 [Unit]
-Description=Beszel Hub Service
+Description=InfraScope Hub Service
 After=network.target
 
 [Service]
@@ -425,7 +428,7 @@ WantedBy=multi-user.target
 EOF
 
   # Load and start the service
-  printf "Loading and starting the Beszel Hub service...\n"
+  printf "Loading and starting the InfraScope Hub service...\n"
   systemctl daemon-reload
   systemctl enable --quiet beszel-hub.service
   systemctl start --quiet beszel-hub.service
@@ -435,7 +438,7 @@ EOF
 
   # Check if the service is running
   if [ "$(systemctl is-active beszel-hub.service)" != "active" ]; then
-    echo "Error: The Beszel Hub service is not running."
+    echo "Error: The InfraScope Hub service is not running."
     echo "$(systemctl status beszel-hub.service)"
     exit 1
   fi
@@ -476,4 +479,4 @@ EOF
   fi
 fi
 
-printf "\n\033[32mBeszel Hub has been installed successfully! It is now accessible on port $PORT.\033[0m\n"
+printf "\n\033[32mInfraScope Hub has been installed successfully! It is now accessible on port $PORT.\033[0m\n"

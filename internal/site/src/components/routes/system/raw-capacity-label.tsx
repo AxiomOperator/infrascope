@@ -10,7 +10,7 @@ export function RawCapacityLabel({ label = t`Raw` }: { label?: string }) {
 				<TooltipTrigger asChild>
 					<button
 						type="button"
-						aria-label="About raw capacity"
+						aria-label={t`About raw capacity`}
 						className="inline-flex rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						<InfoIcon className="size-3.5" aria-hidden="true" />

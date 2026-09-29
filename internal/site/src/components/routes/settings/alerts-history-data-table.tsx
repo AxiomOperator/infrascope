@@ -67,7 +67,7 @@ export default function AlertsHistoryDataTable() {
 	const [globalFilter, setGlobalFilter] = useState("")
 	const { toast } = useToast()
 	const [deleteOpen, setDeleteDialogOpen] = useState(false)
-	
+
 	// Store pagination preference in local storage
 	const [pagination, setPagination] = useBrowserStorage<PaginationState>("ah-pagination", {
 		pageIndex: 0,
@@ -131,14 +131,14 @@ export default function AlertsHistoryDataTable() {
 						className="ms-2"
 						checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
 						onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-						aria-label="Select all"
+						aria-label={t`Select all`}
 					/>
 				),
 				cell: ({ row }) => (
 					<Checkbox
 						checked={row.getIsSelected()}
 						onCheckedChange={(value) => row.toggleSelected(!!value)}
-						aria-label="Select row"
+						aria-label={t`Select row`}
 					/>
 				),
 				enableSorting: false,
@@ -338,7 +338,7 @@ export default function AlertsHistoryDataTable() {
 						<Select
 							value={`${table.getState().pagination.pageSize}`}
 							onValueChange={(value) => {
-								table.setPageSize(Number(value));
+								table.setPageSize(Number(value))
 							}}
 						>
 							<SelectTrigger className="w-18" id="rows-per-page">
