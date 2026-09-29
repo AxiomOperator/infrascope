@@ -202,12 +202,12 @@ export default function StatusPage({ slug }: { slug: string }) {
 				<Trans>
 					Powered by{" "}
 					<a
-						href="https://github.com/henrygd/beszel"
+						href="https://github.com/AxiomOperator/infrascope"
 						target="_blank"
 						rel="noopener"
 						className="font-medium hover:text-foreground"
 					>
-						Beszel
+						InfraScope
 					</a>
 				</Trans>
 			</footer>

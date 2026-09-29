@@ -178,8 +178,8 @@ msgid "After"
 msgstr "之後"
 
 #: src/components/routes/settings/heartbeat.tsx
-msgid "After setting the environment variables, restart your Beszel hub for changes to take effect."
-msgstr "設定環境變數後，請重新啟動 Beszel Hub 以使變更生效。"
+msgid "After setting the environment variables, restart your InfraScope hub for changes to take effect."
+msgstr "設定環境變數後，請重新啟動 InfraScope Hub 以使變更生效。"
 
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Agent"
@@ -325,12 +325,12 @@ msgid "Below {0}{1} in last {2, plural, one {# minute} other {# minutes}}"
 msgstr "在過去的{2, plural, one {# 分鐘} other {# 分鐘}}中低於{0}{1}"
 
 #: src/components/login/auth-form.tsx
-msgid "Beszel supports OpenID Connect and many OAuth2 authentication providers."
-msgstr "Beszel 支援 OpenID Connect 和許多 OAuth2 認證提供者。"
+msgid "InfraScope supports OpenID Connect and many OAuth2 authentication providers."
+msgstr "InfraScope 支援 OpenID Connect 和許多 OAuth2 認證提供者。"
 
 #: src/components/routes/settings/notifications.tsx
-msgid "Beszel uses <0>Shoutrrr</0> to integrate with popular notification services."
-msgstr "Beszel 以 <0>Shoutrrr</0> 整合常用的通知服務。"
+msgid "InfraScope uses <0>Shoutrrr</0> to integrate with popular notification services."
+msgstr "InfraScope 以 <0>Shoutrrr</0> 整合常用的通知服務。"
 
 #: src/components/add-system.tsx
 msgid "Binary"
@@ -1824,8 +1824,8 @@ msgid "Send a single heartbeat ping to verify your endpoint is working."
 msgstr "發送單次 Heartbeat Ping 以驗證您的 Endpoint 是否運作正常。"
 
 #: src/components/routes/settings/heartbeat.tsx
-msgid "Send periodic outbound pings to an external monitoring service so you can monitor Beszel without exposing it to the internet."
-msgstr "定期發送 Outbound Ping 至外部監控服務，讓您無需將 Beszel 暴露於網際網路即可進行監控。"
+msgid "Send periodic outbound pings to an external monitoring service so you can monitor InfraScope without exposing it to the internet."
+msgstr "定期發送 Outbound Ping 至外部監控服務，讓您無需將 InfraScope 暴露於網際網路即可進行監控。"
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send test heartbeat"
@@ -1853,8 +1853,8 @@ msgid "Set percentage thresholds for meter colors."
 msgstr "設定儀表顏色的百分比閾值。"
 
 #: src/components/routes/settings/heartbeat.tsx
-msgid "Set the following environment variables on your Beszel hub to enable heartbeat monitoring:"
-msgstr "設定以下環境變數至 Beszel Hub 以啟用 Heartbeat 監控："
+msgid "Set the following environment variables on your InfraScope hub to enable heartbeat monitoring:"
+msgstr "設定以下環境變數至 InfraScope Hub 以啟用 Heartbeat 監控："
 
 #: src/components/command-palette.tsx
 #: src/components/command-palette.tsx

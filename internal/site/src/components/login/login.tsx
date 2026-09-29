@@ -18,7 +18,7 @@ export default function () {
 	const { resolvedTheme } = useTheme()
 
 	useEffect(() => {
-		document.title = t`Login` + " / Beszel"
+		document.title = t`Login` + " / InfraScope"
 
 		pb.send("/api/beszel/first-run", {}).then(({ firstRun }) => {
 			setFirstRun(firstRun)
@@ -61,8 +61,8 @@ export default function () {
 				</div>
 				<div className="text-center">
 					<h1 className="mb-3">
-						<Logo className="h-7 fill-foreground mx-auto" />
-						<span className="sr-only">Beszel</span>
+						<Logo className="h-[2.35rem] fill-foreground mx-auto" />
+						<span className="sr-only">InfraScope</span>
 					</h1>
 					<p className="text-sm text-muted-foreground">{subtitle}</p>
 				</div>

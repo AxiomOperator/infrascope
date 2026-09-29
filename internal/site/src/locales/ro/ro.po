@@ -159,8 +159,8 @@ msgid "After"
 msgstr "După"
 
 #: src/components/routes/settings/heartbeat.tsx
-msgid "After setting the environment variables, restart your Beszel hub for changes to take effect."
-msgstr "După setarea variabilelor de mediu, reporniţi centrul Beszel pentru ca modificările să aibă efect."
+msgid "After setting the environment variables, restart your InfraScope hub for changes to take effect."
+msgstr "După setarea variabilelor de mediu, reporniţi centrul InfraScope pentru ca modificările să aibă efect."
 
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Agent"
@@ -305,12 +305,12 @@ msgid "Below {0}{1} in last {2, plural, one {# minute} other {# minutes}}"
 msgstr ""
 
 #: src/components/login/auth-form.tsx
-msgid "Beszel supports OpenID Connect and many OAuth2 authentication providers."
-msgstr "Beszel acceptă OpenID Connect și mulți furnizori de autentificare OAuth2."
+msgid "InfraScope supports OpenID Connect and many OAuth2 authentication providers."
+msgstr "InfraScope acceptă OpenID Connect și mulți furnizori de autentificare OAuth2."
 
 #: src/components/routes/settings/notifications.tsx
-msgid "Beszel uses <0>Shoutrrr</0> to integrate with popular notification services."
-msgstr "Beszel folosește <0>Shoutrrr</0> pentru integrarea cu servicii populare de notificare."
+msgid "InfraScope uses <0>Shoutrrr</0> to integrate with popular notification services."
+msgstr "InfraScope folosește <0>Shoutrrr</0> pentru integrarea cu servicii populare de notificare."
 
 #: src/components/add-system.tsx
 msgid "Binary"
@@ -1779,7 +1779,7 @@ msgid "Send a single heartbeat ping to verify your endpoint is working."
 msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
-msgid "Send periodic outbound pings to an external monitoring service so you can monitor Beszel without exposing it to the internet."
+msgid "Send periodic outbound pings to an external monitoring service so you can monitor InfraScope without exposing it to the internet."
 msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
@@ -1808,7 +1808,7 @@ msgid "Set percentage thresholds for meter colors."
 msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
-msgid "Set the following environment variables on your Beszel hub to enable heartbeat monitoring:"
+msgid "Set the following environment variables on your InfraScope hub to enable heartbeat monitoring:"
 msgstr ""
 
 #: src/components/command-palette.tsx

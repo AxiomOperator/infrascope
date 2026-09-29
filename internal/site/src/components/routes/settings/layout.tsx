@@ -117,7 +117,7 @@ export default function SettingsLayout() {
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: no dependencies
 	useEffect(() => {
-		document.title = `${t`Settings`} / Beszel`
+		document.title = `${t`Settings`} / InfraScope`
 		// @ts-expect-error redirect to account page if no page is specified
 		if (!page?.params?.name) {
 			redirectPage($router, "settings", { name: "general" })

@@ -60,7 +60,7 @@ export default function Navbar() {
 				className="p-2 ps-0 me-3 group"
 				onMouseEnter={runOnce(() => import("@/components/routes/home"))}
 			>
-				<Logo className="h-[1.2rem] md:h-5 fill-foreground" />
+				<Logo className="h-[1.6rem] md:h-[1.675rem] fill-foreground" />
 			</Link>
 			<Button
 				variant="outline"

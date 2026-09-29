@@ -178,8 +178,8 @@ msgid "After"
 msgstr "이후"
 
 #: src/components/routes/settings/heartbeat.tsx
-msgid "After setting the environment variables, restart your Beszel hub for changes to take effect."
-msgstr "환경 변수를 설정한 후, 변경 사항을 적용하려면 Beszel 허브를 재시작하세요."
+msgid "After setting the environment variables, restart your InfraScope hub for changes to take effect."
+msgstr "환경 변수를 설정한 후, 변경 사항을 적용하려면 InfraScope 허브를 재시작하세요."
 
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Agent"
@@ -325,12 +325,12 @@ msgid "Below {0}{1} in last {2, plural, one {# minute} other {# minutes}}"
 msgstr "마지막 {2, plural, one {# 분} other {# 분}} 동안 {0}{1} 미만"
 
 #: src/components/login/auth-form.tsx
-msgid "Beszel supports OpenID Connect and many OAuth2 authentication providers."
-msgstr "Beszel은 OpenID Connect 및 많은 OAuth2 인증 제공자를 지원합니다."
+msgid "InfraScope supports OpenID Connect and many OAuth2 authentication providers."
+msgstr "InfraScope은 OpenID Connect 및 많은 OAuth2 인증 제공자를 지원합니다."
 
 #: src/components/routes/settings/notifications.tsx
-msgid "Beszel uses <0>Shoutrrr</0> to integrate with popular notification services."
-msgstr "Beszel은 여러 인기 있는 알림 서비스와 연동하기 위해 <0>Shoutrrr</0>을 이용합니다."
+msgid "InfraScope uses <0>Shoutrrr</0> to integrate with popular notification services."
+msgstr "InfraScope은 여러 인기 있는 알림 서비스와 연동하기 위해 <0>Shoutrrr</0>을 이용합니다."
 
 #: src/components/add-system.tsx
 msgid "Binary"
@@ -1824,8 +1824,8 @@ msgid "Send a single heartbeat ping to verify your endpoint is working."
 msgstr "엔드포인트가 작동하는지 확인하기 위해 단일 하트비트 핑을 보냅니다."
 
 #: src/components/routes/settings/heartbeat.tsx
-msgid "Send periodic outbound pings to an external monitoring service so you can monitor Beszel without exposing it to the internet."
-msgstr "외부 모니터링 서비스에 주기적으로 아웃바운드 핑을 보내 인터넷에 노출하지 않고도 Beszel을 모니터링할 수 있습니다."
+msgid "Send periodic outbound pings to an external monitoring service so you can monitor InfraScope without exposing it to the internet."
+msgstr "외부 모니터링 서비스에 주기적으로 아웃바운드 핑을 보내 인터넷에 노출하지 않고도 InfraScope을 모니터링할 수 있습니다."
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send test heartbeat"
@@ -1853,8 +1853,8 @@ msgid "Set percentage thresholds for meter colors."
 msgstr "그래프 미터 색상의 백분율 임계값을 설정합니다."
 
 #: src/components/routes/settings/heartbeat.tsx
-msgid "Set the following environment variables on your Beszel hub to enable heartbeat monitoring:"
-msgstr "하트비트 모니터링을 활성화하려면 Beszel 허브에 다음 환경 변수를 설정하세요:"
+msgid "Set the following environment variables on your InfraScope hub to enable heartbeat monitoring:"
+msgstr "하트비트 모니터링을 활성화하려면 InfraScope 허브에 다음 환경 변수를 설정하세요:"
 
 #: src/components/command-palette.tsx
 #: src/components/command-palette.tsx

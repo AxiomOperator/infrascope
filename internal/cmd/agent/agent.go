@@ -55,7 +55,7 @@ func (opts *cmdOptions) parse() bool {
 	// pflag.CommandLine.ParseErrorsWhitelist.UnknownFlags = true
 	pflag.StringVarP(&opts.key, "key", "k", "", "Public key(s) for SSH authentication")
 	pflag.StringVarP(&opts.listen, "listen", "l", "", "Address or port to listen on")
-	pflag.StringVarP(&opts.hubURL, "url", "u", "", "URL of the Beszel hub")
+	pflag.StringVarP(&opts.hubURL, "url", "u", "", "URL of the InfraScope hub")
 	pflag.StringVarP(&opts.token, "token", "t", "", "Token to use for authentication")
 	chinaMirrors := pflag.BoolP("china-mirrors", "c", false, "Use mirror for update (gh.beszel.dev) instead of GitHub")
 	version := pflag.BoolP("version", "v", false, "Show version information")
