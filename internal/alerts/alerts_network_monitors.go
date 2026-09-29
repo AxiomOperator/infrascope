@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"slices"
 	"strconv"
 	"time"
 
 	"github.com/henrygd/beszel/internal/entities/monitor"
+	"github.com/henrygd/beszel/internal/hub/monitorloc"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -46,34 +48,37 @@ func (am *AlertManager) bindNetworkMonitorAlertEvents() {
 	}
 	am.hub.OnRecordCreateRequest("alerts").BindFunc(protectState)
 	am.hub.OnRecordUpdateRequest("alerts").BindFunc(protectState)
-	// Loss alerts belong to a system, so hub monitors (no system) have none.
-	cleanup := func(app core.App, systemID string) error {
-		if systemID == "" {
-			return nil
+	// Loss alerts belong to a system, so the hub location has none.
+	cleanup := func(app core.App, locations []string) error {
+		for _, systemID := range monitorloc.Systems(locations) {
+			if err := am.evaluateNetworkMonitorAlerts(app, systemID, nil); err != nil {
+				return err
+			}
 		}
-		return am.evaluateNetworkMonitorAlerts(app, systemID, nil)
+		return nil
 	}
 	am.hub.OnRecordAfterDeleteSuccess("network_monitors").BindFunc(func(e *core.RecordEvent) error {
 		if err := e.Next(); err != nil {
 			return err
 		}
-		return cleanup(e.App, e.Record.GetString("system"))
+		return cleanup(e.App, monitorloc.Of(e.Record))
 	})
 	am.hub.OnRecordAfterUpdateSuccess("network_monitors").BindFunc(func(e *core.RecordEvent) error {
 		original := e.Record.Original()
-		oldSystem, newSystem := original.GetString("system"), e.Record.GetString("system")
+		oldLocations, newLocations := monitorloc.Of(original), monitorloc.Of(e.Record)
 		disabled := !e.Record.GetBool("enabled") && original.GetBool("enabled")
 		if err := e.Next(); err != nil {
 			return err
 		}
-		// Moving a monitor closes its incidents on the old system.
-		if oldSystem != newSystem {
-			if err := cleanup(e.App, oldSystem); err != nil {
-				return err
-			}
+		// Removing a location closes its incidents on that system.
+		removed := slices.DeleteFunc(slices.Clone(oldLocations), func(location string) bool {
+			return slices.Contains(newLocations, location)
+		})
+		if err := cleanup(e.App, removed); err != nil {
+			return err
 		}
 		if disabled {
-			return cleanup(e.App, newSystem)
+			return cleanup(e.App, newLocations)
 		}
 		return nil
 	})
@@ -147,7 +152,7 @@ func (am *AlertManager) evaluateNetworkMonitorAlerts(app core.App, systemID stri
 		if err != nil {
 			return err
 		}
-		monitors, err := tx.FindAllRecords("network_monitors", dbx.HashExp{"system": systemID, "enabled": true})
+		monitors, err := locationMonitors(tx, systemID)
 		if err != nil {
 			return err
 		}

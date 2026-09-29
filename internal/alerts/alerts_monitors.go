@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/henrygd/beszel/internal/entities/monitor"
+	"github.com/henrygd/beszel/internal/hub/monitorloc"
 	"github.com/henrygd/beszel/internal/hub/uptime"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
@@ -32,8 +34,8 @@ import (
 //   - MonitorLoss and MonitorLatency: the monitor's own one-hour loss and
 //     latency thresholds (see alerts_monitor_thresholds.go).
 //
-// Recipients are the users of the monitor's system for agent monitors and
-// the monitor's users for hub (and push) monitors. Delivery uses SendAlert, so
+// Recipients are the users of the systems a monitor runs on and, when the
+// hub is one of its locations (hub and push monitors), the monitor's users. Delivery uses SendAlert, so
 // the user's destinations and quiet hours (global, plus the system's for agent
 // monitors) apply. Notifications are sent after the history is committed.
 const (
@@ -63,25 +65,39 @@ type monitorTarget struct {
 	users                          []string
 }
 
-// loadMonitorTarget reads a monitor's display name and recipients.
+// loadMonitorTarget reads a monitor's display name and recipients. The
+// system of a target is its primary location; the label names it only for
+// monitors with a single location.
 func loadMonitorTarget(app core.App, record *core.Record) (monitorTarget, error) {
 	target := monitorTarget{id: record.Id, name: record.GetString("name"), systemID: record.GetString("system")}
 	if target.name == "" {
 		target.name = record.GetString("target")
 	}
-	if target.systemID == "" {
-		target.users = record.GetStringSlice("users")
-		return target, nil
+	locations := monitorloc.Of(record)
+	addUsers := func(users []string) {
+		for _, user := range users {
+			if !slices.Contains(target.users, user) {
+				target.users = append(target.users, user)
+			}
+		}
 	}
-	system, err := app.FindRecordById("systems", target.systemID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return target, nil
+	for _, location := range locations {
+		if location == monitorloc.Hub {
+			addUsers(record.GetStringSlice("users"))
+			continue
+		}
+		system, err := app.FindRecordById("systems", location)
+		if errors.Is(err, sql.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return target, err
+		}
+		if len(locations) == 1 {
+			target.systemName = system.GetString("name")
+		}
+		addUsers(system.GetStringSlice("users"))
 	}
-	if err != nil {
-		return target, err
-	}
-	target.systemName = system.GetString("name")
-	target.users = system.GetStringSlice("users")
 	return target, nil
 }
 

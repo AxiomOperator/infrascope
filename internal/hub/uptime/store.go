@@ -3,8 +3,10 @@ package uptime
 import (
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
+	"github.com/henrygd/beszel/internal/hub/monitorloc"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -201,12 +203,18 @@ func (e *Engine) Load() error {
 	for _, row := range rows {
 		segments[row.Monitor] = openSegment{id: row.ID, status: row.Status, start: row.Start}
 	}
+	names := make(map[string]map[string]string)
+	for _, record := range records {
+		if locations := monitorloc.Of(record); len(locations) > 1 {
+			names[record.Id] = e.locationNames(locations)
+		}
+	}
 
 	now := e.now()
 	e.mu.Lock()
 	e.monitors = make(map[string]*monitorState, len(records))
 	for _, record := range records {
-		st := e.newStateFromRecord(record, now)
+		st := e.newStateFromRecord(record, now, names[record.Id])
 		st.segment = segments[record.Id]
 		e.monitors[st.id] = st
 		// Repair records whose status does not match their configuration.
@@ -217,20 +225,51 @@ func (e *Engine) Load() error {
 	return nil
 }
 
-// newStateFromRecord builds monitor state from a stored record.
-func (e *Engine) newStateFromRecord(record *core.Record, now time.Time) *monitorState {
-	st := &monitorState{id: record.Id, lastSeen: now}
+// newStateFromRecord builds monitor state from a stored record. names are
+// the display names of its locations.
+func (e *Engine) newStateFromRecord(record *core.Record, now time.Time, names map[string]string) *monitorState {
+	st := &monitorState{id: record.Id, names: names}
 	st.applyConfig(record)
 	_ = record.UnmarshalJSONField("state", &st.p)
-	st.saved = st.p
 	st.status = record.GetString("status")
 	st.statusChanged = record.GetDateTime("statusChanged").Time()
+	hold := ""
 	switch st.status {
 	case StatusUnknown, StatusPaused:
 		if st.enabled {
-			st.hold = st.status
+			hold = st.status
 		}
 	}
+	var stored map[string]LocationStatus
+	_ = record.UnmarshalJSONField("locationStatus", &stored)
+	st.locs = make(map[string]*locState, len(st.locations))
+	for _, location := range st.locations {
+		ls := &locState{hold: hold, lastSeen: now}
+		if st.multi() {
+			ls.p = st.p.Locations[location]
+		} else {
+			ls.p = locPersisted{
+				FailStreak: st.p.FailStreak, PendingSince: st.p.PendingSince, PendingError: st.p.PendingError,
+				PendingStatusCode: st.p.PendingStatusCode, Confirmed: st.p.Confirmed, DownSince: st.p.DownSince,
+			}
+		}
+		if status, ok := stored[location]; ok {
+			ls.lastCheck, ls.lastError, ls.lastStatusCode, ls.res = status.LastCheck, status.LastError, status.LastStatusCode, status.Res
+		}
+		st.locs[location] = ls
+	}
+	if !st.multi() {
+		st.p.Locations = nil
+	}
+	// A held multi-location monitor keeps its stored state until its
+	// locations report.
+	if hold == "" || !st.multi() {
+		st.aggregate()
+	} else {
+		st.hold = hold
+	}
+	st.saved = st.p
+	st.locKey = locationKeyOf(st.locations, stored)
 	st.lastCheck = int64(record.GetFloat("lastCheck"))
 	st.lastError = record.GetString("lastError")
 	st.lastStatusCode = uint16(record.GetInt("lastStatusCode"))
@@ -239,6 +278,23 @@ func (e *Engine) newStateFromRecord(record *core.Record, now time.Time) *monitor
 		st.recent = st.recent[extra:]
 	}
 	return st
+}
+
+// locationKeyOf is locationKey of stored location statuses. Locations
+// without a stored status are unknown.
+func locationKeyOf(locations []string, stored map[string]LocationStatus) string {
+	var b strings.Builder
+	for _, location := range locations {
+		status := stored[location].Status
+		if status == "" {
+			status = StatusUnknown
+		}
+		b.WriteString(location)
+		b.WriteByte('=')
+		b.WriteString(status)
+		b.WriteByte(';')
+	}
+	return b.String()
 }
 
 // applyConfig copies the configuration fields of a record.
@@ -251,6 +307,8 @@ func (st *monitorState) applyConfig(record *core.Record) {
 	st.notify = record.GetBool("notify")
 	st.retries = max(record.GetInt("retries"), 0)
 	st.interval = time.Duration(record.GetInt("interval")) * time.Second
+	st.locations = monitorloc.Of(record)
+	st.quorum = monitorloc.Quorum(record)
 }
 
 // findOpenSegment returns the latest open segment of a monitor.

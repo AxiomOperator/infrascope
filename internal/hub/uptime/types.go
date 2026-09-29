@@ -10,7 +10,9 @@ package uptime
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math"
+	"reflect"
 	"time"
 )
 
@@ -175,6 +177,26 @@ type persistedState struct {
 	DownSince int64 `json:"downSince,omitempty"`
 	// Maintenance is whether the monitor was in a maintenance window at the last evaluation.
 	Maintenance bool `json:"maintenance,omitempty"`
+	// Locations holds the state of each location of a multi-location monitor.
+	// Single-location monitors keep their location's state in the fields above.
+	Locations map[string]locPersisted `json:"locations,omitempty"`
+}
+
+// equal reports whether two states are the same.
+func (p persistedState) equal(o persistedState) bool {
+	a, b := p.Locations, o.Locations
+	p.Locations, o.Locations = nil, nil
+	return reflect.DeepEqual(p, o) && maps.Equal(a, b)
+}
+
+// locPersisted is the persisted state of one location (see persistedState).
+type locPersisted struct {
+	FailStreak        int    `json:"failStreak,omitempty"`
+	PendingSince      int64  `json:"pendingSince,omitempty"`
+	PendingError      string `json:"pendingError,omitempty"`
+	PendingStatusCode uint16 `json:"pendingStatusCode,omitempty"`
+	Confirmed         string `json:"confirmed,omitempty"`
+	DownSince         int64  `json:"downSince,omitempty"`
 }
 
 const stateVersion = 1

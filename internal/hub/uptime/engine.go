@@ -1,12 +1,16 @@
 package uptime
 
 import (
+	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/henrygd/beszel/internal/entities/monitor"
+	"github.com/henrygd/beszel/internal/hub/monitorloc"
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
 
@@ -30,6 +34,29 @@ import (
 //
 // Displayed status precedence: paused (disabled) > maintenance > unknown or
 // paused hold > pending > confirmed ("unknown" before the first confirmation).
+//
+// Locations
+//
+// A monitor is checked from one or more locations (the hub or agents, see
+// monitorloc). The state machine above runs per location: each location has
+// its own failure streak, confirmed status and unknown/paused hold (its
+// agent disconnected, went stale or was paused). The monitor's state is
+// derived from its locations:
+//
+//   - With a single location, it is that location's state, exactly as above.
+//   - Locations held unknown or paused, or without any check yet, are
+//     excluded. With fewer known locations than the quorum, the monitor is
+//     held unknown (paused when every location is paused) and keeps its
+//     confirmed status, like any hold.
+//   - It is confirmed down when at least quorum locations are confirmed down,
+//     and confirmed up otherwise (once any known location confirmed a status).
+//   - It is pending while any known location fails but it is not confirmed
+//     down. Its error then names the failing locations ("down from 1 of 3
+//     locations: web1: timeout").
+//
+// Status changes caused by a location becoming unknown or paused never
+// notify, like other holds. Every location's checks are recorded in recent.
+// The status of each location is written to network_monitors.locationStatus.
 //
 // Notifications
 //
@@ -120,11 +147,21 @@ func New(app core.App, opts ...Option) *Engine {
 
 // monitorState is the in-memory state of one monitor. Guarded by Engine.mu.
 type monitorState struct {
+	// systemID is the primary location's system ("" for the hub only).
 	id, systemID, name, target, protocol string
 	enabled, notify                      bool
 	retries                              int
 	interval                             time.Duration
+	// locations are the monitor's locations, in order, and quorum how many
+	// of them must confirm it down.
+	locations []string
+	quorum    int
+	// locs holds the state of each location.
+	locs map[string]*locState
+	// names are the display names of the locations, for errors.
+	names map[string]string
 
+	// p is the monitor's state, derived from its locations by aggregate.
 	p persistedState
 	// saved is the state JSON last queued for persistence.
 	saved persistedState
@@ -141,9 +178,247 @@ type monitorState struct {
 	recent         []RecentCheck
 	// checksDirty marks check fields that Flush has not written yet.
 	checksDirty bool
-	// lastSeen is when the hub last received a check (or loaded the monitor).
-	lastSeen time.Time
+	// locKey is the location statuses last queued for persistence.
+	locKey   string
 	uptimeAt time.Time
+}
+
+// locState is the state of one location of a monitor. Guarded by Engine.mu.
+type locState struct {
+	p locPersisted
+	// hold is "unknown" or "paused" while the location's results are unavailable.
+	hold string
+	// lastSeen is when the hub last received a check (or loaded the monitor).
+	lastSeen       time.Time
+	lastCheck      int64
+	lastError      string
+	lastStatusCode uint16
+	// res is the response time of the last check in microseconds, -1 when it failed.
+	res int64
+}
+
+// resetStreak forgets the location's failure streak.
+func (ls *locState) resetStreak() {
+	ls.p.FailStreak = 0
+	ls.p.PendingSince = 0
+	ls.p.PendingError = ""
+	ls.p.PendingStatusCode = 0
+}
+
+// known reports whether the location counts towards the quorum: it is not
+// held and has a status.
+func (ls *locState) known() bool {
+	return ls.hold == "" && (ls.p.Confirmed != "" || ls.p.FailStreak > 0)
+}
+
+// status returns the displayed status of the location.
+func (ls *locState) status(enabled bool) string {
+	switch {
+	case !enabled:
+		return StatusPaused
+	case ls.hold != "":
+		return ls.hold
+	case ls.p.FailStreak > 0 && ls.p.Confirmed != StatusDown:
+		return StatusPending
+	case ls.p.Confirmed == "":
+		return StatusUnknown
+	}
+	return ls.p.Confirmed
+}
+
+// multi reports whether the monitor has more than one location.
+func (st *monitorState) multi() bool { return len(st.locations) > 1 }
+
+// locationName returns the display name of a location.
+func (st *monitorState) locationName(location string) string {
+	if name := st.names[location]; name != "" {
+		return name
+	}
+	if location == monitorloc.Hub {
+		return "Hub"
+	}
+	return location
+}
+
+// failingMessage describes the failing locations of a multi-location
+// monitor, with each location's first (pending) or last error.
+func (st *monitorState) failingMessage(failing []string, last bool) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "down from %d of %d locations: ", len(failing), len(st.locations))
+	for i, location := range failing {
+		ls := st.locs[location]
+		if i > 0 {
+			b.WriteString("; ")
+		}
+		b.WriteString(st.locationName(location))
+		err := ls.p.PendingError
+		if last {
+			err = ls.lastError
+		}
+		if err != "" {
+			b.WriteString(": ")
+			b.WriteString(err)
+		}
+	}
+	return truncateError(b.String())
+}
+
+// aggregate derives the monitor's hold and state from its locations (see
+// Locations above). Requires e.mu.
+func (st *monitorState) aggregate() {
+	if !st.multi() {
+		ls := st.locs[st.locations[0]]
+		st.hold = ls.hold
+		st.p.FailStreak = ls.p.FailStreak
+		st.p.PendingSince = ls.p.PendingSince
+		st.p.PendingError = ls.p.PendingError
+		st.p.PendingStatusCode = ls.p.PendingStatusCode
+		st.p.Confirmed = ls.p.Confirmed
+		st.p.DownSince = ls.p.DownSince
+		st.p.Locations = nil
+		return
+	}
+	// A new map each time, so queued state is never modified.
+	st.p.Locations = make(map[string]locPersisted, len(st.locations))
+	known, down := 0, 0
+	allPaused, anyConfirmed := true, false
+	var failing []string
+	var downSince int64
+	for _, location := range st.locations {
+		ls := st.locs[location]
+		st.p.Locations[location] = ls.p
+		if ls.hold != StatusPaused {
+			allPaused = false
+		}
+		if !ls.known() {
+			continue
+		}
+		known++
+		anyConfirmed = anyConfirmed || ls.p.Confirmed != ""
+		if ls.p.FailStreak > 0 {
+			failing = append(failing, location)
+		}
+		if ls.p.Confirmed == StatusDown {
+			down++
+			if downSince == 0 || (ls.p.PendingSince > 0 && ls.p.PendingSince < downSince) {
+				downSince = ls.p.PendingSince
+			}
+		}
+	}
+	st.p.FailStreak, st.p.PendingSince, st.p.PendingError, st.p.PendingStatusCode = 0, 0, "", 0
+	if known < st.quorum {
+		st.hold = StatusUnknown
+		if allPaused {
+			st.hold = StatusPaused
+		}
+		return
+	}
+	st.hold = ""
+	if len(failing) > 0 {
+		st.p.FailStreak = len(failing)
+		for _, location := range failing {
+			ls := st.locs[location]
+			if st.p.PendingSince == 0 || (ls.p.PendingSince > 0 && ls.p.PendingSince < st.p.PendingSince) {
+				st.p.PendingSince = ls.p.PendingSince
+			}
+		}
+		st.p.PendingError = st.failingMessage(failing, false)
+		st.p.PendingStatusCode = st.locs[failing[0]].p.PendingStatusCode
+	}
+	switch {
+	case down >= st.quorum:
+		if st.p.Confirmed != StatusDown {
+			st.p.DownSince = downSince
+		}
+		st.p.Confirmed = StatusDown
+	case anyConfirmed:
+		st.p.Confirmed = StatusUp
+	}
+}
+
+// failingLocations returns the known locations that are failing, in order.
+func (st *monitorState) failingLocations() []string {
+	var failing []string
+	for _, location := range st.locations {
+		if ls := st.locs[location]; ls.known() && ls.p.FailStreak > 0 {
+			failing = append(failing, location)
+		}
+	}
+	return failing
+}
+
+// LocationStatus is the status of one location of a monitor, stored in
+// network_monitors.locationStatus keyed by location.
+type LocationStatus struct {
+	Status string `json:"status"`
+	// LastCheck is the latest check of the location in Unix milliseconds.
+	LastCheck      int64  `json:"lastCheck,omitempty"`
+	LastError      string `json:"lastError,omitempty"`
+	LastStatusCode uint16 `json:"lastStatusCode,omitempty"`
+	// Res is the response time of the latest check in microseconds, -1 when it failed.
+	Res int64 `json:"res,omitempty"`
+}
+
+// locationStatus returns the status of every location.
+func (st *monitorState) locationStatus() map[string]LocationStatus {
+	statuses := make(map[string]LocationStatus, len(st.locations))
+	for _, location := range st.locations {
+		ls := st.locs[location]
+		statuses[location] = LocationStatus{
+			Status:         ls.status(st.enabled),
+			LastCheck:      ls.lastCheck,
+			LastError:      ls.lastError,
+			LastStatusCode: ls.lastStatusCode,
+			Res:            ls.res,
+		}
+	}
+	return statuses
+}
+
+// locationKey identifies the locations' statuses, to detect changes.
+func (st *monitorState) locationKey() string {
+	var b strings.Builder
+	for _, location := range st.locations {
+		b.WriteString(location)
+		b.WriteByte('=')
+		b.WriteString(st.locs[location].status(st.enabled))
+		b.WriteByte(';')
+	}
+	return b.String()
+}
+
+// syncLocations adds state for new locations, held unknown until their first
+// check, and drops removed ones. A single-location monitor moved to another
+// location keeps its confirmed status. Requires e.mu.
+func (st *monitorState) syncLocations(now time.Time) {
+	if st.locs == nil {
+		st.locs = map[string]*locState{}
+	}
+	var moved *locState
+	if len(st.locs) == 1 && len(st.locations) == 1 {
+		for location, ls := range st.locs {
+			if location != st.locations[0] {
+				moved = ls
+				delete(st.locs, location)
+			}
+		}
+	}
+	for location := range st.locs {
+		if !slices.Contains(st.locations, location) {
+			delete(st.locs, location)
+		}
+	}
+	for _, location := range st.locations {
+		if _, ok := st.locs[location]; ok {
+			continue
+		}
+		ls := &locState{hold: StatusUnknown, lastSeen: now}
+		if moved != nil {
+			ls.p = moved.p
+			ls.resetStreak()
+		}
+		st.locs[location] = ls
+	}
 }
 
 type openSegment struct {
@@ -175,31 +450,25 @@ func (st *monitorState) displayName() string {
 	return st.target
 }
 
-// resetStreak forgets the current failure streak.
-func (st *monitorState) resetStreak() {
-	st.p.FailStreak = 0
-	st.p.PendingSince = 0
-	st.p.PendingError = ""
-	st.p.PendingStatusCode = 0
-}
-
 // staleAfter is how long a monitor may go without checks before it is unknown.
 func (st *monitorState) staleAfter() time.Duration {
 	return 2*max(st.interval, agentFetchInterval) + 2*agentFetchInterval
 }
 
-// Observe applies a monitor's checks, oldest first.
+// Observe applies a monitor's checks, oldest first, to its hub location, or
+// to its only location when the hub is not one of its locations.
 func (e *Engine) Observe(monitorID string, events []monitor.CheckEvent) {
 	if len(events) == 0 {
 		return
 	}
-	e.observe("", false, map[string][]monitor.CheckEvent{monitorID: events})
+	e.observe("", map[string][]monitor.CheckEvent{monitorID: events})
 }
 
-// ObserveResults applies the checks of an agent's default-interval results.
-// Results for monitors that do not belong to systemID are ignored. legacy
-// agents do not report individual checks, so one check is synthesised from
-// each result's window (see ChecksFromResult).
+// ObserveResults applies the checks of an agent's (or, for an empty
+// systemID, the hub's) default-interval results to that location. Results
+// for monitors without that location are ignored. legacy agents do not
+// report individual checks, so one check is synthesised from each result's
+// window (see ChecksFromResult).
 func (e *Engine) ObserveResults(systemID string, results map[string]monitor.Result, legacy bool) {
 	checks := make(map[string][]monitor.CheckEvent, len(results))
 	for id, result := range results {
@@ -208,7 +477,7 @@ func (e *Engine) ObserveResults(systemID string, results map[string]monitor.Resu
 		}
 	}
 	if len(checks) > 0 {
-		e.observe(systemID, true, checks)
+		e.observe(monitorloc.FromSystemID(systemID), checks)
 	}
 }
 
@@ -238,32 +507,48 @@ func ChecksFromResult(result monitor.Result, legacy bool) []monitor.CheckEvent {
 	return []monitor.CheckEvent{event}
 }
 
-func (e *Engine) observe(systemID string, checkSystem bool, checks map[string][]monitor.CheckEvent) {
+// observe applies checks from location, or from each monitor's default
+// location (see Observe) when location is empty.
+func (e *Engine) observe(location string, checks map[string][]monitor.CheckEvent) {
 	now := e.now()
 	maintenance := e.maintenanceStates(slices.Collect(maps.Keys(checks)), now)
 
 	e.mu.Lock()
 	for id, events := range checks {
 		st, ok := e.monitors[id]
-		if !ok || !st.enabled || (checkSystem && st.systemID != systemID) {
+		if !ok || !st.enabled {
+			continue
+		}
+		loc := location
+		if loc == "" {
+			switch {
+			case slices.Contains(st.locations, monitorloc.Hub):
+				loc = monitorloc.Hub
+			case len(st.locations) == 1:
+				loc = st.locations[0]
+			}
+		}
+		ls, ok := st.locs[loc]
+		if !ok {
 			continue
 		}
 		if inMaint, ok := maintenance[id]; ok {
 			st.p.Maintenance = inMaint
 		}
 		for _, event := range events {
-			e.applyCheck(st, event, now)
+			e.applyCheck(st, loc, event, now)
 		}
-		st.lastSeen = now
+		ls.lastSeen = now
 	}
 	e.mu.Unlock()
 	e.drain()
 }
 
-// applyCheck applies one check to the state machine. Requires e.mu.
-func (e *Engine) applyCheck(st *monitorState, event monitor.CheckEvent, now time.Time) {
+// applyCheck applies one check of a location to the state machine. Requires e.mu.
+func (e *Engine) applyCheck(st *monitorState, location string, event monitor.CheckEvent, now time.Time) {
+	ls := st.locs[location]
 	// Agents without individual checks repeat their latest probe time until the next probe.
-	if event.At != 0 && event.At == st.lastCheck {
+	if event.At != 0 && event.At == ls.lastCheck {
 		return
 	}
 	at := event.At
@@ -273,34 +558,51 @@ func (e *Engine) applyCheck(st *monitorState, event monitor.CheckEvent, now time
 	at = max(at, st.segment.start)
 
 	// A check ends an unknown or system-paused hold.
-	st.hold = ""
+	ls.hold = ""
+	failed := event.Failed()
+	if failed {
+		ls.p.FailStreak++
+		if ls.p.FailStreak == 1 {
+			ls.p.PendingSince = at
+			ls.p.PendingError = truncateError(event.Err)
+			ls.p.PendingStatusCode = event.StatusCode
+		}
+		if ls.p.Confirmed != StatusDown && ls.p.FailStreak > st.retries {
+			ls.p.Confirmed = StatusDown
+			ls.p.DownSince = ls.p.PendingSince
+		}
+		ls.lastError = truncateError(event.Err)
+		ls.res = -1
+	} else {
+		ls.resetStreak()
+		ls.p.Confirmed = StatusUp
+		ls.lastError = ""
+		ls.res = max(event.ResponseUs, 0)
+	}
+	ls.lastCheck = event.At
+	if ls.lastCheck <= 0 {
+		ls.lastCheck = at
+	}
+	ls.lastStatusCode = event.StatusCode
+	st.aggregate()
+
 	check := RecentCheck{At: at / 1000, State: RecentUp}
-	if event.Failed() {
-		st.p.FailStreak++
-		if st.p.FailStreak == 1 {
-			st.p.PendingSince = at
-			st.p.PendingError = truncateError(event.Err)
-			st.p.PendingStatusCode = event.StatusCode
-		}
-		if st.p.Confirmed != StatusDown && st.p.FailStreak > st.retries {
-			st.p.Confirmed = StatusDown
-			st.p.DownSince = st.p.PendingSince
-		}
+	if failed {
 		check.State = RecentPending
 		if st.p.Confirmed == StatusDown {
 			check.State = RecentDown
 		}
 		check.ResponseMs = -1
-		st.lastError = truncateError(event.Err)
 	} else {
-		st.resetStreak()
-		st.p.Confirmed = StatusUp
 		check.ResponseMs = float64(event.ResponseUs/10) / 100
-		st.lastError = ""
 	}
-	st.lastCheck = event.At
-	if st.lastCheck <= 0 {
-		st.lastCheck = at
+	st.lastCheck = ls.lastCheck
+	st.lastError = ls.lastError
+	if st.multi() {
+		st.lastError = ""
+		if failing := st.failingLocations(); len(failing) > 0 {
+			st.lastError = st.failingMessage(failing, true)
+		}
 	}
 	st.lastStatusCode = event.StatusCode
 	st.recent = append(st.recent, check)
@@ -340,7 +642,14 @@ func (e *Engine) reconcile(st *monitorState, at int64, allowNotify bool) {
 		e.notices = append(e.notices, *transition)
 	}
 
-	if status != st.status || st.p != st.saved {
+	// A location status change writes the check fields, which include them.
+	locChanged := false
+	if key := st.locationKey(); key != st.locKey {
+		st.locKey = key
+		st.checksDirty = true
+		locChanged = true
+	}
+	if status != st.status || !st.p.equal(st.saved) || locChanged {
 		fields := map[string]any{}
 		if status != st.status {
 			st.status = status
@@ -369,6 +678,7 @@ func (st *monitorState) addCheckFields(fields map[string]any) {
 	fields["lastError"] = st.lastError
 	fields["lastStatusCode"] = st.lastStatusCode
 	fields["recent"] = slices.Clone(st.recent)
+	fields["locationStatus"] = st.locationStatus()
 	st.checksDirty = false
 }
 
@@ -406,36 +716,55 @@ func (e *Engine) evaluateNotify(st *monitorState, at int64) *Transition {
 	return transition
 }
 
-// MarkUnknown sets monitors to unknown, for example when their agent stops
-// reporting. It never notifies.
+// MarkUnknown sets all locations of monitors to unknown, for example when
+// their agent stops reporting. It never notifies.
 func (e *Engine) MarkUnknown(monitorIDs []string) {
+	e.MarkLocationUnknown("", monitorIDs)
+}
+
+// MarkLocationUnknown sets one location of monitors to unknown (all their
+// locations when location is empty), for example when an agent cannot run
+// them. It never notifies.
+func (e *Engine) MarkLocationUnknown(location string, monitorIDs []string) {
 	e.mu.Lock()
-	queued := e.hold(monitorIDs, StatusUnknown, e.now().UnixMilli())
+	queued := e.hold(monitorIDs, location, StatusUnknown, e.now().UnixMilli())
 	e.mu.Unlock()
 	if queued {
 		e.tryDrain()
 	}
 }
 
-// hold holds the displayed status of enabled monitors. Requires e.mu.
-func (e *Engine) hold(monitorIDs []string, status string, at int64) bool {
+// hold holds location (every location when empty) of enabled monitors.
+// Requires e.mu.
+func (e *Engine) hold(monitorIDs []string, location, status string, at int64) bool {
 	before := len(e.queue)
 	for _, id := range monitorIDs {
 		st, ok := e.monitors[id]
-		if !ok || !st.enabled || st.hold == status {
+		if !ok || !st.enabled {
 			continue
 		}
-		st.hold = status
-		st.resetStreak()
-		e.reconcile(st, at, false)
+		changed := false
+		for _, loc := range st.locations {
+			ls := st.locs[loc]
+			if (location != "" && loc != location) || ls.hold == status {
+				continue
+			}
+			ls.hold = status
+			ls.resetStreak()
+			changed = true
+		}
+		if changed {
+			st.aggregate()
+			e.reconcile(st, at, false)
+		}
 	}
 	return len(e.queue) > before
 }
 
-// SystemStatusChanged updates the monitors of a system after its status
-// changed: "paused" pauses them, other statuses except "up" make them
-// unknown. "up" turns monitors paused with the system into unknown until
-// their next check.
+// SystemStatusChanged updates the monitors checked from a system after its
+// status changed: "paused" pauses that location, other statuses except "up"
+// make it unknown. "up" turns locations paused with the system into unknown
+// until their next check.
 func (e *Engine) SystemStatusChanged(systemID, status string) {
 	if systemID == "" {
 		return
@@ -443,7 +772,8 @@ func (e *Engine) SystemStatusChanged(systemID, status string) {
 	e.mu.Lock()
 	var ids []string
 	for id, st := range e.monitors {
-		if st.systemID == systemID && (status != StatusUp || st.hold == StatusPaused) {
+		ls, ok := st.locs[systemID]
+		if ok && (status != StatusUp || ls.hold == StatusPaused) {
 			ids = append(ids, id)
 		}
 	}
@@ -452,7 +782,7 @@ func (e *Engine) SystemStatusChanged(systemID, status string) {
 	if status == StatusPaused {
 		hold = StatusPaused
 	}
-	queued := e.hold(ids, hold, e.now().UnixMilli())
+	queued := e.hold(ids, systemID, hold, e.now().UnixMilli())
 	e.mu.Unlock()
 	if queued {
 		e.tryDrain()
@@ -460,19 +790,24 @@ func (e *Engine) SystemStatusChanged(systemID, status string) {
 }
 
 // Upsert adds or reconfigures a monitor from its record after it was created
-// or updated. Disabled monitors are paused; re-enabled or moved monitors are
-// unknown until their next check. It restores the record's status fields if
-// they differ from the engine's (for example after a concurrent edit).
+// or updated. Disabled monitors are paused; re-enabled monitors and added
+// locations are unknown until their next check. It restores the record's
+// status fields if they differ from the engine's (for example after a
+// concurrent edit).
 func (e *Engine) Upsert(record *core.Record) {
 	now := e.now()
 	var loaded *monitorState
+	var names map[string]string
+	if len(monitorloc.Of(record)) > 1 {
+		names = e.locationNames(monitorloc.Of(record))
+	}
 	e.mu.Lock()
 	_, exists := e.monitors[record.Id]
 	e.mu.Unlock()
 	if !exists {
 		// Read outside the lock; the open segment is only present for monitors
 		// the engine missed (for example created before Load).
-		loaded = e.newStateFromRecord(record, now)
+		loaded = e.newStateFromRecord(record, now, names)
 		if segment, err := e.findOpenSegment(record.Id); err == nil {
 			loaded.segment = segment
 		}
@@ -482,27 +817,32 @@ func (e *Engine) Upsert(record *core.Record) {
 	st, ok := e.monitors[record.Id]
 	if !ok {
 		if loaded == nil {
-			loaded = e.newStateFromRecord(record, now)
+			loaded = e.newStateFromRecord(record, now, names)
 		}
 		st = loaded
 		e.monitors[st.id] = st
 		e.reconcile(st, now.UnixMilli(), false)
 	} else {
-		wasEnabled, oldSystem := st.enabled, st.systemID
+		wasEnabled := st.enabled
 		st.applyConfig(record)
-		if st.enabled && (!wasEnabled || oldSystem != st.systemID) {
-			st.hold = StatusUnknown
-			st.lastSeen = now
+		st.names = names
+		st.syncLocations(now)
+		for _, ls := range st.locs {
+			if st.enabled && !wasEnabled {
+				ls.hold = StatusUnknown
+				ls.lastSeen = now
+			}
+			if !st.enabled || ls.hold != "" {
+				ls.resetStreak()
+			}
 		}
-		if !st.enabled || st.hold != "" {
-			st.resetStreak()
-		}
+		st.aggregate()
 		e.reconcile(st, now.UnixMilli(), false)
 	}
 	// Restore status fields overwritten with stale values.
 	var stored persistedState
 	_ = record.UnmarshalJSONField("state", &stored)
-	if record.GetString("status") != st.status || stored != st.saved {
+	if record.GetString("status") != st.status || !stored.equal(st.saved) {
 		fields := map[string]any{"status": st.status, "state": st.saved}
 		if !st.statusChanged.IsZero() {
 			fields["statusChanged"] = st.statusChanged
@@ -514,6 +854,23 @@ func (e *Engine) Upsert(record *core.Record) {
 	if queued {
 		e.tryDrain()
 	}
+}
+
+// locationNames returns the display names of locations: "Hub" and the names
+// of the systems. It reads the database, so call it without e.mu held.
+func (e *Engine) locationNames(locations []string) map[string]string {
+	names := make(map[string]string, len(locations))
+	for _, location := range locations {
+		if location == monitorloc.Hub {
+			names[location] = "Hub"
+			continue
+		}
+		var name string
+		if err := e.app.DB().Select("name").From("systems").Where(dbx.HashExp{"id": location}).Row(&name); err == nil && name != "" {
+			names[location] = name
+		}
+	}
+	return names
 }
 
 // Remove forgets a deleted monitor. Its segments are deleted with the record.
@@ -554,11 +911,23 @@ func (e *Engine) Tick(now time.Time) {
 		if st.protocol == monitor.ProtocolPush {
 			continue
 		}
-		if st.hold == "" && !st.lastSeen.IsZero() && now.Sub(st.lastSeen) > st.staleAfter() {
+		changed := false
+		for _, ls := range st.locs {
+			if ls.hold == "" && !ls.lastSeen.IsZero() && now.Sub(ls.lastSeen) > st.staleAfter() {
+				ls.hold = StatusUnknown
+				ls.resetStreak()
+				changed = true
+			}
+		}
+		if changed {
 			stale = append(stale, id)
 		}
 	}
-	e.hold(stale, StatusUnknown, nowMs)
+	for _, id := range stale {
+		st := e.monitors[id]
+		st.aggregate()
+		e.reconcile(st, nowMs, false)
+	}
 	e.mu.Unlock()
 	e.drain()
 }

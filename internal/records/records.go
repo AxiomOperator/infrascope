@@ -2,6 +2,7 @@
 package records
 
 import (
+	"database/sql"
 	"encoding/json"
 	"math"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/henrygd/beszel/internal/entities/container"
 	"github.com/henrygd/beszel/internal/entities/monitor"
 	"github.com/henrygd/beszel/internal/entities/system"
+	"github.com/henrygd/beszel/internal/hub/monitorloc"
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
@@ -89,13 +91,17 @@ func (rm *RecordManager) CreateLongerRecords() {
 		}
 	}
 
-	// network_monitor_stats is aggregated per monitor (not per system)
+	// network_monitor_stats is aggregated per monitor and, for multi-location
+	// monitors, per location (the system of the stats rows, "" for the hub).
+	// Single-location monitors merge all their rows, so their history
+	// continues when they move to another location.
 	var monitors []struct {
-		Id     string `db:"id"`
-		System string `db:"system"`
+		Id        string         `db:"id"`
+		System    string         `db:"system"`
+		Locations sql.NullString `db:"locations"`
 	}
 	// Disabled monitors still have history that must advance through retention tiers.
-	if err := rm.app.DB().NewQuery("SELECT id, system FROM network_monitors ORDER BY system").All(&monitors); err != nil {
+	if err := rm.app.DB().NewQuery("SELECT id, system, locations FROM network_monitors ORDER BY system").All(&monitors); err != nil {
 		rm.app.Logger().Error("failed to create longer monitor records", "err", err)
 		return
 	}
@@ -108,8 +114,21 @@ func (rm *RecordManager) CreateLongerRecords() {
 		start = end
 		err := rm.app.RunInTransaction(func(txApp core.App) error {
 			for _, monitorRec := range batch {
-				if err := rm.createLongerMonitorRecords(txApp, monitorRec.Id, monitorRec.System, now); err != nil {
-					return err
+				var locations []string
+				if monitorRec.Locations.Valid {
+					_ = json.Unmarshal([]byte(monitorRec.Locations.String), &locations)
+				}
+				locations = monitorloc.Normalize(locations)
+				if len(locations) < 2 {
+					if err := rm.createLongerMonitorRecords(txApp, monitorRec.Id, monitorRec.System, false, now); err != nil {
+						return err
+					}
+					continue
+				}
+				for _, location := range locations {
+					if err := rm.createLongerMonitorRecords(txApp, monitorRec.Id, monitorloc.SystemID(location), true, now); err != nil {
+						return err
+					}
 				}
 			}
 			return nil
@@ -198,8 +217,10 @@ func (rm *RecordManager) createLongerSystemRecords(txApp core.App, systemID stri
 	return nil
 }
 
-// createLongerMonitorRecords rolls up the network_monitor_stats of one monitor.
-func (rm *RecordManager) createLongerMonitorRecords(txApp core.App, monitorID, systemID string, now time.Time) error {
+// createLongerMonitorRecords rolls up the network_monitor_stats of one
+// monitor into rows of systemID: only the rows of that system when
+// perLocation is set, all rows of the monitor otherwise.
+func (rm *RecordManager) createLongerMonitorRecords(txApp core.App, monitorID, systemID string, perLocation bool, now time.Time) error {
 	monitorStatsColl, err := txApp.FindCachedCollectionByNameOrId("network_monitor_stats")
 	if err != nil {
 		return err
@@ -210,14 +231,7 @@ func (rm *RecordManager) createLongerMonitorRecords(txApp core.App, monitorID, s
 		shorterRecordPeriod := now.Add(recordData.longerTimeDuration)
 
 		if recordData.longerType != "10m" {
-			count, err := txApp.CountRecords(monitorStatsColl.Id, dbx.NewExp(
-				"monitor={:monitor} AND type={:type} AND created>{:created}",
-				dbx.Params{
-					"monitor": monitorID,
-					"type":    recordData.longerType,
-					"created": longerRecordPeriod.UnixMilli(),
-				},
-			))
+			count, err := txApp.CountRecords(monitorStatsColl.Id, monitorStatsFilter(monitorID, recordData.longerType, longerRecordPeriod.UnixMilli(), systemID, perLocation))
 			if err != nil {
 				return err
 			}
@@ -226,7 +240,7 @@ func (rm *RecordManager) createLongerMonitorRecords(txApp core.App, monitorID, s
 			}
 		}
 
-		stats, count, err := rm.AverageMonitorStats(db, monitorID, recordData.shorterType, shorterRecordPeriod.UnixMilli())
+		stats, count, err := rm.averageMonitorStats(db, monitorStatsFilter(monitorID, recordData.shorterType, shorterRecordPeriod.UnixMilli(), systemID, perLocation))
 		if err != nil {
 			txApp.Logger().Error("failed to average monitor stats", "monitor", monitorID, "err", err)
 			continue
@@ -724,6 +738,22 @@ func AverageContainerStatsSlice(records [][]container.Stats) []container.Stats {
 // AverageMonitorStats merges probe counts and response sums, preserving their
 // weights through every retention tier. Failed probes do not contribute latency.
 func (rm *RecordManager) AverageMonitorStats(db dbx.Builder, monitorID, recordType string, createdAfter int64) (monitor.Stats, int, error) {
+	return rm.averageMonitorStats(db, monitorStatsFilter(monitorID, recordType, createdAfter, "", false))
+}
+
+// monitorStatsFilter selects the network_monitor_stats rows of a monitor and
+// type created after createdAfter, only of systemID when perLocation is set.
+func monitorStatsFilter(monitorID, recordType string, createdAfter int64, systemID string, perLocation bool) dbx.Expression {
+	params := dbx.Params{"monitor": monitorID, "type": recordType, "created": createdAfter}
+	if perLocation {
+		params["system"] = systemID
+		return dbx.NewExp("monitor={:monitor} AND type={:type} AND created>{:created} AND system={:system}", params)
+	}
+	return dbx.NewExp("monitor={:monitor} AND type={:type} AND created>{:created}", params)
+}
+
+// averageMonitorStats merges the network_monitor_stats rows matching filter (see AverageMonitorStats).
+func (rm *RecordManager) averageMonitorStats(db dbx.Builder, filter dbx.Expression) (monitor.Stats, int, error) {
 	var result struct {
 		monitor.Stats
 		Count int `db:"count"`
@@ -735,10 +765,7 @@ func (rm *RecordManager) AverageMonitorStats(db dbx.Builder, monitorID, recordTy
 		"COALESCE(SUM(res_sum), 0) AS res_sum",
 		"COALESCE(MIN(CASE WHEN success_count > 0 THEN res_min END), 0) AS res_min",
 		"COALESCE(MAX(CASE WHEN success_count > 0 THEN res_max END), 0) AS res_max",
-	).From("network_monitor_stats").Where(dbx.NewExp(
-		"monitor={:monitor} AND type={:type} AND created>{:created}",
-		dbx.Params{"monitor": monitorID, "type": recordType, "created": createdAfter},
-	)).One(&result)
+	).From("network_monitor_stats").Where(filter).One(&result)
 	if err != nil {
 		return monitor.Stats{}, 0, err
 	}

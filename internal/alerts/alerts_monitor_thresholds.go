@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/henrygd/beszel/internal/entities/monitor"
+	"github.com/henrygd/beszel/internal/hub/monitorloc"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -22,7 +24,8 @@ import (
 //   - MonitorLatency: latencyThreshold (ms, 0 = off) is exceeded by resAvg1h.
 //
 // They are evaluated after each save of monitor results (the hub collector
-// and agent updates). An alert opens when the value exceeds the threshold
+// and agent updates), from the values stored on the monitor, which combine
+// the locations of multi-location monitors. An alert opens when the value exceeds the threshold
 // and resolves when it is back at or below it; the value of the history row
 // is the measured value (percent or ms). History rows and recipients follow
 // the other monitor alerts (see alerts_monitors.go). Whether an alert is
@@ -82,9 +85,9 @@ func (am *AlertManager) SetMaintenanceCheck(fn func(monitorID string, now time.T
 	am.inMaintenance = fn
 }
 
-// HandleMonitorResults evaluates the threshold alerts of the monitors of a
-// system (or of the hub, for an empty systemID) whose results were just
-// saved. Call it after the saving transaction committed. Errors are logged.
+// HandleMonitorResults evaluates the threshold alerts of the monitors with
+// a system (or the hub, for an empty systemID) as a location, whose results
+// from there were just saved. Call it after the saving transaction committed. Errors are logged.
 //
 // The results predict transitions from cached thresholds and state without
 // database work; a predicted transition is rechecked from the stored values
@@ -292,6 +295,9 @@ type monitorThresholdEntry struct {
 	interval      int
 	loss, latency float64
 	state         monitorAlertState
+	// multi is set for monitors with several locations, whose stored values
+	// combine all locations and cannot be predicted from one result.
+	multi bool
 }
 
 // transitionPending reports whether result may open or resolve an alert.
@@ -303,6 +309,9 @@ func (m monitorThresholdEntry) transitionPending(result monitor.Result, now time
 	if !monitorResultReady(result, m.interval, now) {
 		return false
 	}
+	if m.multi {
+		return true
+	}
 	if m.loss > 0 && (result.PacketLoss1h > m.loss) != m.state.Loss {
 		return true
 	}
@@ -312,9 +321,9 @@ func (m monitorThresholdEntry) transitionPending(result monitor.Result, now time
 	return false
 }
 
-// monitorThresholdCache holds, per system ("" for the hub), the enabled
-// monitors with a threshold or an open threshold alert. Returned maps are
-// immutable; changes invalidate the whole system entry.
+// monitorThresholdCache holds, per location system ("" for the hub), the
+// enabled monitors with a threshold or an open threshold alert. Returned
+// maps are immutable; changes invalidate the cache.
 type monitorThresholdCache struct {
 	app     core.App
 	mu      sync.Mutex
@@ -333,21 +342,23 @@ func newMonitorThresholdCache(app core.App) *monitorThresholdCache {
 		old := e.Record.Original()
 		// Result and status saves also invoke this hook; they keep the entry.
 		if old.GetString("system") != e.Record.GetString("system") ||
+			!slices.Equal(monitorloc.Of(old), monitorloc.Of(e.Record)) ||
 			old.GetBool("enabled") != e.Record.GetBool("enabled") ||
 			old.GetInt("interval") != e.Record.GetInt("interval") ||
 			old.GetFloat("lossThreshold") != e.Record.GetFloat("lossThreshold") ||
 			old.GetFloat("latencyThreshold") != e.Record.GetFloat("latencyThreshold") {
 			c.invalidate(old.GetString("system"))
-			c.invalidate(e.Record.GetString("system"))
 		}
 		return e.Next()
 	})
 	return c
 }
 
+// invalidate drops the cached monitors. Monitors can have several
+// locations, so every location is dropped, not only systemID's.
 func (c *monitorThresholdCache) invalidate(systemID string) {
 	c.mu.Lock()
-	delete(c.systems, systemID)
+	clear(c.systems)
 	c.mu.Unlock()
 }
 
@@ -359,27 +370,24 @@ func (c *monitorThresholdCache) get(systemID string) (map[string]monitorThreshol
 	}
 	// Loaded under the lock, so an invalidation cannot be overwritten by an
 	// older query result.
-	var rows []struct {
-		ID         string         `db:"id"`
-		Interval   int            `db:"interval"`
-		Loss       float64        `db:"lossThreshold"`
-		Latency    float64        `db:"latencyThreshold"`
-		AlertState sql.NullString `db:"alertState"`
-	}
-	err := c.app.DB().Select("id", "interval", "lossThreshold", "latencyThreshold", "alertState").From("network_monitors").
-		Where(dbx.HashExp{"system": systemID, "enabled": true}).
-		AndWhere(dbx.NewExp("lossThreshold > 0 OR latencyThreshold > 0 OR (alertState IS NOT NULL AND alertState NOT IN ('', 'null', '{}'))")).
-		All(&rows)
+	records, err := c.app.FindAllRecords("network_monitors", dbx.HashExp{"enabled": true},
+		dbx.NewExp("lossThreshold > 0 OR latencyThreshold > 0 OR (alertState IS NOT NULL AND alertState NOT IN ('', 'null', '{}'))"))
 	if err != nil {
 		return nil, err
 	}
-	monitors := make(map[string]monitorThresholdEntry, len(rows))
-	for _, row := range rows {
-		entry := monitorThresholdEntry{interval: row.Interval, loss: row.Loss, latency: row.Latency}
-		if row.AlertState.Valid {
-			_ = json.Unmarshal([]byte(row.AlertState.String), &entry.state)
+	location := monitorloc.FromSystemID(systemID)
+	monitors := make(map[string]monitorThresholdEntry, len(records))
+	for _, record := range records {
+		locations := monitorloc.Of(record)
+		if !slices.Contains(locations, location) {
+			continue
 		}
-		monitors[row.ID] = entry
+		entry := monitorThresholdEntry{
+			interval: record.GetInt("interval"), loss: record.GetFloat("lossThreshold"),
+			latency: record.GetFloat("latencyThreshold"), multi: len(locations) > 1,
+		}
+		_ = record.UnmarshalJSONField("alertState", &entry.state)
+		monitors[record.Id] = entry
 	}
 	c.systems[systemID] = monitors
 	return monitors, nil

@@ -31,6 +31,11 @@ msgstr ""
 msgid "{0, plural, one {# incident} other {# incidents}}"
 msgstr ""
 
+#. placeholder {0}: locations.length
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+msgid "{0, plural, one {# location} other {# locations}}"
+msgstr ""
+
 #. placeholder {0}: record.monitors.length
 #: src/components/routes/settings/status-pages.tsx
 msgid "{0, plural, one {# monitor} other {# monitors}}"
@@ -55,6 +60,12 @@ msgstr ""
 #. placeholder {0}: formatDurationMs(day.downMs)
 #: src/components/network-monitors-table/daily-uptime-bar.tsx
 msgid "{0} down"
+msgstr ""
+
+#. placeholder {0}: locations.length
+#. placeholder {1}: effectiveQuorum(monitor.quorum, locations.length)
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "{0} locations, down at {1}"
 msgstr ""
 
 #. placeholder {0}: table.getFilteredSelectedRowModel().rows.length
@@ -162,6 +173,11 @@ msgstr ""
 msgid "{totalCreated} monitor(s) added. {skippedPush} push line(s) skipped."
 msgstr ""
 
+#. placeholder {0}: orderedLocations.length
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "<0>Down when at least</0><1/><2>of {0} locations fail</2>"
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 msgid "0 – at most once"
 msgstr ""
@@ -259,6 +275,10 @@ msgstr ""
 
 #: src/components/network-monitors-table/monitor-check-options.tsx
 msgid "A and AAAA"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "A monitor can run from at most {MAX_MONITOR_LOCATIONS} locations."
 msgstr ""
 
 #: src/lib/shoutrrr.ts
@@ -440,6 +460,10 @@ msgstr "Svi spremnici"
 msgid "all devices"
 msgstr ""
 
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "All locations"
+msgstr ""
+
 #: src/components/alerts/alerts-sheet.tsx
 #: src/components/command-palette.tsx
 #: src/components/routes/home.tsx
@@ -538,6 +562,10 @@ msgstr "Prosječna potrošnja energije grafičkog procesora"
 msgctxt "Disk I/O average operation time (iostat await)"
 msgid "Average queue to completion time per operation"
 msgstr "Prosječno vrijeme od čekanja do završetka po operaciji"
+
+#: src/components/routes/system/charts/monitors-charts.tsx
+msgid "Average response time by location"
+msgstr ""
 
 #: src/components/routes/system/charts/cpu-charts.tsx
 msgid "Average system-wide CPU utilization"
@@ -1409,6 +1437,12 @@ msgstr "Sustav je pao"
 msgid "Down ({downSystemsLength})"
 msgstr "Sustav je pao ({downSystemsLength})"
 
+#. placeholder {0}: effectiveQuorum(monitor.quorum, states.length)
+#. placeholder {1}: states.length
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Down when at least {0} of {1} locations fail"
+msgstr ""
+
 #: src/components/system-host-key.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Down: {reason}"
@@ -1757,6 +1791,10 @@ msgstr "Neuspjelo: {0}"
 msgid "Fans"
 msgstr "Ventilatori"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Fewer failing locations mark the monitor pending. Unreachable agents are left out; with fewer reporting locations than the quorum, the status is unknown."
+msgstr ""
+
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Fields filled from the webhook URL."
 msgstr ""
@@ -1945,10 +1983,15 @@ msgstr ""
 
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-status-badge.tsx
+#: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/network-monitors-table/system-multi-select.tsx
 #: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
 msgid "Hub"
 msgstr ""
@@ -2181,6 +2224,15 @@ msgstr "Učitavanje..."
 msgid "Loading…"
 msgstr ""
 
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Location"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Locations"
+msgstr ""
+
 #: src/components/navbar.tsx
 #: src/components/navbar.tsx
 msgid "Log Out"
@@ -2397,6 +2449,10 @@ msgstr ""
 msgid "Move up"
 msgstr ""
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Multiple locations"
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 msgid "Must be a Power Automate workflow webhook URL"
 msgstr ""
@@ -2590,6 +2646,10 @@ msgstr ""
 #: src/components/routes/settings/config-yaml.tsx
 msgid "On each restart, systems in the database will be updated to match the systems defined in the file."
 msgstr "Prilikom svakog ponovnog pokretanja, sustavi u bazi podataka bit će ažurirani kako bi odgovarali sustavima definiranim u datoteci."
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "One monitor checked from the hub and agents at once. Its status combines all locations."
+msgstr ""
 
 #: src/components/network-monitors-table/monitor-check-options.tsx
 msgid "One of the records must match this value."
@@ -3018,6 +3078,15 @@ msgstr "Dubina reda"
 msgid "Quiet Hours"
 msgstr "Tihi sati"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Quorum"
+msgstr ""
+
+#. placeholder {0}: orderedLocations.length
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Quorum must be between 1 and {0}."
+msgstr ""
+
 #: src/components/routes/system/raw-capacity-label.tsx
 #: src/components/routes/system/storage-pools-table.tsx
 #: src/components/routes/system/storage-pools-table.tsx
@@ -3162,6 +3231,7 @@ msgstr ""
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/routes/status-page.tsx
+#: src/components/routes/system/charts/monitors-charts.tsx
 #: src/components/routes/system/charts/monitors-charts.tsx
 #: src/components/routes/system/charts/monitors-charts.tsx
 msgid "Response"
@@ -3368,6 +3438,10 @@ msgstr "Odaberite sustav"
 msgid "Select all"
 msgstr "Odaberi sve"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Select at least one location."
+msgstr ""
+
 #: src/components/routes/settings/maintenance.tsx
 msgid "Select at least one monitor."
 msgstr ""
@@ -3375,6 +3449,10 @@ msgstr ""
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Select at least one system."
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Select locations"
 msgstr ""
 
 #: src/components/network-monitors-table/system-multi-select.tsx

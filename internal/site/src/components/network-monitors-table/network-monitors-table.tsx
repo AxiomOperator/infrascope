@@ -81,10 +81,27 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import ChartTimeSelect from "@/components/charts/chart-time-select"
-import { LossChart, AvgMinMaxResponseChart, RecentChecksChart } from "@/components/routes/system/charts/monitors-charts"
-import { useNetworkMonitorStats } from "@/lib/use-network-monitors"
+import {
+	AvgMinMaxResponseChart,
+	AvgResponseChart,
+	LossChart,
+	RecentChecksChart,
+} from "@/components/routes/system/charts/monitors-charts"
+import { locationSeriesKey, useNetworkMonitorStats } from "@/lib/use-network-monitors"
+import {
+	effectiveQuorum,
+	getLocationName,
+	getLocationStatuses,
+	getMonitorLocations,
+	HUB_LOCATION,
+	isMultiLocation,
+	locationStatsSystem,
+} from "@/lib/monitor-locations"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { monitorStatusBgColors } from "@/lib/network-monitor-utils"
+import { formatMicroseconds } from "@/lib/utils"
 import { getDailyUptime, useMonitorEvents, useMonitorIncidents } from "@/lib/use-monitor-events"
-import { MonitorStatusBadge } from "./monitor-status-badge"
+import { MonitorStatusBadge, monitorStatusLabel } from "./monitor-status-badge"
 import { MonitorPushUrl } from "./monitor-push-url"
 import { DailyUptimeBar } from "./daily-uptime-bar"
 import { useStore } from "@nanostores/react"
@@ -191,7 +208,7 @@ export default function NetworkMonitorsTableNew({
 		if (systemId) {
 			return
 		}
-		const systemIds = new Set(monitors.map((m) => m.system))
+		const systemIds = new Set(monitors.filter((m) => !isMultiLocation(m)).map((m) => m.system))
 		const hubName = t`Hub`
 		return $allSystemsById.subscribe((systems) => {
 			let longest = ""
@@ -342,7 +359,11 @@ export default function NetworkMonitorsTableNew({
 			const value = (filterValue as string).trim()
 			if (!value) return true
 			const monitor = row.original
-			const systemName = monitor.system ? ($allSystemsById.get()[monitor.system]?.name ?? "") : t`Hub`
+			const systems = $allSystemsById.get()
+			const hubName = t`Hub`
+			const systemName = getMonitorLocations(monitor)
+				.map((location) => getLocationName(location, systems, hubName))
+				.join(" ")
 			const searchString =
 				`${monitor.name} ${getMonitorTarget(monitor)} ${monitor.protocol} ${systemName} ${getMonitorStatus(monitor)}`.toLocaleLowerCase()
 			return matchesFilterGroups(searchString, parseFilterGroups(value))
@@ -647,7 +668,7 @@ const NetworkMonitorTableRow = memo(function NetworkMonitorTableRow({
 		<TableRow
 			data-state={isSelected && "selected"}
 			className={cn("cursor-pointer transition-opacity", {
-				"opacity-50": system?.status === SystemStatus.Paused,
+				"opacity-50": system?.status === SystemStatus.Paused && !isMultiLocation(row.original),
 			})}
 			onClick={() => openSheet(row.original)}
 		>
@@ -680,7 +701,7 @@ function NetworkMonitorSheet({
 		return null
 	}
 
-	return <NetworkMonitorSheetContent key={monitor.system} open={open} onOpenChange={onOpenChange} monitor={monitor} />
+	return <NetworkMonitorSheetContent key={monitor.id} open={open} onOpenChange={onOpenChange} monitor={monitor} />
 }
 
 const certExpiryTextColors = { ok: "", warning: "text-yellow-600 dark:text-yellow-500", critical: "text-red-500" }
@@ -749,16 +770,38 @@ function NetworkMonitorSheetContent({
 	})
 	const chartTime = useStore(chartTimeStore)
 	const direction = useStore($direction)
-	const system = useStore($allSystemsById)[monitor.system]
+	const allSystems = useStore($allSystemsById)
+	const system = allSystems[monitor.system]
 	const isHub = isHubMonitor(monitor)
+	const locations = getMonitorLocations(monitor)
+	const multi = locations.length > 1
+	// "all" charts every location as its own series
+	const [chartLocation, setChartLocation] = useState("all")
+	const selectedLocation = multi && locations.includes(chartLocation) ? chartLocation : undefined
+	const byLocation = multi && !selectedLocation
 
 	const monitorStats = useNetworkMonitorStats({
-		systemId: monitor.system,
+		systemId: selectedLocation ? locationStatsSystem(selectedLocation) : monitor.system,
 		monitorId: monitor.id,
 		interval: monitor.interval,
 		chartTime,
 		enabled: open,
+		location: selectedLocation === undefined ? undefined : locationStatsSystem(selectedLocation),
+		byLocation,
 	})
+	const hubName = t`Hub`
+	// one pseudo monitor per location, whose id is the location's series key
+	const locationSeries = useMemo(
+		() =>
+			byLocation
+				? locations.map((location) => ({
+						...monitor,
+						id: locationSeriesKey(monitor.id, locationStatsSystem(location)),
+						name: getLocationName(location, allSystems, hubName),
+					}))
+				: [],
+		[byLocation, monitor, allSystems, hubName]
+	)
 
 	const chartData = useMemo<ChartData>(
 		() => ({
@@ -768,7 +811,9 @@ function NetworkMonitorSheetContent({
 		}),
 		[system?.info?.v, direction, chartTime]
 	)
-	const hasMonitorStats = monitorStats.some((record) => record.stats?.[monitor.id] != null)
+	const hasMonitorStats = byLocation
+		? monitorStats.some((record) => locationSeries.some((series) => record.stats?.[series.id] != null))
+		: monitorStats.some((record) => record.stats?.[monitor.id] != null)
 	const monitorName = getMonitorName(monitor)
 	const target = monitor.name ? getMonitorTarget(monitor) : ""
 
@@ -789,7 +834,13 @@ function NetworkMonitorSheetContent({
 							</>
 						)}
 						<ServerIcon className="size-3.5 text-muted-foreground" />
-						{isHub ? (
+						{multi ? (
+							<span>
+								<Trans>
+									{locations.length} locations, down at {effectiveQuorum(monitor.quorum, locations.length)}
+								</Trans>
+							</span>
+						) : isHub ? (
 							<span>
 								<Trans>Hub</Trans>
 							</span>
@@ -821,6 +872,7 @@ function NetworkMonitorSheetContent({
 				</SheetHeader>
 				<div className="grid gap-4">
 					<MonitorOverview monitor={monitor} />
+					{multi && <MonitorLocations monitor={monitor} />}
 					{monitor.protocol === "push" && monitor.pushToken && (
 						<Card className="p-4">
 							<MonitorPushUrl monitorId={monitor.id} pushToken={monitor.pushToken} />
@@ -829,27 +881,73 @@ function NetworkMonitorSheetContent({
 					<MonitorHistory monitor={monitor} enabled={open} />
 					{/* agents stream realtime stats; hub and push monitors chart their latest checks instead */}
 					{isHub && <RecentChecksChart monitor={monitor} chartData={chartData} />}
-					<ChartTimeSelect
-						className="bg-card"
-						agentVersion={chartData.agentVersion}
-						chartTimeStore={chartTimeStore}
-						// realtime stats are streamed by agents only
-						allowRealtime={false}
-					/>
-					<AvgMinMaxResponseChart
-						monitorStats={monitorStats}
-						monitor={monitor}
-						chartData={chartData}
-						empty={!hasMonitorStats}
-					/>
-					<LossChart
-						monitorStats={monitorStats}
-						grid={false}
-						monitors={[monitor]}
-						chartData={chartData}
-						empty={!hasMonitorStats}
-						showFilter={false}
-					/>
+					<div className="flex flex-wrap gap-3">
+						<ChartTimeSelect
+							className="bg-card w-auto grow sm:grow-0"
+							agentVersion={chartData.agentVersion}
+							chartTimeStore={chartTimeStore}
+							// realtime stats are streamed by agents only
+							allowRealtime={false}
+						/>
+						{multi && (
+							<Select value={selectedLocation ?? "all"} onValueChange={setChartLocation}>
+								<SelectTrigger className="bg-card w-auto grow sm:grow-0 relative ps-10 pe-5" aria-label={t`Location`}>
+									<ServerIcon className="size-4 absolute start-4 top-1/2 -translate-y-1/2 opacity-85" />
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="all">
+										<Trans>All locations</Trans>
+									</SelectItem>
+									{locations.map((location) => (
+										<SelectItem key={location} value={location}>
+											{getLocationName(location, allSystems, hubName)}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						)}
+					</div>
+					{byLocation ? (
+						<>
+							<AvgResponseChart
+								monitorStats={monitorStats}
+								grid={false}
+								monitors={locationSeries}
+								chartData={chartData}
+								empty={!hasMonitorStats}
+								showFilter={false}
+								legend={true}
+							/>
+							<LossChart
+								monitorStats={monitorStats}
+								grid={false}
+								monitors={locationSeries}
+								chartData={chartData}
+								empty={!hasMonitorStats}
+								showFilter={false}
+								legend={true}
+								seriesColors={true}
+							/>
+						</>
+					) : (
+						<>
+							<AvgMinMaxResponseChart
+								monitorStats={monitorStats}
+								monitor={monitor}
+								chartData={chartData}
+								empty={!hasMonitorStats}
+							/>
+							<LossChart
+								monitorStats={monitorStats}
+								grid={false}
+								monitors={[monitor]}
+								chartData={chartData}
+								empty={!hasMonitorStats}
+								showFilter={false}
+							/>
+						</>
+					)}
 				</div>
 			</SheetContent>
 		</Sheet>
@@ -902,6 +1000,65 @@ function MonitorOverview({ monitor }: { monitor: NetworkMonitorRecord }) {
 				</div>
 			)}
 		</div>
+	)
+}
+
+/** Status, last check, response time and last error of each location of a multi-location monitor. */
+function MonitorLocations({ monitor }: { monitor: NetworkMonitorRecord }) {
+	const systems = useStore($allSystemsById)
+	const states = getLocationStatuses(monitor)
+	const hubName = t`Hub`
+	return (
+		<Card className="p-4 grid gap-2">
+			<div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+				<span className="font-medium">
+					<Trans>Locations</Trans>
+				</span>
+				<span className="text-muted-foreground">
+					<Trans>
+						Down when at least {effectiveQuorum(monitor.quorum, states.length)} of {states.length} locations fail
+					</Trans>
+				</span>
+			</div>
+			<ul className="grid divide-y rounded-md border text-sm">
+				{states.map((state) => {
+					const name = getLocationName(state.location, systems, hubName)
+					const failed = state.status === "down" || state.status === "pending"
+					return (
+						<li key={state.location} className="grid gap-0.5 px-3 py-2">
+							<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+								<span className={cn("size-2 shrink-0 rounded-full", monitorStatusBgColors[state.status])} />
+								{state.location === HUB_LOCATION || !systems[state.location] ? (
+									<span className="font-medium">{name}</span>
+								) : (
+									<Link
+										className="font-medium hover:underline"
+										href={getPagePath($router, "system", { id: state.location })}
+									>
+										{name}
+									</Link>
+								)}
+								<span className="text-muted-foreground">{monitorStatusLabel(state.status)}</span>
+								<span className="ms-auto flex items-center gap-2 tabular-nums text-muted-foreground">
+									{state.res != null && state.res > 0 && <span>{formatMicroseconds(state.res)}</span>}
+									{state.lastCheck ? (
+										<span title={formatShortDate(new Date(state.lastCheck).toISOString())}>
+											{formatRelativeTime(state.lastCheck)}
+										</span>
+									) : null}
+								</span>
+							</div>
+							{failed && state.lastError && (
+								<p className="ps-4 text-muted-foreground break-words">
+									{state.lastStatusCode ? <span className="tabular-nums">{state.lastStatusCode} · </span> : null}
+									{state.lastError}
+								</p>
+							)}
+						</li>
+					)
+				})}
+			</ul>
+		</Card>
 	)
 }
 

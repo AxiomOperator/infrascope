@@ -124,10 +124,14 @@ func setCollectionAuthSettings(app core.App) error {
 		return err
 	}
 
-	// Agent monitors follow their system's users. Hub monitors (no system) have their own users.
-	monitorReadRule := authenticatedRule + ` && ((system != "" && system.users.id ?= @request.auth.id) || (system = "" && users.id ?= @request.auth.id))`
+	// Monitors are visible to the users of any system they run on (the
+	// primary system and the server-managed locationSystems mirror of their
+	// locations) and, when the hub is a location, to their own users (the
+	// hooks clear users of monitors without the hub). Changing or deleting a
+	// monitor also needs access to all its locations, which the hooks check.
+	monitorReadRule := authenticatedRule + ` && (system.users.id ?= @request.auth.id || locationSystems.users.id ?= @request.auth.id || users.id ?= @request.auth.id)`
 	// Monitor data follows the monitor's access.
-	monitorDataReadRule := authenticatedRule + ` && ((monitor.system != "" && monitor.system.users.id ?= @request.auth.id) || (monitor.system = "" && monitor.users.id ?= @request.auth.id))`
+	monitorDataReadRule := authenticatedRule + ` && (monitor.system.users.id ?= @request.auth.id || monitor.locationSystems.users.id ?= @request.auth.id || monitor.users.id ?= @request.auth.id)`
 	// A monitor can move to a system the requester is a member of, or to the
 	// hub, where the hooks require the requester to stay in its users.
 	monitorMoveRule := ` && (@request.body.system:changed = false || @request.body.system = "" || @request.body.system.users.id ?= @request.auth.id)`

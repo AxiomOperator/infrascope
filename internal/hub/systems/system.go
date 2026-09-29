@@ -9,12 +9,14 @@ import (
 	"hash/fnv"
 	"math/rand"
 	"net"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/henrygd/beszel/internal/common"
+	"github.com/henrygd/beszel/internal/hub/monitorloc"
 	"github.com/henrygd/beszel/internal/hub/transport"
 	"github.com/henrygd/beszel/internal/hub/utils"
 	"github.com/henrygd/beszel/internal/hub/ws"
@@ -542,7 +544,10 @@ func (sys *System) updateNetworkMonitorsRecords(app core.App, monitorResults map
 // SaveMonitorResults stores default-interval monitor results of a system, or
 // of the hub when systemID is empty: the result fields of each
 // network_monitors record and one 1m network_monitor_stats row per monitor
-// with a new probe. lastSaved holds the LastProbeAt of the latest stats row
+// with a new probe, whose system is the reporting location. Only results of
+// monitors with that location are stored. The record fields of a
+// multi-location monitor combine the latest results of its locations (see
+// combineLocationResults). lastSaved holds the LastProbeAt of the latest stats row
 // saved per monitor (read only; nil for none); the LastProbeAt of each row
 // saved now is added to savedProbes, which the caller should merge into
 // lastSaved once the surrounding transaction commits. Checks in the results
@@ -551,7 +556,7 @@ func SaveMonitorResults(app core.App, systemID string, monitorResults map[string
 	if len(monitorResults) == 0 {
 		return nil
 	}
-	monitorResults, err := ownedMonitorResults(app, systemID, monitorResults)
+	monitorResults, multi, err := ownedMonitorResults(app, systemID, monitorResults)
 	if err != nil || len(monitorResults) == 0 {
 		return err
 	}
@@ -584,6 +589,9 @@ func SaveMonitorResults(app core.App, systemID string, monitorResults map[string
 
 	// update network_monitors records
 	for id, result := range monitorResults {
+		if m, ok := multi[id]; ok {
+			result = combineLocationResults(id, monitorloc.FromSystemID(systemID), result, m.locations, m.interval, now)
+		}
 		monitorData := map[string]any{
 			"id":       id,
 			"res":      result.AvgResponse,
@@ -664,33 +672,102 @@ func SaveMonitorResults(app core.App, systemID string, monitorResults map[string
 	return nil
 }
 
-// ownedMonitorResults returns the results of monitors that belong to
-// systemID (hub monitors when empty). Results for other monitors, which an
-// agent must not write, are dropped.
-func ownedMonitorResults(app core.App, systemID string, results map[string]monitor.Result) (map[string]monitor.Result, error) {
+// multiLocationMonitor is what SaveMonitorResults needs to combine the
+// results of a multi-location monitor.
+type multiLocationMonitor struct {
+	locations []string
+	interval  time.Duration
+}
+
+// ownedMonitorResults returns the results of monitors with systemID (the hub
+// when empty) as one of their locations, and the multi-location monitors
+// among them. Results for other monitors, which an agent must not write, are
+// dropped.
+func ownedMonitorResults(app core.App, systemID string, results map[string]monitor.Result) (map[string]monitor.Result, map[string]multiLocationMonitor, error) {
 	ids := make([]any, 0, len(results))
 	for id := range results {
 		ids = append(ids, id)
 	}
-	var owned []string
-	err := app.DB().Select("id").From("network_monitors").
-		Where(dbx.HashExp{"system": systemID}).AndWhere(dbx.In("id", ids...)).Column(&owned)
+	records, err := FindLocationMonitors(app, systemID, dbx.In("id", ids...))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	if len(owned) == len(results) {
-		return results, nil
-	}
-	filtered := make(map[string]monitor.Result, len(owned))
-	for _, id := range owned {
-		filtered[id] = results[id]
+	filtered := make(map[string]monitor.Result, len(records))
+	multi := map[string]multiLocationMonitor{}
+	for _, record := range records {
+		filtered[record.Id] = results[record.Id]
+		if locations := monitorloc.Of(record); len(locations) > 1 {
+			multi[record.Id] = multiLocationMonitor{locations: locations, interval: time.Duration(record.GetInt("interval")) * time.Second}
+		}
 	}
 	for id := range results {
 		if _, ok := filtered[id]; !ok {
 			app.Logger().Debug("Ignoring result of a monitor of another system", "system", systemID, "monitor", id)
 		}
 	}
-	return filtered, nil
+	return filtered, multi, nil
+}
+
+// locationResult is the latest result of one location of a monitor.
+type locationResult struct {
+	result monitor.Result
+	at     time.Time
+}
+
+// locationResults holds the latest results of the locations of
+// multi-location monitors, by monitor and location. It is shared by the hub
+// collector and all agents and rebuilt after a restart.
+var locationResults = struct {
+	sync.Mutex
+	monitors map[string]map[string]locationResult
+}{monitors: map[string]map[string]locationResult{}}
+
+// combineLocationResults stores the result of a location and returns the
+// values of the monitor record, combined from the recent results of all its
+// locations: response times are averaged, the one-hour minimum and maximum
+// are the extremes, and the one-hour loss is the highest of any location.
+// Results older than three intervals (at least three minutes) are left out.
+func combineLocationResults(monitorID, location string, result monitor.Result, locations []string, interval time.Duration, now time.Time) monitor.Result {
+	maxAge := 3*max(interval, time.Minute) + time.Minute
+	locationResults.Lock()
+	defer locationResults.Unlock()
+	latest := locationResults.monitors[monitorID]
+	if latest == nil {
+		latest = map[string]locationResult{}
+		locationResults.monitors[monitorID] = latest
+	}
+	latest[location] = locationResult{result: result, at: now}
+	for loc, entry := range latest {
+		if !slices.Contains(locations, loc) || now.Sub(entry.at) > maxAge {
+			delete(latest, loc)
+		}
+	}
+	combined := result
+	var avgSum, avg1hSum, avgCount, avg1hCount int64
+	for _, entry := range latest {
+		r := entry.result
+		if r.AvgResponse > 0 {
+			avgSum += r.AvgResponse
+			avgCount++
+		}
+		if r.AvgResponse1h > 0 {
+			avg1hSum += r.AvgResponse1h
+			avg1hCount++
+		}
+		if r.MinResponse1h > 0 && (combined.MinResponse1h <= 0 || r.MinResponse1h < combined.MinResponse1h) {
+			combined.MinResponse1h = r.MinResponse1h
+		}
+		combined.MaxResponse1h = max(combined.MaxResponse1h, r.MaxResponse1h)
+		combined.PacketLoss1h = max(combined.PacketLoss1h, r.PacketLoss1h)
+	}
+	combined.AvgResponse, combined.AvgResponse1h = 0, 0
+	if avgCount > 0 {
+		combined.AvgResponse = avgSum / avgCount
+	}
+	if avg1hCount > 0 {
+		combined.AvgResponse1h = avg1hSum / avg1hCount
+	}
+	return combined
 }
 
 // createContainerRecords creates container records

@@ -96,7 +96,7 @@ func TestCollectionRulesDefault(t *testing.T) {
 	assert.Equal(t, isUserInSystemUsersNotReadonly, *fingerprintsCollection.DeleteRule)
 
 	// network_monitors collection
-	const isMonitorUser = `@request.auth.id != "" && ((system != "" && system.users.id ?= @request.auth.id) || (system = "" && users.id ?= @request.auth.id))`
+	const isMonitorUser = `@request.auth.id != "" && (system.users.id ?= @request.auth.id || locationSystems.users.id ?= @request.auth.id || users.id ?= @request.auth.id)`
 	const isMonitorUserNotReadonly = isMonitorUser + ` && @request.auth.role != "readonly"`
 	networkMonitorsCollection, err := hub.FindCollectionByNameOrId("network_monitors")
 	require.NoError(t, err, "Failed to find network_monitors collection")
@@ -107,7 +107,7 @@ func TestCollectionRulesDefault(t *testing.T) {
 	assert.Equal(t, isMonitorUserNotReadonly, *networkMonitorsCollection.DeleteRule)
 
 	// network_monitor_stats and monitor_events collections
-	const isMonitorDataUser = `@request.auth.id != "" && ((monitor.system != "" && monitor.system.users.id ?= @request.auth.id) || (monitor.system = "" && monitor.users.id ?= @request.auth.id))`
+	const isMonitorDataUser = `@request.auth.id != "" && (monitor.system.users.id ?= @request.auth.id || monitor.locationSystems.users.id ?= @request.auth.id || monitor.users.id ?= @request.auth.id)`
 	networkMonitorStatsCollection, err := hub.FindCollectionByNameOrId("network_monitor_stats")
 	require.NoError(t, err, "Failed to find network_monitor_stats collection")
 	assert.Equal(t, isMonitorDataUser, *networkMonitorStatsCollection.ListRule)

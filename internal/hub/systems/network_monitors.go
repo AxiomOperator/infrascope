@@ -6,13 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"time"
 
 	"github.com/blang/semver"
 	"github.com/henrygd/beszel"
 	"github.com/henrygd/beszel/internal/common"
 	"github.com/henrygd/beszel/internal/entities/monitor"
+	"github.com/henrygd/beszel/internal/hub/monitorloc"
 	"github.com/henrygd/beszel/internal/hub/monitorsecrets"
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
 
@@ -220,6 +223,32 @@ func unmarshalJSON(raw string, dest any) error {
 	return json.Unmarshal([]byte(raw), dest)
 }
 
+// FindLocationMonitors returns the monitors with systemID as one of their
+// locations (the hub for ""), optionally filtered further by where.
+func FindLocationMonitors(app core.App, systemID string, where dbx.Expression) ([]*core.Record, error) {
+	location := monitorloc.FromSystemID(systemID)
+	var condition dbx.Expression = dbx.HashExp{"system": systemID}
+	if systemID != "" {
+		condition = dbx.Or(condition, dbx.NewExp(
+			"EXISTS (SELECT 1 FROM json_each(CASE WHEN json_valid(locationSystems) THEN locationSystems ELSE '[]' END) WHERE value = {:location})",
+			dbx.Params{"location": systemID}))
+	} else {
+		condition = dbx.Or(condition, dbx.NewExp(
+			"EXISTS (SELECT 1 FROM json_each(CASE WHEN json_valid(locations) THEN locations ELSE '[]' END) WHERE value = {:location})",
+			dbx.Params{"location": location}))
+	}
+	if where != nil {
+		condition = dbx.And(condition, where)
+	}
+	records, err := app.FindAllRecords("network_monitors", condition)
+	if err != nil {
+		return nil, err
+	}
+	return slices.DeleteFunc(records, func(record *core.Record) bool {
+		return !monitorloc.Has(record, location)
+	}), nil
+}
+
 // syncPendingNetworkMonitors runs on WebSocket connect and after successful stats
 // fetches. Failed syncs retry on the next update without taking the system down.
 func (sys *System) syncPendingNetworkMonitors() {
@@ -248,7 +277,7 @@ func (sys *System) syncAllNetworkMonitors() error {
 			}
 		}
 		if engine := sys.manager.hub.Uptime(); engine != nil && len(unsupported) > 0 {
-			engine.MarkUnknown(unsupported)
+			engine.MarkLocationUnknown(sys.Id, unsupported)
 		}
 	}
 	// An empty set must also replace probes retained across a disconnect.

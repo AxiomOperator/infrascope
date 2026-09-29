@@ -43,6 +43,10 @@ type MonitorChartProps = {
 	showFilter?: boolean
 	/** Prepended to the chart title, e.g. a target/system name (rendered as "{titlePrefix} — Response"). */
 	titlePrefix?: string
+	/** Shows a legend without the filter bar, e.g. for the locations of one monitor. */
+	legend?: boolean
+	/** Gives each series its own color instead of the chart's fixed color. */
+	seriesColors?: boolean
 }
 
 type MonitorChartBaseProps = MonitorChartProps & {
@@ -70,6 +74,7 @@ function MonitorChart({
 	domain,
 	color,
 	showFilter = monitors.length > 1,
+	legend: legendProp,
 }: MonitorChartBaseProps) {
 	const storedFilter = useStore($monitorFilter)
 	const filter = showFilter ? storedFilter : ""
@@ -111,7 +116,7 @@ function MonitorChart({
 		return monitorStats.filter((record) => visibleKeys.some((id) => record.stats?.[id] != null))
 	}, [monitorStats, visibleKeys, multipleMonitors])
 
-	const legend = dataPoints.length < 10 && showFilter
+	const legend = legendProp ?? (dataPoints.length < 10 && showFilter)
 
 	return (
 		<ChartCard
@@ -223,7 +228,17 @@ export function AvgMinMaxResponseChart({ monitorStats, monitor, chartData, empty
 	)
 }
 
-export function LossChart({ monitorStats, grid, monitors, chartData, empty, titlePrefix }: MonitorChartProps) {
+export function LossChart({
+	monitorStats,
+	grid,
+	monitors,
+	chartData,
+	empty,
+	titlePrefix,
+	showFilter,
+	legend,
+	seriesColors,
+}: MonitorChartProps) {
 	const { t } = useLingui()
 	const lossTitle = t({ message: "Loss", context: "Packet loss" })
 	const title = titlePrefix ? `${titlePrefix} — ${lossTitle}` : lossTitle
@@ -239,7 +254,9 @@ export function LossChart({ monitorStats, grid, monitors, chartData, empty, titl
 			title={title}
 			description={t`Packet loss (%)`}
 			domain={[0, 100]}
-			color="var(--destructive)"
+			showFilter={showFilter}
+			legend={legend}
+			color={seriesColors ? undefined : "var(--destructive)"}
 			tickFormatter={(value) => `${toFixedFloat(value, value >= 10 ? 0 : 1)}%`}
 			contentFormatter={({ value }) => {
 				if (typeof value !== "number") {
@@ -247,6 +264,35 @@ export function LossChart({ monitorStats, grid, monitors, chartData, empty, titl
 				}
 				return `${decimalString(value, 2)}%`
 			}}
+		/>
+	)
+}
+
+/** Average response time of several series, e.g. one per location of a monitor. */
+export function AvgResponseChart({
+	monitorStats,
+	grid,
+	monitors,
+	chartData,
+	empty,
+	showFilter,
+	legend,
+}: MonitorChartProps) {
+	const { t } = useLingui()
+	return (
+		<MonitorChart
+			monitorStats={monitorStats}
+			grid={grid}
+			monitors={monitors}
+			chartData={chartData}
+			empty={empty}
+			metric="res_avg"
+			title={t`Response`}
+			description={t`Average response time by location`}
+			showFilter={showFilter}
+			legend={legend}
+			tickFormatter={(value) => formatMicroseconds(value, false)}
+			contentFormatter={({ value }) => (typeof value === "number" ? formatMicroseconds(value) : value)}
 		/>
 	)
 }

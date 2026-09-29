@@ -2,11 +2,13 @@ package hub
 
 import (
 	"errors"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/henrygd/beszel"
 	"github.com/henrygd/beszel/internal/entities/monitor"
+	"github.com/henrygd/beszel/internal/hub/monitorloc"
 	"github.com/henrygd/beszel/internal/hub/systems"
 	"github.com/henrygd/beszel/internal/hub/uptime"
 	"github.com/henrygd/beszel/internal/hub/utils"
@@ -15,8 +17,8 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 )
 
-// hubMonitorRunner runs monitors that belong to the hub rather than an agent
-// (network_monitors records without a system, including push monitors).
+// hubMonitorRunner runs the monitors with the hub as one of their locations
+// (see monitorloc), including push monitors.
 type hubMonitorRunner interface {
 	// Sync starts, reconfigures or, for a disabled record, stops the record's monitor.
 	Sync(record *core.Record)
@@ -142,10 +144,13 @@ func newHubRunner(app core.App, engine *uptime.Engine) *hubRunner {
 // start loads all enabled hub monitors and starts the dispatcher, the
 // collector and the push deadline loop. Call it after the engine loaded.
 func (r *hubRunner) start() error {
-	records, err := r.app.FindAllRecords("network_monitors", dbx.HashExp{"system": "", "enabled": true})
+	all, err := r.app.FindAllRecords("network_monitors", dbx.HashExp{"enabled": true})
 	if err != nil {
 		return err
 	}
+	records := slices.DeleteFunc(all, func(record *core.Record) bool {
+		return !monitorloc.Has(record, monitorloc.Hub)
+	})
 	now := time.Now()
 
 	r.mu.Lock()
@@ -206,7 +211,7 @@ func (r *hubRunner) Stop() {
 
 // Sync implements hubMonitorRunner.
 func (r *hubRunner) Sync(record *core.Record) {
-	if record.GetString("system") != "" || !record.GetBool("enabled") || monitor.IsAgentOnlyProtocol(record.GetString("protocol")) {
+	if !monitorloc.Has(record, monitorloc.Hub) || !record.GetBool("enabled") || monitor.IsAgentOnlyProtocol(record.GetString("protocol")) {
 		r.Remove(record.Id)
 		return
 	}

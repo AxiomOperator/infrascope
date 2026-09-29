@@ -35,6 +35,16 @@ import {
 	monitorProtocolLabels,
 	usesMonitorPort,
 } from "@/lib/monitor-protocols"
+import {
+	defaultQuorum,
+	getMonitorLocations,
+	HUB_LOCATION,
+	isMultiLocation,
+	locationSystemIds,
+	MAX_MONITOR_LOCATIONS,
+	orderLocations,
+	primaryLocationSystem,
+} from "@/lib/monitor-locations"
 import type { NetworkMonitorRecord } from "@/types"
 import {
 	buildMonitorPayload,
@@ -61,7 +71,8 @@ import { MonitorBulkAddSheet } from "./monitor-bulk-add-sheet"
 import { SystemMultiSelect } from "./system-multi-select"
 import { UptimeKumaImportDialog } from "./uptime-kuma-import-dialog"
 
-type RunsOn = "hub" | "agent"
+/** Where a monitor runs: the hub, one agent (or one monitor per selected agent), or several locations at once. */
+type RunsOn = "hub" | "agent" | "locations"
 
 /** Protocol select groups; push and docker are added depending on where the monitor runs. */
 const protocolGroups: { id: string; protocols: MonitorProtocol[] }[] = [
@@ -98,7 +109,7 @@ export function AddMonitorDialog({ systemId, monitors }: { systemId?: string; mo
 	const [open, setOpen] = useState(false)
 	const [bulkOpen, setBulkOpen] = useState(false)
 	const [importOpen, setImportOpen] = useState(false)
-	const [bulkRunsOn, setBulkRunsOn] = useState<RunsOn>("agent")
+	const [bulkRunsOn, setBulkRunsOn] = useState<Exclude<RunsOn, "locations">>("agent")
 	const [bulkSelectedSystemIds, setBulkSelectedSystemIds] = useState<Set<string>>(new Set())
 	const { t } = useLingui()
 	const systems = useStore($systems)
@@ -109,7 +120,7 @@ export function AddMonitorDialog({ systemId, monitors }: { systemId?: string; mo
 		if (!systemId && selectedSystemIds) {
 			setBulkSelectedSystemIds(new Set(selectedSystemIds))
 		}
-		setBulkRunsOn(runsOn ?? (hasEligibleSystems ? "agent" : "hub"))
+		setBulkRunsOn(runsOn === "hub" || (!runsOn && !hasEligibleSystems) ? "hub" : "agent")
 		setOpen(false)
 		setBulkOpen(true)
 	}
@@ -198,8 +209,22 @@ function thresholdInput(value?: number) {
 
 /** Initial runner of the form: the monitor's, else the current system's page, else the hub. */
 function initialRunsOn(monitor?: NetworkMonitorRecord, systemId?: string): RunsOn {
-	if (monitor) return monitor.system ? "agent" : "hub"
+	if (monitor) {
+		if (isMultiLocation(monitor)) return "locations"
+		return monitor.system ? "agent" : "hub"
+	}
 	return systemId ? "agent" : "hub"
+}
+
+/** Initial locations of the multiple locations mode. */
+function initialLocations(monitor?: NetworkMonitorRecord, systemId?: string) {
+	if (monitor) return new Set(getMonitorLocations(monitor))
+	return new Set(systemId ? [systemId] : [])
+}
+
+/** Quorum input value: empty uses the default majority. */
+function quorumInput(monitor?: NetworkMonitorRecord) {
+	return monitor && isMultiLocation(monitor) && monitor.quorum ? String(monitor.quorum) : ""
 }
 
 function MonitorDialogContent({
@@ -234,6 +259,8 @@ function MonitorDialogContent({
 	const [loading, setLoading] = useState(false)
 	const [selectedSystemId, setSelectedSystemId] = useState(monitor?.system ?? "")
 	const [selectedSystemIds, setSelectedSystemIds] = useState<Set<string>>(new Set())
+	const [locations, setLocations] = useState<Set<string>>(() => initialLocations(monitor, systemId))
+	const [quorum, setQuorum] = useState(() => quorumInput(monitor))
 	const [createdPushMonitor, setCreatedPushMonitor] = useState<NetworkMonitorRecord | null>(null)
 	const systems = useStore($systems)
 	const allSystems = useStore($allSystemsById)
@@ -241,7 +268,12 @@ function MonitorDialogContent({
 	const { t } = useLingui()
 	const isEditing = !!monitor
 	const isHub = runsOn === "hub"
+	const isLocations = runsOn === "locations"
+	// the hub checks the monitor itself, alone or as one of several locations
+	const hubChecks = isHub || (isLocations && locations.has(HUB_LOCATION))
 	const isPush = protocol === "push"
+	const orderedLocations = orderLocations(locations)
+	const defaultLocationQuorum = defaultQuorum(orderedLocations.length)
 	// Secret HTTP options are omitted from responses for users who can't see them.
 	const secretsHidden = isEditing && !("httpSecrets" in monitor)
 
@@ -269,14 +301,27 @@ function MonitorDialogContent({
 		setCheckForm(checkFormFromMonitor(monitor))
 		setSelectedSystemId(monitor?.system ?? "")
 		setSelectedSystemIds(new Set())
+		setLocations(initialLocations(monitor, systemId))
+		setQuorum(quorumInput(monitor))
 		setCreatedPushMonitor(null)
 		setLoading(false)
 	}, [open, monitor])
 
 	const changeRunsOn = (value: RunsOn) => {
 		setRunsOn(value)
-		// push monitors only run on the hub, docker monitors only on agents
-		if ((value === "agent" && protocol === "push") || (value === "hub" && isAgentOnlyProtocol(protocol))) {
+		// push monitors only run on the hub alone, docker monitors only on agents
+		if (
+			(value !== "hub" && protocol === "push") ||
+			(value === "hub" && isAgentOnlyProtocol(protocol)) ||
+			(value === "locations" && locations.has(HUB_LOCATION) && isAgentOnlyProtocol(protocol))
+		) {
+			setProtocol("icmp")
+		}
+	}
+
+	const changeLocations = (value: Set<string>) => {
+		setLocations(value)
+		if (value.has(HUB_LOCATION) && isAgentOnlyProtocol(protocol)) {
 			setProtocol("icmp")
 		}
 	}
@@ -310,11 +355,13 @@ function MonitorDialogContent({
 
 	const agentSystemIds = isHub
 		? []
-		: systemId
-			? [systemId]
-			: isEditing
-				? [selectedSystemId].filter(Boolean)
-				: Array.from(selectedSystemIds)
+		: isLocations
+			? locationSystemIds(orderedLocations)
+			: systemId
+				? [systemId]
+				: isEditing
+					? [selectedSystemId].filter(Boolean)
+					: Array.from(selectedSystemIds)
 	const usesNewAgentOptions =
 		Number(timeout) > 0 ||
 		Number(retryInterval) > 0 ||
@@ -339,13 +386,24 @@ function MonitorDialogContent({
 		e.preventDefault()
 		setLoading(true)
 
-		const targetSystems = isHub ? [""] : agentSystemIds
+		const targetSystems = isHub ? [""] : isLocations ? [primaryLocationSystem(orderedLocations)] : agentSystemIds
 		const remainingSystemIds = new Set(targetSystems)
 		try {
-			if (!targetSystems.length || (!isHub && !targetSystems[0])) {
+			if (isLocations) {
+				if (!orderedLocations.length) {
+					throw new Error(t`Select at least one location.`)
+				}
+				if (orderedLocations.length > MAX_MONITOR_LOCATIONS) {
+					throw new Error(t`A monitor can run from at most ${MAX_MONITOR_LOCATIONS} locations.`)
+				}
+			} else if (!targetSystems.length || (!isHub && !targetSystems[0])) {
 				throw new Error(t`Select at least one system.`)
 			}
-			if (isHub && Number(monitorInterval) < hubMinInterval) {
+			const quorumValue = isLocations && orderedLocations.length > 1 && quorum.trim() ? Number(quorum) : 0
+			if (!Number.isInteger(quorumValue) || quorumValue < 0 || quorumValue > orderedLocations.length) {
+				throw new Error(t`Quorum must be between 1 and ${orderedLocations.length}.`)
+			}
+			if (hubChecks && Number(monitorInterval) < hubMinInterval) {
 				throw new Error(t`Hub monitors must use an interval of at least ${hubMinInterval} seconds.`)
 			}
 			// push monitors have no loss or response time to alert on
@@ -393,9 +451,18 @@ function MonitorDialogContent({
 					payload.httpSecrets = usesCheckCredentials(protocol) ? checkPayload.secrets : null
 				}
 			}
-			if (isHub) {
+			// 0 lets the hub use the default majority
+			payload.quorum = quorumValue
+			if (isLocations) {
+				// the create rule checks the primary system; the hub derives it from the locations too
+				payload.locations = orderedLocations
+				payload.system = targetSystems[0]
+			} else {
+				payload.locations = [targetSystems[0] || HUB_LOCATION]
+			}
+			if (hubChecks) {
 				// hub monitors need owners; keep existing owners when editing a hub monitor
-				if (!monitor || monitor.system || !monitor.users?.length) {
+				if (!monitor || !getMonitorLocations(monitor).includes(HUB_LOCATION) || !monitor.users?.length) {
 					const userId = pb.authStore.record?.id
 					payload.users = userId ? [userId] : []
 				}
@@ -408,7 +475,11 @@ function MonitorDialogContent({
 			}
 			let createdPush: NetworkMonitorRecord | null = null
 			for (const system of targetSystems) {
-				const record = await pb.collection<NetworkMonitorRecord>("network_monitors").create({ ...payload, system })
+				const record = await pb.collection<NetworkMonitorRecord>("network_monitors").create({
+					...payload,
+					system,
+					locations: isLocations ? orderedLocations : [system || HUB_LOCATION],
+				})
 				remainingSystemIds.delete(system)
 				if (record.protocol === "push") createdPush = record
 			}
@@ -419,7 +490,7 @@ function MonitorDialogContent({
 				setOpen(false)
 			}
 		} catch (err: unknown) {
-			if (!monitor && !isHub && !systemId) {
+			if (!monitor && runsOn === "agent" && !systemId) {
 				// Retain only unfinished systems so retrying cannot duplicate successful creates.
 				setSelectedSystemIds(remainingSystemIds)
 			}
@@ -476,6 +547,9 @@ function MonitorDialogContent({
 								<Trans>Hub</Trans>
 							</SelectItem>
 							<SelectItem value="agent">{systemId ? systemName || t`This system` : t`Agent`}</SelectItem>
+							<SelectItem value="locations">
+								<Trans>Multiple locations</Trans>
+							</SelectItem>
 						</SelectContent>
 					</Select>
 					{isHub && !isEditing && (
@@ -483,8 +557,58 @@ function MonitorDialogContent({
 							<Trans>The hub checks the target itself. Only you can see this monitor.</Trans>
 						</p>
 					)}
+					{isLocations && (
+						<p className="text-xs text-muted-foreground">
+							<Trans>One monitor checked from the hub and agents at once. Its status combines all locations.</Trans>
+						</p>
+					)}
 				</div>
-				{!isHub && !systemId && !isEditing && (
+				{isLocations && (
+					<div className="grid gap-2">
+						<Label htmlFor="monitor-locations">
+							<Trans>Locations</Trans>
+						</Label>
+						<SystemMultiSelect
+							id="monitor-locations"
+							selectedSystemIds={locations}
+							onChange={changeLocations}
+							disabled={loading}
+							includeHub={!isPush}
+							keepIds={monitor ? getMonitorLocations(monitor) : undefined}
+							placeholder={t`Select locations`}
+						/>
+					</div>
+				)}
+				{isLocations && orderedLocations.length > 1 && (
+					<div className="grid gap-2">
+						<Label htmlFor="monitor-quorum">
+							<Trans>Quorum</Trans>
+						</Label>
+						<div className="flex items-center gap-2 text-sm">
+							<Trans>
+								<span className="shrink-0">Down when at least</span>
+								<Input
+									id="monitor-quorum"
+									type="number"
+									className="w-20"
+									value={quorum}
+									onChange={(e) => setQuorum(e.target.value)}
+									placeholder={String(defaultLocationQuorum)}
+									min={1}
+									max={orderedLocations.length}
+								/>
+								<span>of {orderedLocations.length} locations fail</span>
+							</Trans>
+						</div>
+						<p className="text-xs text-muted-foreground">
+							<Trans>
+								Fewer failing locations mark the monitor pending. Unreachable agents are left out; with fewer reporting
+								locations than the quorum, the status is unknown.
+							</Trans>
+						</p>
+					</div>
+				)}
+				{runsOn === "agent" && !systemId && !isEditing && (
 					<div className="grid gap-2">
 						<Label htmlFor="monitor-systems">
 							<Trans>Systems</Trans>
@@ -497,7 +621,7 @@ function MonitorDialogContent({
 						/>
 					</div>
 				)}
-				{!isHub && !systemId && isEditing && (
+				{runsOn === "agent" && !systemId && isEditing && (
 					<div className="grid gap-2">
 						<Label htmlFor="monitor-system">
 							<Trans>System</Trans>
@@ -546,12 +670,14 @@ function MonitorDialogContent({
 										<SelectItem value="push">{monitorProtocolLabels.push}</SelectItem>
 									</SelectGroup>
 								) : (
-									<SelectGroup>
-										<SelectLabel>
-											<Trans>Containers</Trans>
-										</SelectLabel>
-										<SelectItem value="docker">{monitorProtocolLabels.docker}</SelectItem>
-									</SelectGroup>
+									!hubChecks && (
+										<SelectGroup>
+											<SelectLabel>
+												<Trans>Containers</Trans>
+											</SelectLabel>
+											<SelectItem value="docker">{monitorProtocolLabels.docker}</SelectItem>
+										</SelectGroup>
+									)
 								)}
 							</SelectContent>
 						</Select>
@@ -631,7 +757,7 @@ function MonitorDialogContent({
 							type="number"
 							value={monitorInterval}
 							onChange={(e) => setMonitorInterval(e.target.value)}
-							min={isHub ? hubMinInterval : 1}
+							min={hubChecks ? hubMinInterval : 1}
 							max={3600}
 							required
 						/>
@@ -799,7 +925,12 @@ function MonitorDialogContent({
 					)}
 					<Button
 						type="submit"
-						disabled={loading || (!isHub && !systemId && (isEditing ? !selectedSystemId : !selectedSystemIds.size))}
+						disabled={
+							loading ||
+							(isLocations
+								? !locations.size
+								: runsOn === "agent" && !systemId && (isEditing ? !selectedSystemId : !selectedSystemIds.size))
+						}
 					>
 						{isEditing ? <Trans>Save {{ foo: t`Monitor` }}</Trans> : <Trans>Add {{ foo: t`Monitor` }}</Trans>}
 					</Button>

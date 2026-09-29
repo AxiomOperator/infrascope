@@ -1,11 +1,26 @@
 package alerts
 
 import (
+	"slices"
 	"sync"
 
+	"github.com/henrygd/beszel/internal/hub/monitorloc"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
+
+// locationMonitors returns the enabled monitors with a system as one of
+// their locations.
+func locationMonitors(app core.App, systemID string) ([]*core.Record, error) {
+	records, err := app.FindAllRecords("network_monitors", dbx.HashExp{"enabled": true})
+	if err != nil {
+		return nil, err
+	}
+	location := monitorloc.FromSystemID(systemID)
+	return slices.DeleteFunc(records, func(record *core.Record) bool {
+		return !monitorloc.Has(record, location)
+	}), nil
+}
 
 // networkMonitorCache keeps just the enabled monitor IDs and probe intervals
 // needed for the alert fast path. Names and targets are read only on transitions.
@@ -19,7 +34,7 @@ type networkMonitorCache struct {
 func newNetworkMonitorCache(app core.App) *networkMonitorCache {
 	c := &networkMonitorCache{app: app, systems: make(map[string]map[string]int)}
 	invalidate := func(e *core.RecordEvent) error {
-		c.invalidate(e.Record.GetString("system"))
+		c.invalidateLocations(e.Record)
 		return e.Next()
 	}
 	app.OnRecordAfterCreateSuccess("network_monitors").BindFunc(invalidate)
@@ -28,10 +43,11 @@ func newNetworkMonitorCache(app core.App) *networkMonitorCache {
 		old := e.Record.Original()
 		// Realtime metric saves also invoke this hook. They must not evict config.
 		if old.GetString("system") != e.Record.GetString("system") ||
+			!slices.Equal(monitorloc.Of(old), monitorloc.Of(e.Record)) ||
 			old.GetBool("enabled") != e.Record.GetBool("enabled") ||
 			old.GetInt("interval") != e.Record.GetInt("interval") {
-			c.invalidate(old.GetString("system"))
-			c.invalidate(e.Record.GetString("system"))
+			c.invalidateLocations(old)
+			c.invalidateLocations(e.Record)
 		}
 		return e.Next()
 	})
@@ -40,6 +56,13 @@ func newNetworkMonitorCache(app core.App) *networkMonitorCache {
 		return e.Next()
 	})
 	return c
+}
+
+// invalidateLocations drops the entries of every location system of a monitor.
+func (c *networkMonitorCache) invalidateLocations(record *core.Record) {
+	for _, location := range monitorloc.Of(record) {
+		c.invalidate(monitorloc.SystemID(location))
+	}
 }
 
 func (c *networkMonitorCache) invalidate(systemID string) {
@@ -62,17 +85,13 @@ func (c *networkMonitorCache) get(systemID string) (map[string]int, error) {
 	}
 	// Keep the lock through the load so a concurrent config change cannot be
 	// invalidated first and then overwritten by the older query result.
-	var rows []struct {
-		ID       string `db:"id"`
-		Interval int    `db:"interval"`
-	}
-	if err := c.app.DB().Select("id", "interval").From("network_monitors").
-		Where(dbx.HashExp{"system": systemID, "enabled": true}).All(&rows); err != nil {
+	records, err := locationMonitors(c.app, systemID)
+	if err != nil {
 		return nil, err
 	}
-	monitors = make(map[string]int, len(rows))
-	for _, row := range rows {
-		monitors[row.ID] = row.Interval
+	monitors = make(map[string]int, len(records))
+	for _, record := range records {
+		monitors[record.Id] = record.GetInt("interval")
 	}
 	c.systems[systemID] = monitors
 	return monitors, nil

@@ -26,6 +26,11 @@ msgstr "-2 – lowest"
 msgid "{0, plural, one {# incident} other {# incidents}}"
 msgstr "{0, plural, one {# incident} other {# incidents}}"
 
+#. placeholder {0}: locations.length
+#: src/components/network-monitors-table/network-monitors-columns.tsx
+msgid "{0, plural, one {# location} other {# locations}}"
+msgstr "{0, plural, one {# location} other {# locations}}"
+
 #. placeholder {0}: record.monitors.length
 #: src/components/routes/settings/status-pages.tsx
 msgid "{0, plural, one {# monitor} other {# monitors}}"
@@ -51,6 +56,12 @@ msgstr "{0} days ago"
 #: src/components/network-monitors-table/daily-uptime-bar.tsx
 msgid "{0} down"
 msgstr "{0} down"
+
+#. placeholder {0}: locations.length
+#. placeholder {1}: effectiveQuorum(monitor.quorum, locations.length)
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "{0} locations, down at {1}"
+msgstr "{0} locations, down at {1}"
 
 #. placeholder {0}: table.getFilteredSelectedRowModel().rows.length
 #. placeholder {1}: table.getFilteredRowModel().rows.length
@@ -157,6 +168,11 @@ msgstr "{totalCreated} monitor(s) added."
 msgid "{totalCreated} monitor(s) added. {skippedPush} push line(s) skipped."
 msgstr "{totalCreated} monitor(s) added. {skippedPush} push line(s) skipped."
 
+#. placeholder {0}: orderedLocations.length
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "<0>Down when at least</0><1/><2>of {0} locations fail</2>"
+msgstr "<0>Down when at least</0><1/><2>of {0} locations fail</2>"
+
 #: src/lib/shoutrrr.ts
 msgid "0 – at most once"
 msgstr "0 – at most once"
@@ -255,6 +271,10 @@ msgstr "7d"
 #: src/components/network-monitors-table/monitor-check-options.tsx
 msgid "A and AAAA"
 msgstr "A and AAAA"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "A monitor can run from at most {MAX_MONITOR_LOCATIONS} locations."
+msgstr "A monitor can run from at most {MAX_MONITOR_LOCATIONS} locations."
 
 #: src/lib/shoutrrr.ts
 #: src/lib/shoutrrr.ts
@@ -435,6 +455,10 @@ msgstr "All Containers"
 msgid "all devices"
 msgstr "all devices"
 
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "All locations"
+msgstr "All locations"
+
 #: src/components/alerts/alerts-sheet.tsx
 #: src/components/command-palette.tsx
 #: src/components/routes/home.tsx
@@ -533,6 +557,10 @@ msgstr "Average power consumption of GPUs"
 msgctxt "Disk I/O average operation time (iostat await)"
 msgid "Average queue to completion time per operation"
 msgstr "Average queue to completion time per operation"
+
+#: src/components/routes/system/charts/monitors-charts.tsx
+msgid "Average response time by location"
+msgstr "Average response time by location"
 
 #: src/components/routes/system/charts/cpu-charts.tsx
 msgid "Average system-wide CPU utilization"
@@ -1404,6 +1432,12 @@ msgstr "Down"
 msgid "Down ({downSystemsLength})"
 msgstr "Down ({downSystemsLength})"
 
+#. placeholder {0}: effectiveQuorum(monitor.quorum, states.length)
+#. placeholder {1}: states.length
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Down when at least {0} of {1} locations fail"
+msgstr "Down when at least {0} of {1} locations fail"
+
 #: src/components/system-host-key.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Down: {reason}"
@@ -1752,6 +1786,10 @@ msgstr "Failed: {0}"
 msgid "Fans"
 msgstr "Fans"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Fewer failing locations mark the monitor pending. Unreachable agents are left out; with fewer reporting locations than the quorum, the status is unknown."
+msgstr "Fewer failing locations mark the monitor pending. Unreachable agents are left out; with fewer reporting locations than the quorum, the status is unknown."
+
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Fields filled from the webhook URL."
 msgstr "Fields filled from the webhook URL."
@@ -1940,10 +1978,15 @@ msgstr "HTTP options"
 
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-status-badge.tsx
+#: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/network-monitors-table/system-multi-select.tsx
 #: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
 msgid "Hub"
 msgstr "Hub"
@@ -2176,6 +2219,15 @@ msgstr "Loading..."
 msgid "Loading…"
 msgstr "Loading…"
 
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Location"
+msgstr "Location"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Locations"
+msgstr "Locations"
+
 #: src/components/navbar.tsx
 #: src/components/navbar.tsx
 msgid "Log Out"
@@ -2392,6 +2444,10 @@ msgstr "Move down"
 msgid "Move up"
 msgstr "Move up"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Multiple locations"
+msgstr "Multiple locations"
+
 #: src/lib/shoutrrr.ts
 msgid "Must be a Power Automate workflow webhook URL"
 msgstr "Must be a Power Automate workflow webhook URL"
@@ -2585,6 +2641,10 @@ msgstr "Off"
 #: src/components/routes/settings/config-yaml.tsx
 msgid "On each restart, systems in the database will be updated to match the systems defined in the file."
 msgstr "On each restart, systems in the database will be updated to match the systems defined in the file."
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "One monitor checked from the hub and agents at once. Its status combines all locations."
+msgstr "One monitor checked from the hub and agents at once. Its status combines all locations."
 
 #: src/components/network-monitors-table/monitor-check-options.tsx
 msgid "One of the records must match this value."
@@ -3013,6 +3073,15 @@ msgstr "Queue Depth"
 msgid "Quiet Hours"
 msgstr "Quiet Hours"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Quorum"
+msgstr "Quorum"
+
+#. placeholder {0}: orderedLocations.length
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Quorum must be between 1 and {0}."
+msgstr "Quorum must be between 1 and {0}."
+
 #: src/components/routes/system/raw-capacity-label.tsx
 #: src/components/routes/system/storage-pools-table.tsx
 #: src/components/routes/system/storage-pools-table.tsx
@@ -3157,6 +3226,7 @@ msgstr "Responders"
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/routes/status-page.tsx
+#: src/components/routes/system/charts/monitors-charts.tsx
 #: src/components/routes/system/charts/monitors-charts.tsx
 #: src/components/routes/system/charts/monitors-charts.tsx
 msgid "Response"
@@ -3363,6 +3433,10 @@ msgstr "Select a system"
 msgid "Select all"
 msgstr "Select all"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Select at least one location."
+msgstr "Select at least one location."
+
 #: src/components/routes/settings/maintenance.tsx
 msgid "Select at least one monitor."
 msgstr "Select at least one monitor."
@@ -3371,6 +3445,10 @@ msgstr "Select at least one monitor."
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Select at least one system."
 msgstr "Select at least one system."
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Select locations"
+msgstr "Select locations"
 
 #: src/components/network-monitors-table/system-multi-select.tsx
 #: src/components/routes/settings/maintenance.tsx

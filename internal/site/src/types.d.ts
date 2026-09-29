@@ -691,11 +691,33 @@ export type MonitorProtocol =
 
 export type MonitorStatus = "up" | "down" | "pending" | "maintenance" | "paused" | "unknown"
 
+/** Status of one location of a monitor (see NetworkMonitorRecord.locationStatus). */
+export interface MonitorLocationStatus {
+	status: MonitorStatus
+	/** Latest check of the location as a Unix timestamp in milliseconds. */
+	lastCheck?: number
+	lastError?: string
+	lastStatusCode?: number
+	/** Response time of the latest check in microseconds; -1 when it failed. */
+	res?: number
+}
+
 export interface NetworkMonitorRecord {
 	id: string
-	/** Agent system that runs the monitor; empty for hub and push monitors. */
+	/** Primary location: the first agent system that runs the monitor; empty when only the hub runs it. */
 	system: string
-	/** Users with access to a hub monitor; empty for agent monitors, which follow the system's users. */
+	/**
+	 * Runners that check the monitor: "hub" or system ids. Empty for monitors stored before
+	 * multi-location checks, whose only location follows from system.
+	 */
+	locations?: string[] | null
+	/** How many locations must confirm the monitor down. */
+	quorum?: number
+	/** Agent systems among the locations (server-managed). */
+	locationSystems?: string[]
+	/** Status of each location, keyed by location (server-managed). */
+	locationStatus?: Record<string, MonitorLocationStatus> | null
+	/** Users with access to a monitor with the hub as a location; empty otherwise (access follows the systems' users). */
 	users: string[]
 	name: string
 	/** Empty for push monitors. */
@@ -918,6 +940,8 @@ export interface RawMonitorStatsRecord {
 	id?: string
 	type?: string
 	monitor: string
+	/** Location that reported the stats: its system, or "" for the hub. */
+	system?: string
 	created: number // unix timestamp (ms)
 }
 

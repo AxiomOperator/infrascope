@@ -190,3 +190,35 @@ func TestMonitorThresholdAlertsHeldDuringMaintenance(t *testing.T) {
 	assert.Equal(t, "https://example.com: response time recovered", mailer.LastMessage().Subject)
 	assert.Equal(t, 0, openCount(env.history(t, record.Id, "MonitorLatency")))
 }
+
+func TestMonitorAlertsMultiLocation(t *testing.T) {
+	env := newMonitorAlertEnv(t)
+	mailer := env.hub.TestMailer
+	// Checked from the hub (users: user2) and the system (users: user1).
+	record, err := beszelTests.CreateRecord(env.hub, "network_monitors", map[string]any{
+		"system": env.system.Id, "locations": []string{"hub", env.system.Id}, "users": []string{env.user2.Id},
+		"name": "Edge", "target": "https://example.com", "protocol": "http", "interval": 60, "enabled": true, "notify": true,
+	})
+	require.NoError(t, err)
+	record = env.setThresholds(t, record, 10, 0)
+	sent := mailer.TotalSend()
+
+	// The stored (combined) loss is evaluated after results of either location.
+	_, err = env.hub.DB().Update("network_monitors", dbx.Params{"loss1h": 30}, dbx.HashExp{"id": record.Id}).Execute()
+	require.NoError(t, err)
+	result := monitor.Result{LastProbeAt: time.Now().UnixMilli(), SampleCount: 60, PacketLoss1h: 0}
+	env.am.HandleMonitorResults("", map[string]monitor.Result{record.Id: result})
+	require.Equal(t, sent+2, mailer.TotalSend(), "users of every location are notified")
+	rows := env.history(t, record.Id, "MonitorLoss")
+	require.Len(t, rows, 2)
+	users := []string{rows[0].GetString("user"), rows[1].GetString("user")}
+	assert.ElementsMatch(t, []string{env.user1.Id, env.user2.Id}, users)
+	assert.Equal(t, "Edge: packet loss above threshold", mailer.LastMessage().Subject)
+
+	// Below the threshold again, reported from the other location.
+	_, err = env.hub.DB().Update("network_monitors", dbx.Params{"loss1h": 0}, dbx.HashExp{"id": record.Id}).Execute()
+	require.NoError(t, err)
+	env.am.HandleMonitorResults(env.system.Id, map[string]monitor.Result{record.Id: result})
+	assert.Equal(t, sent+4, mailer.TotalSend())
+	assert.Zero(t, openCount(env.history(t, record.Id, "MonitorLoss")))
+}

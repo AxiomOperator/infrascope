@@ -11,24 +11,43 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { HUB_LOCATION } from "@/lib/monitor-locations"
 import { $systems } from "@/lib/stores"
 import { cn, supportsNetworkMonitors } from "@/lib/utils"
 
+/**
+ * Multi-select of the systems that can run monitors. With includeHub, the hub is offered
+ * first as the "hub" location, and keepIds keeps systems listed although they cannot run
+ * monitors (for example the current locations of a monitor being edited).
+ */
 export function SystemMultiSelect({
 	id,
 	selectedSystemIds,
 	onChange,
 	disabled,
 	className,
+	includeHub = false,
+	keepIds,
+	placeholder,
 }: {
 	id: string
 	selectedSystemIds: Set<string>
 	onChange: (ids: Set<string>) => void
 	disabled?: boolean
 	className?: string
+	includeHub?: boolean
+	keepIds?: string[]
+	placeholder?: string
 }) {
-	const systems = useStore($systems)
+	const allSystems = useStore($systems)
 	const { t } = useLingui()
+	const hubName = t`Hub`
+	const systems = includeHub
+		? [{ id: HUB_LOCATION, name: hubName }, ...allSystems.filter(supportsSystem)]
+		: allSystems.filter(supportsSystem)
+	function supportsSystem(system: (typeof allSystems)[number]) {
+		return supportsNetworkMonitors(system) || !!keepIds?.includes(system.id)
+	}
 	const [search, setSearch] = useState("")
 	const searchRef = useRef<HTMLInputElement>(null)
 	const focusSearchOnMount = useCallback((node: HTMLInputElement | null) => {
@@ -40,9 +59,7 @@ export function SystemMultiSelect({
 	}, [])
 	const contentRef = useRef<HTMLDivElement>(null)
 	const query = search.trim().toLocaleLowerCase()
-	const filteredSystems = systems.filter(
-		(system) => supportsNetworkMonitors(system) && system.name.toLocaleLowerCase().includes(query)
-	)
+	const filteredSystems = systems.filter((system) => system.name.toLocaleLowerCase().includes(query))
 	const allSelected = filteredSystems.every((system) => selectedSystemIds.has(system.id))
 	const anySelected = filteredSystems.some((system) => selectedSystemIds.has(system.id))
 
@@ -67,7 +84,7 @@ export function SystemMultiSelect({
 					<ServerIcon className="size-3.5 absolute start-4 top-1/2 -translate-y-1/2 opacity-85" />
 					<span className="truncate">
 						{selectedSystemIds.size === 0
-							? t`Select systems`
+							? (placeholder ?? t`Select systems`)
 							: selectedSystemIds.size === 1
 								? systems.find((s) => selectedSystemIds.has(s.id))?.name
 								: t`${selectedSystemIds.size} selected`}

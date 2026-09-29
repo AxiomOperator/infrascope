@@ -1,5 +1,6 @@
 import { chartTimeData } from "@/lib/utils"
 import { clearFailedResponse, getMonitorStats, withMonitorGaps } from "@/lib/network-monitor-utils"
+import { getMonitorLocations } from "@/lib/monitor-locations"
 import type {
 	ChartTimes,
 	MonitorStats,
@@ -14,6 +15,20 @@ import { toast } from "@/components/ui/use-toast"
 import type { RecordListOptions, RecordSubscription } from "pocketbase"
 
 const cache = new Map<string, NetworkMonitorStatsRecord[]>()
+
+/** Stats of one location of a monitor ("" for the hub), or of all locations when undefined. */
+export type MonitorStatsScope = { location?: string; byLocation?: boolean }
+
+/** Key of a monitor's stats in the cache: the monitor id, with the location or "*" for per-location series. */
+function statsKey(monitorId: string, scope: MonitorStatsScope = {}) {
+	if (scope.location !== undefined) return `${monitorId}@${scope.location}`
+	return scope.byLocation ? `${monitorId}@*` : monitorId
+}
+
+/** Series key of a location's stats of a monitor in per-location chart records. */
+export function locationSeriesKey(monitorId: string, system: string) {
+	return `${monitorId}@${system}`
+}
 
 function getCacheValue(monitorId: string, chartTime: ChartTimes | "rt") {
 	return cache.get(`${monitorId}:${chartTime}`) || []
@@ -38,8 +53,14 @@ function appendCacheValue(
 	}
 }
 
-/** Merge an array of per-monitor raw records into the map-keyed format expected by chart components. */
-export function mergeMonitorStats(rawRecords: RawMonitorStatsRecord[]): NetworkMonitorStatsRecord[] {
+/**
+ * Merge an array of per-monitor raw records into the map-keyed format expected by chart components.
+ * With byLocation, each location's records get their own series (see locationSeriesKey).
+ */
+export function mergeMonitorStats(
+	rawRecords: RawMonitorStatsRecord[],
+	byLocation = false
+): NetworkMonitorStatsRecord[] {
 	const byTimestamp = new Map<number, Record<string, MonitorStats>>()
 	for (const rec of rawRecords) {
 		let statsMap = byTimestamp.get(rec.created)
@@ -47,34 +68,49 @@ export function mergeMonitorStats(rawRecords: RawMonitorStatsRecord[]): NetworkM
 			statsMap = {}
 			byTimestamp.set(rec.created, statsMap)
 		}
-		statsMap[rec.monitor] = getMonitorStats(rec)
+		const key = byLocation ? locationSeriesKey(rec.monitor, rec.system ?? "") : rec.monitor
+		statsMap[key] = getMonitorStats(rec)
 	}
 	return Array.from(byTimestamp.entries())
 		.sort(([a], [b]) => a - b)
 		.map(([created, stats]) => ({ created, stats }))
 }
 
+/** Filter of a monitor's stats records of a type, only of one location when scope.location is set. */
+function monitorStatsFilter(monitorId: string, type: string, scope: MonitorStatsScope, created?: string | number) {
+	const params: Record<string, string | number> = { id: monitorId, type, system: scope.location ?? "" }
+	let filter = "monitor={:id} && type={:type}"
+	if (scope.location !== undefined) filter += " && system={:system}"
+	if (created !== undefined) {
+		filter += " && created>{:created}"
+		params.created = created
+	}
+	return pb.filter(filter, params)
+}
+
 /** Fetch stats for one monitor and time range, returning merged chart records. */
 async function fetchMonitorStats(
 	monitorId: string,
 	chartTime: ChartTimes,
+	scope: MonitorStatsScope,
 	cached?: NetworkMonitorStatsRecord[]
 ): Promise<NetworkMonitorStatsRecord[]> {
 	const lastCached = cached?.at(-1)?.created as number | undefined
 	const rawRecords = await pb.collection<RawMonitorStatsRecord>("network_monitor_stats").getFullList({
-		filter: pb.filter("monitor={:id} && created>{:created} && type={:type}", {
-			id: monitorId,
-			created: getPbTimestamp(chartTime, lastCached ? new Date(lastCached + 1000) : undefined, true),
-			type: chartTimeData[chartTime].type,
-		}),
-		fields: "monitor,res_min,res_max,total_count,success_count,res_sum,created",
+		filter: monitorStatsFilter(
+			monitorId,
+			chartTimeData[chartTime].type,
+			scope,
+			getPbTimestamp(chartTime, lastCached ? new Date(lastCached + 1000) : undefined, true)
+		),
+		fields: "monitor,system,res_min,res_max,total_count,success_count,res_sum,created",
 		sort: "created",
 	})
-	return mergeMonitorStats(rawRecords)
+	return mergeMonitorStats(rawRecords, scope.byLocation)
 }
 
 const NETWORK_MONITOR_FIELDS = [
-	"id,system,users,name,target,protocol,port,server,interval,timeout,retries,retryInterval",
+	"id,system,locations,quorum,locationStatus,users,name,target,protocol,port,server,interval,timeout,retries,retryInterval",
 	"http,httpSecrets,notify,certExpiryDays,pushToken,enabled",
 	"res,resMin1h,resMax1h,resAvg1h,loss1h,certInfo,updated",
 	"status,statusChanged,lastCheck,lastError,lastStatusCode,recent,uptime",
@@ -126,7 +162,7 @@ export function useNetworkMonitors(props: UseNetworkMonitorsProps) {
 
 		const pbOptions: RecordListOptions = { fields: NETWORK_MONITOR_FIELDS }
 		if (systemId) {
-			pbOptions.filter = pb.filter("system = {:system}", { system: systemId })
+			pbOptions.filter = systemMonitorsFilter(systemId)
 		}
 
 		;(async () => {
@@ -164,7 +200,8 @@ export function useNetworkMonitors(props: UseNetworkMonitorsProps) {
 	return { monitors, isLoading }
 }
 
-interface UseNetworkMonitorStatsProps {
+interface UseNetworkMonitorStatsProps extends MonitorStatsScope {
+	/** System whose agent streams realtime stats (1m chart time). */
 	systemId: string
 	monitorId: string
 	/** Monitor probe interval in seconds, used to tell missing data apart from slow probes */
@@ -173,9 +210,17 @@ interface UseNetworkMonitorStatsProps {
 	enabled?: boolean
 }
 
-/** Returns the monitor's stats with empty records inserted where data is missing (see withMonitorGaps). */
+/**
+ * Returns the monitor's stats with empty records inserted where data is missing (see withMonitorGaps).
+ * With location, only that location's stats ("" for the hub); with byLocation, one series per
+ * location (keyed by locationSeriesKey, without gap records).
+ */
 export function useNetworkMonitorStats(props: UseNetworkMonitorStatsProps) {
-	const { systemId, monitorId, interval, chartTime, enabled = true } = props
+	const { systemId, monitorId: id, interval, chartTime, enabled = true, location, byLocation = false } = props
+	// cache and state are kept per monitor and scope
+	const monitorId = statsKey(id, { location, byLocation })
+	const scopeRef = useRef<MonitorStatsScope>({ location, byLocation })
+	scopeRef.current = { location, byLocation }
 	const [monitorStats, setMonitorStats] = useState<NetworkMonitorStatsRecord[]>([])
 	// pending raw events to be merged (keyed by monitor+created)
 	const pendingRaw = useRef(new Map<string, RawMonitorStatsRecord>())
@@ -203,7 +248,7 @@ export function useNetworkMonitorStats(props: UseNetworkMonitorStatsProps) {
 			}
 		}
 
-		fetchMonitorStats(monitorId, chartTime, cachedMonitorStats)
+		fetchMonitorStats(id, chartTime, scopeRef.current, cachedMonitorStats)
 			.then((newMonitorStats) => {
 				if (cancelled) return
 				setMonitorStats(appendCacheValue(monitorId, chartTime, newMonitorStats))
@@ -223,19 +268,17 @@ export function useNetworkMonitorStats(props: UseNetworkMonitorStatsProps) {
 		}
 		let cancelled = false
 		let unsubscribe: (() => void) | undefined
+		const scope = scopeRef.current
 		const pbOptions = {
-			fields: "monitor,res_min,res_max,total_count,success_count,res_sum,created,type",
-			filter: pb.filter("monitor={:monitor} && type={:type}", {
-				monitor: monitorId,
-				type: chartTimeData[chartTime].type,
-			}),
+			fields: "monitor,system,res_min,res_max,total_count,success_count,res_sum,created,type",
+			filter: monitorStatsFilter(id, chartTimeData[chartTime].type, scope),
 		}
 
 		function flushPending() {
 			mergeBatchTimeout.current = null
 			const pending = pendingRaw.current
 			pendingRaw.current = new Map()
-			const merged = mergeMonitorStats(Array.from(pending.values()))
+			const merged = mergeMonitorStats(Array.from(pending.values()), scope.byLocation)
 			if (merged.length > 0) {
 				const newStats = appendCacheValue(monitorId, chartTime, merged)
 				setMonitorStats(newStats)
@@ -251,7 +294,7 @@ export function useNetworkMonitorStats(props: UseNetworkMonitorStatsProps) {
 							return
 						}
 						const rec = event.record
-						pendingRaw.current.set(`${rec.monitor}:${rec.created}`, rec)
+						pendingRaw.current.set(`${rec.monitor}:${rec.system ?? ""}:${rec.created}`, rec)
 						if (!mergeBatchTimeout.current) {
 							mergeBatchTimeout.current = setTimeout(flushPending, 200)
 						}
@@ -286,9 +329,10 @@ export function useNetworkMonitorStats(props: UseNetworkMonitorStatsProps) {
 			.subscribe(
 				`rt_metrics`,
 				(data: { Monitors: NetworkMonitorStatsRecord["stats"] }) => {
-					const monitorStats = data.Monitors?.[monitorId]
+					const monitorStats = data.Monitors?.[id]
 					if (cancelled || !monitorStats) return
-					const stats = { created: Date.now(), stats: { [monitorId]: clearFailedResponse(monitorStats) } }
+					const key = scopeRef.current.byLocation ? locationSeriesKey(id, systemId) : id
+					const stats = { created: Date.now(), stats: { [key]: clearFailedResponse(monitorStats) } }
 					const newStats = appendCacheValue(monitorId, "rt", [stats], 120)
 					setMonitorStats(newStats)
 				},
@@ -305,16 +349,29 @@ export function useNetworkMonitorStats(props: UseNetworkMonitorStatsProps) {
 	}, [chartTime, systemId, monitorId, enabled])
 
 	return useMemo(
-		() => withMonitorGaps(monitorStats, { id: monitorId, interval }, chartTimeData[chartTime].expectedInterval),
-		[monitorStats, monitorId, interval, chartTime]
+		() =>
+			byLocation
+				? monitorStats.filter((record) => record.created != null)
+				: withMonitorGaps(monitorStats, { id, interval }, chartTimeData[chartTime].expectedInterval),
+		[monitorStats, id, interval, chartTime, byLocation]
 	)
+}
+
+/** Filter of the monitors a system runs: those with the system as their primary or any location. */
+function systemMonitorsFilter(system: string) {
+	return pb.filter("system = {:system} || locationSystems.id ?= {:system}", { system })
+}
+
+/** Whether a monitor runs on a system, as its primary or any other location. */
+export function monitorRunsOn(monitor: Pick<NetworkMonitorRecord, "system" | "locations">, systemId: string) {
+	return monitor.system === systemId || getMonitorLocations(monitor).includes(systemId)
 }
 
 async function fetchMonitors(system?: string) {
 	try {
 		return await pb.collection<NetworkMonitorRecord>("network_monitors").getFullList({
 			fields: NETWORK_MONITOR_FIELDS,
-			filter: system ? pb.filter("system={:system}", { system }) : undefined,
+			filter: system ? systemMonitorsFilter(system) : undefined,
 		})
 	} catch (error) {
 		toast({
@@ -335,7 +392,7 @@ function applyMonitorEvents(
 	const createdMonitors: NetworkMonitorRecord[] = []
 
 	for (const { action, record } of events) {
-		const matchesSystemScope = !systemId || record.system === systemId
+		const matchesSystemScope = !systemId || monitorRunsOn(record, systemId)
 
 		if (action === "delete" || !matchesSystemScope) {
 			monitorById.delete(record.id)

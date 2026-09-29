@@ -224,3 +224,44 @@ func TestSparseMonitorRollups(t *testing.T) {
 		})
 	}
 }
+
+func TestMultiLocationMonitorRollups(t *testing.T) {
+	hub, err := tests.NewTestHub(t.TempDir())
+	require.NoError(t, err)
+	defer hub.Cleanup()
+	user, err := tests.CreateUser(hub, "locations@example.com", "testtesttest")
+	require.NoError(t, err)
+	sys, err := tests.CreateRecord(hub, "systems", map[string]any{
+		"name": "location-system", "host": "localhost", "port": "45876", "status": "up", "users": []string{user.Id},
+	})
+	require.NoError(t, err)
+	monitor, err := tests.CreateRecord(hub, "network_monitors", map[string]any{
+		"system": sys.Id, "locations": []string{"hub", sys.Id}, "users": []string{user.Id},
+		"target": "1.1.1.1", "protocol": "icmp", "interval": 60, "enabled": true,
+	})
+	require.NoError(t, err)
+	now := time.Now()
+	// Each location reports its own rows, which are rolled up separately.
+	for location, resSum := range map[string]int{"": 10, sys.Id: 50} {
+		for i := range 2 {
+			_, err := tests.CreateRecord(hub, "network_monitor_stats", map[string]any{
+				"system": location, "monitor": monitor.Id, "type": "1m",
+				"created": now.Add(-time.Minute - time.Duration(i)*time.Minute).UnixMilli(),
+				"res_min": resSum, "res_max": resSum,
+				"total_count": 1, "success_count": 1, "res_sum": resSum,
+			})
+			require.NoError(t, err)
+		}
+	}
+	records.NewRecordManager(hub).CreateLongerRecords()
+	for _, recordType := range []string{"10m", "20m"} {
+		rollups, err := hub.FindAllRecords("network_monitor_stats", dbx.HashExp{"monitor": monitor.Id, "type": recordType})
+		require.NoError(t, err)
+		require.Len(t, rollups, 2, recordType)
+		bySystem := map[string]int{}
+		for _, rollup := range rollups {
+			bySystem[rollup.GetString("system")] = rollup.GetInt("res_sum")
+		}
+		assert.Equal(t, map[string]int{"": 20, sys.Id: 100}, bySystem, recordType)
+	}
+}

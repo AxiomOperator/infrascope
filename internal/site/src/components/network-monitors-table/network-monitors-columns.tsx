@@ -55,6 +55,8 @@ import {
 	monitorStatusBgColors,
 } from "@/lib/network-monitor-utils"
 import { pb } from "@/lib/api"
+import { getLocationName, getMonitorLocations, isMultiLocation } from "@/lib/monitor-locations"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { MonitorStatusBadge } from "./monitor-status-badge"
 import { MonitorStatusBar } from "./status-bar"
 
@@ -92,11 +94,11 @@ const SYSTEM_STATUS_COLORS = {
 } as const
 
 /**
- * A monitor is considered muted if it's disabled or if its agent system is not up.
- * Hub monitors don't depend on a system.
+ * A monitor is considered muted if it's disabled or if its only agent system is not up.
+ * Hub monitors don't depend on a system, and multi-location monitors leave out unreachable agents.
  */
 const isMuted = (record: NetworkMonitorRecord, systemRecord: SystemRecord | undefined) =>
-	!record.enabled || (!!record.system && systemRecord?.status !== SystemStatus.Up)
+	!record.enabled || (!!record.system && !isMultiLocation(record) && systemRecord?.status !== SystemStatus.Up)
 
 const statusOrder: Record<string, number> = { down: 0, pending: 1, unknown: 2, maintenance: 3, up: 4, paused: 5 }
 
@@ -153,31 +155,38 @@ export function getMonitorColumns(
 				return getMonitorName(a.original).localeCompare(getMonitorName(b.original))
 			},
 			header: ({ column }) => <HeaderButton column={column} name={t`System`} Icon={ServerIcon} />,
-			cell: ({ getValue }) => {
+			cell: ({ getValue, row }) => {
 				const systemId = getValue() as string
-				const system = useStore($allSystemsById)[systemId] as SystemRecord | undefined
+				const allSystems = useStore($allSystemsById)
+				const system = allSystems[systemId] as SystemRecord | undefined
 				const longestSystemName = useStore($longestSystemName)
 				const name = systemId ? system?.name : t`Hub`
 				const status = system?.status as SystemStatus // undefined val is fine but makes lsp mad
+				const locations = getMonitorLocations(row.original)
+				const hubName = t`Hub`
+				const locationKey = locations.join(",")
 
 				return useMemo(
-					() => (
-						<div className="ms-1.5 max-w-44 flex gap-2 items-center tabular-nums">
-							<span
-								className={cn(
-									"shrink-0 size-2 rounded-full",
-									systemId ? SYSTEM_STATUS_COLORS[status] : "bg-primary/40"
-								)}
-							/>
-							<div className="relative w-fit min-w-0 max-w-full">
-								<span className="invisible block whitespace-nowrap" aria-hidden="true">
-									{longestSystemName}
-								</span>
-								<span className="absolute inset-0 truncate">{name}</span>
+					() =>
+						locations.length > 1 ? (
+							<LocationChips locations={locations} systems={allSystems} hubName={hubName} />
+						) : (
+							<div className="ms-1.5 max-w-44 flex gap-2 items-center tabular-nums">
+								<span
+									className={cn(
+										"shrink-0 size-2 rounded-full",
+										systemId ? SYSTEM_STATUS_COLORS[status] : "bg-primary/40"
+									)}
+								/>
+								<div className="relative w-fit min-w-0 max-w-full">
+									<span className="invisible block whitespace-nowrap" aria-hidden="true">
+										{longestSystemName}
+									</span>
+									<span className="absolute inset-0 truncate">{name}</span>
+								</div>
 							</div>
-						</div>
-					),
-					[status, name, longestSystemName, systemId]
+						),
+					[status, name, longestSystemName, systemId, locationKey, allSystems, hubName]
 				)
 			},
 		},
@@ -194,7 +203,7 @@ export function getMonitorColumns(
 
 				let color = monitorStatusBgColors[getMonitorStatus(monitor)]
 				// agent monitors can't report while their system is unreachable
-				if (monitor.enabled && monitor.system && systemStatus !== SystemStatus.Up) {
+				if (monitor.enabled && monitor.system && !isMultiLocation(monitor) && systemStatus !== SystemStatus.Up) {
 					color = systemStatus === SystemStatus.Paused ? monitorStatusBgColors.paused : "bg-yellow-500"
 				}
 				const target = monitor.name ? getMonitorTarget(monitor) : ""
@@ -452,10 +461,14 @@ export function getMonitorColumns(
 														system: _system,
 														users: _users,
 														pushToken: _pushToken,
+														locations: _locations,
+														locationSystems: _locationSystems,
+														locationStatus: _locationStatus,
+														quorum: _quorum,
 														...rest
 													} = row.original
 													pb.collection("network_monitors")
-														.create({ ...rest, system: sys.id })
+														.create({ ...rest, system: sys.id, locations: [sys.id] })
 														.catch(() => {})
 												}}
 											>
@@ -570,5 +583,43 @@ function HeaderButton({
 			{Icon && <Icon className="size-4" />}
 			{name}
 		</Button>
+	)
+}
+
+/** Compact chips of a multi-location monitor's locations: the first ones and a count of the rest. */
+function LocationChips({
+	locations,
+	systems,
+	hubName,
+}: {
+	locations: string[]
+	systems: Record<string, SystemRecord | undefined>
+	hubName: string
+}) {
+	const shown = locations.slice(0, 2)
+	const names = locations.map((location) => getLocationName(location, systems, hubName))
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<div className="ms-1.5 max-w-44 flex gap-1 items-center min-w-0">
+					{shown.map((location, i) => (
+						<Badge key={location} variant="outline" className="min-w-0 max-w-20 px-1.5 font-normal">
+							<span className="truncate">{names[i]}</span>
+						</Badge>
+					))}
+					{locations.length > shown.length && (
+						<Badge variant="outline" className="shrink-0 px-1.5 font-normal tabular-nums">
+							+{locations.length - shown.length}
+						</Badge>
+					)}
+				</div>
+			</TooltipTrigger>
+			<TooltipContent className="max-w-80 text-start">
+				<p className="font-medium">
+					<Plural value={locations.length} one="# location" other="# locations" />
+				</p>
+				<p className="text-muted-foreground">{names.join(", ")}</p>
+			</TooltipContent>
+		</Tooltip>
 	)
 }

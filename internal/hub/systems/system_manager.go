@@ -438,10 +438,11 @@ func (sm *SystemManager) resetFailedSmartFetchState(systemID string) {
 	}
 }
 
-// GetMonitorConfigsForSystem returns all enabled monitor configs for a system.
-// Monitors with malformed HTTP options are skipped rather than probed with defaults.
+// GetMonitorConfigsForSystem returns the configs of all enabled monitors with
+// the system as one of their locations. Monitors with malformed HTTP options
+// are skipped rather than probed with defaults.
 func (sm *SystemManager) GetMonitorConfigsForSystem(systemID string) ([]monitor.Config, error) {
-	records, err := sm.hub.FindAllRecords("network_monitors", dbx.HashExp{"system": systemID, "enabled": true})
+	records, err := FindLocationMonitors(sm.hub, systemID, dbx.HashExp{"enabled": true})
 	if err != nil {
 		return nil, err
 	}
