@@ -1,37 +1,35 @@
 import { t } from "@lingui/core/macro"
 import { Trans } from "@lingui/react/macro"
-import { BellIcon, LoaderCircleIcon, PlusIcon, SaveIcon, Trash2Icon } from "lucide-react"
-import { type ChangeEventHandler, useEffect, useState } from "react"
+import { BellIcon, LoaderCircleIcon, PlusIcon, SaveIcon } from "lucide-react"
+import { useEffect, useState } from "react"
 import * as v from "valibot"
 import { prependBasePath } from "@/components/router"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import { Dialog } from "@/components/ui/dialog"
 import { InputTags } from "@/components/ui/input-tags"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "@/components/ui/use-toast"
-import { isAdmin, pb } from "@/lib/api"
+import { isAdmin } from "@/lib/api"
 import type { UserSettings } from "@/types"
 import { saveSettings } from "./layout"
+import { NotificationCard, NotificationDialog, WebhookUrlSchema } from "./notification-builder"
 import { QuietHours } from "./quiet-hours"
-import type { ClientResponseError } from "pocketbase"
-
-interface ShoutrrrUrlCardProps {
-	url: string
-	onUrlChange: ChangeEventHandler<HTMLInputElement>
-	onRemove: () => void
-}
 
 const NotificationSchema = v.object({
 	emails: v.array(v.pipe(v.string(), v.rfcEmail())),
-	webhooks: v.array(v.pipe(v.string(), v.url())),
+	webhooks: v.array(WebhookUrlSchema),
 })
+
+const sameList = (a: string[], b: string[]) => a.length === b.length && a.every((x, i) => x === b[i])
 
 const SettingsNotificationsPage = ({ userSettings }: { userSettings: UserSettings }) => {
 	const [webhooks, setWebhooks] = useState(userSettings.webhooks ?? [])
 	const [emails, setEmails] = useState<string[]>(userSettings.emails ?? [])
 	const [isLoading, setIsLoading] = useState(false)
+	// index of the entry being edited, "new" when adding, null when the dialog is closed
+	const [editing, setEditing] = useState<number | "new" | null>(null)
+	const [dialogKey, setDialogKey] = useState(0)
 
 	// update values when userSettings changes
 	useEffect(() => {
@@ -39,21 +37,20 @@ const SettingsNotificationsPage = ({ userSettings }: { userSettings: UserSetting
 		setEmails(userSettings.emails ?? [])
 	}, [userSettings])
 
-	function addWebhook() {
-		setWebhooks([...webhooks, ""])
-		// focus on the new input
-		queueMicrotask(() => {
-			const inputs = document.querySelectorAll("#webhooks input") as NodeListOf<HTMLInputElement>
-			inputs[inputs.length - 1]?.focus()
-		})
-	}
-	const removeWebhook = (index: number) => setWebhooks(webhooks.filter((_, i) => i !== index))
+	const isDirty = !sameList(webhooks, userSettings.webhooks ?? []) || !sameList(emails, userSettings.emails ?? [])
 
-	function updateWebhook(index: number, value: string) {
-		const newWebhooks = [...webhooks]
-		newWebhooks[index] = value
-		setWebhooks(newWebhooks)
+	function openDialog(target: number | "new") {
+		setDialogKey((k) => k + 1)
+		setEditing(target)
 	}
+
+	function submitWebhook(url: string) {
+		if (editing === "new") setWebhooks([...webhooks, url])
+		else if (editing !== null) setWebhooks(webhooks.map((w, i) => (i === editing ? url : w)))
+		setEditing(null)
+	}
+
+	const removeWebhook = (index: number) => setWebhooks(webhooks.filter((_, i) => i !== index))
 
 	async function updateSettings() {
 		setIsLoading(true)
@@ -137,102 +134,63 @@ const SettingsNotificationsPage = ({ userSettings }: { userSettings: UserSetting
 								</Trans>
 							</p>
 						</div>
-						<Button type="button" variant="outline" className="h-10 shrink-0" onClick={addWebhook}>
+						<Button type="button" variant="outline" className="h-10 shrink-0" onClick={() => openDialog("new")}>
 							<PlusIcon className="size-4" />
 							<span className="ms-1">
-								<Trans>Add URL</Trans>
+								<Trans>Add notification</Trans>
 							</span>
 						</Button>
 					</div>
-					{webhooks.length > 0 && (
+					{webhooks.length > 0 ? (
 						<div className="grid gap-2.5" id="webhooks">
 							{webhooks.map((webhook, index) => (
-								<ShoutrrrUrlCard
-									key={index}
+								<NotificationCard
+									key={`${index}-${webhook}`}
 									url={webhook}
-									onUrlChange={(e: React.ChangeEvent<HTMLInputElement>) => updateWebhook(index, e.target.value)}
-									onRemove={() => removeWebhook(index)}
+									onEdit={() => openDialog(index)}
+									onDelete={() => removeWebhook(index)}
 								/>
 							))}
 						</div>
+					) : (
+						<p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+							<Trans>No webhook or push notifications configured.</Trans>
+						</p>
 					)}
+					<Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
+						{editing !== null && (
+							<NotificationDialog
+								key={dialogKey}
+								url={editing === "new" ? null : (webhooks[editing] ?? null)}
+								onSubmit={submitWebhook}
+								onCancel={() => setEditing(null)}
+							/>
+						)}
+					</Dialog>
 				</div>
 				<Separator />
 				<div className="space-y-3">
 					<QuietHours />
 				</div>
 				<Separator />
-				<Button
-					type="button"
-					className="flex items-center gap-1.5 disabled:opacity-100"
-					onClick={updateSettings}
-					disabled={isLoading}
-				>
-					{isLoading ? <LoaderCircleIcon className="h-4 w-4 animate-spin" /> : <SaveIcon className="h-4 w-4" />}
-					<Trans>Save Settings</Trans>
-				</Button>
+				<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+					<Button
+						type="button"
+						className="flex items-center gap-1.5 disabled:opacity-100"
+						onClick={updateSettings}
+						disabled={isLoading}
+					>
+						{isLoading ? <LoaderCircleIcon className="h-4 w-4 animate-spin" /> : <SaveIcon className="h-4 w-4" />}
+						<Trans>Save Settings</Trans>
+					</Button>
+					{isDirty && (
+						<output className="text-sm text-muted-foreground">
+							<Trans>You have unsaved changes.</Trans>
+						</output>
+					)}
+				</div>
 			</div>
 		</div>
-	)
-}
-
-function showTestNotificationError(msg: string) {
-	toast({
-		title: t`Error`,
-		description: msg ?? t`Failed to send test notification`,
-		variant: "destructive",
-	})
-}
-
-const ShoutrrrUrlCard = ({ url, onUrlChange, onRemove }: ShoutrrrUrlCardProps) => {
-	const [isLoading, setIsLoading] = useState(false)
-
-	const sendTestNotification = async () => {
-		setIsLoading(true)
-		try {
-			const res = await pb.send("/api/beszel/test-notification", { method: "POST", body: { url } })
-			if ("err" in res && !res.err) {
-				toast({
-					title: t`Test notification sent`,
-					description: t`Check your notification service`,
-				})
-			} else {
-				showTestNotificationError(res.err)
-			}
-		} catch (e: unknown) {
-			showTestNotificationError((e as ClientResponseError).data?.message)
-		} finally {
-			setIsLoading(false)
-		}
-	}
-
-	return (
-		<Card className="bg-table-header p-2 md:p-3">
-			<div className="flex items-center gap-1">
-				<Input
-					type="url"
-					className="light:bg-card"
-					required
-					placeholder="generic://webhook.site/xxxxxx"
-					value={url}
-					onChange={onUrlChange}
-				/>
-				<Button type="button" variant="outline" disabled={isLoading || url === ""} onClick={sendTestNotification}>
-					{isLoading ? (
-						<LoaderCircleIcon className="h-4 w-4 animate-spin" />
-					) : (
-						<span>
-							<Trans>
-								Test <span className="hidden sm:inline">URL</span>
-							</Trans>
-						</span>
-					)}
-				</Button>
-				<Button type="button" variant="outline" size="icon" className="shrink-0" aria-label="Delete" onClick={onRemove}>
-					<Trash2Icon className="h-4 w-4" />
-				</Button>
-			</div>
-		</Card>
 	)
 }
 
