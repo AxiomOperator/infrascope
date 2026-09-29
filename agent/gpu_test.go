@@ -1373,11 +1373,17 @@ echo '[{"device_name":"NVIDIA Test GPU","temp":"52C","power_draw":"31W","gpu_uti
 		},
 	}
 
+	// Write every fake command before starting any collector. Collectors from
+	// earlier subtests keep forking, and a child forked while a script is still
+	// open for writing makes exec fail with "text file busy".
+	for _, tt := range tests {
+		if err := tt.setup(t); err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.setup(t); err != nil {
-				t.Fatal(err)
-			}
 			if tt.gm == nil {
 				tt.gm = &GPUManager{
 					GpuDataMap: make(map[string]*system.GPUData),
