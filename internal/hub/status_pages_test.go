@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/henrygd/beszel/internal/hub/uptime"
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/stretchr/testify/assert"
@@ -164,11 +165,12 @@ func TestStatusPagePublicResponse(t *testing.T) {
 	}
 	assert.Empty(t, page.Maintenance)
 	assert.Contains(t, raw, `"maintenance":[]`)
+	assert.Contains(t, raw, `"systems":[]`)
 
 	// Every key of the contract is present.
 	var generic map[string]any
 	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &generic))
-	for _, key := range []string{"title", "description", "updated", "overall", "showResponseTimes", "monitors", "maintenance"} {
+	for _, key := range []string{"title", "description", "updated", "overall", "showResponseTimes", "systems", "monitors", "maintenance"} {
 		assert.Contains(t, generic, key)
 	}
 	monitor := generic["monitors"].([]any)[1].(map[string]any)
@@ -342,11 +344,7 @@ func TestStatusPageOverall(t *testing.T) {
 		{[]string{"unknown"}, "unknown"},
 	}
 	for _, tt := range tests {
-		monitors := make([]publicStatusMonitor, len(tt.statuses))
-		for i, status := range tt.statuses {
-			monitors[i].Status = status
-		}
-		assert.Equal(t, tt.want, overallStatus(monitors), "%v", tt.statuses)
+		assert.Equal(t, tt.want, overallStatus(tt.statuses), "%v", tt.statuses)
 	}
 }
 
@@ -452,4 +450,158 @@ func TestStatusPageRateLimit(t *testing.T) {
 
 	// Other clients are not affected.
 	assert.Equal(t, http.StatusNotFound, env.get(t, "missing", nil, "203.0.113.6").Code)
+}
+
+// systemRecord creates a system of the owner without status history.
+func (env *statusPageTestEnv) systemRecord(t *testing.T, fields map[string]any) *core.Record {
+	t.Helper()
+	data := map[string]any{"name": "srv", "host": "192.0.2.10", "port": "45999", "status": "up", "users": []string{env.owner.Id}}
+	for key, value := range fields {
+		data[key] = value
+	}
+	record := env.create(t, "systems", data)
+	_, err := env.hub.DB().Delete("system_events", dbx.HashExp{"system": record.Id}).Execute()
+	require.NoError(t, err)
+	return record
+}
+
+func (env *statusPageTestEnv) systemEvent(t *testing.T, systemID, status string, start, end int64) {
+	t.Helper()
+	env.create(t, "system_events", map[string]any{"system": systemID, "status": status, "start": start, "end": end})
+}
+
+func systemNames(page publicStatusPage) []string {
+	names := make([]string, len(page.Systems))
+	for i, s := range page.Systems {
+		names[i] = s.Name
+	}
+	return names
+}
+
+func TestStatusPageSystems(t *testing.T) {
+	env := newStatusPageTestEnv(t)
+	at := func(day, hour int) int64 {
+		return time.Date(2026, 9, day, hour, 0, 0, 0, time.UTC).UnixMilli()
+	}
+	web := env.systemRecord(t, map[string]any{"name": "web-01", "host": "203.0.113.77", "port": "45876",
+		"downReason": "secret down reason", "info": map[string]any{"h": "secret-hostname", "v": "9.9.9"}})
+	db := env.systemRecord(t, map[string]any{"name": "db-01", "status": "down"})
+	paused := env.systemRecord(t, map[string]any{"name": "paused-01", "status": "paused"})
+	pending := env.systemRecord(t, map[string]any{"name": "pending-01", "status": "pending"})
+
+	// web: up for 3 days, down for 1 hour yesterday; pending and paused time does not count.
+	env.systemEvent(t, web.Id, "pending", at(25, 0), at(25, 12))
+	env.systemEvent(t, web.Id, "up", at(25, 12), at(27, 10))
+	env.systemEvent(t, web.Id, "down", at(27, 10), at(27, 11))
+	env.systemEvent(t, web.Id, "paused", at(27, 11), at(27, 12))
+	env.systemEvent(t, web.Id, "up", at(27, 12), 0)
+	env.systemEvent(t, db.Id, "down", at(28, 6), 0)
+	// Events of systems not on the page are ignored.
+	other := env.systemRecord(t, map[string]any{"name": "other"})
+	env.systemEvent(t, other.Id, "down", at(28, 0), 0)
+
+	env.page(t, "servers", true, nil, map[string]any{"systems": []string{db.Id, web.Id, paused.Id, pending.Id}})
+	response := env.get(t, "servers", nil, "")
+	require.Equal(t, http.StatusOK, response.Code, response.Body.String())
+	raw := response.Body.String()
+	for _, secret := range []string{
+		web.Id, db.Id, paused.Id, pending.Id, env.owner.Id, "203.0.113.77", "192.0.2.10", "45876", "45999",
+		"secret down reason", "secret-hostname", "9.9.9", "other", `"host"`, `"port"`, `"info"`, `"id"`,
+	} {
+		assert.NotContains(t, raw, secret)
+	}
+
+	var generic map[string]any
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &generic))
+	system := generic["systems"].([]any)[0].(map[string]any)
+	assert.ElementsMatch(t, []string{"name", "status", "uptime", "days"}, keys(system))
+	assert.ElementsMatch(t, []string{"d1", "d7", "d30"}, keys(system["uptime"].(map[string]any)))
+
+	var page publicStatusPage
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &page))
+	assert.Equal(t, []string{"db-01", "web-01", "paused-01", "pending-01"}, systemNames(page))
+	assert.Equal(t, []string{"down", "up", "paused", "pending"}, []string{
+		page.Systems[0].Status, page.Systems[1].Status, page.Systems[2].Status, page.Systems[3].Status,
+	})
+	assert.Empty(t, page.Monitors)
+	// db is down, web is up; paused and pending systems do not count.
+	assert.Equal(t, overallDegraded, page.Overall)
+
+	webUptime := page.Systems[1].Uptime
+	// Up for the whole last 24 hours.
+	require.NotNil(t, webUptime.D1)
+	assert.Equal(t, 100.0, *webUptime.D1)
+	// 7 days: up 25th 12:00 to 27th 10:00 (46h) and 27th 12:00 to now (24h), down 1h.
+	require.NotNil(t, webUptime.D7)
+	assert.InDelta(t, 70.0/71.0*100, *webUptime.D7, 0.001)
+	assert.Equal(t, *webUptime.D7, *webUptime.D30)
+	require.NotNil(t, page.Systems[0].Uptime.D1)
+	assert.Equal(t, 0.0, *page.Systems[0].Uptime.D1)
+	assert.Nil(t, page.Systems[2].Uptime.D1)
+	assert.Nil(t, page.Systems[3].Uptime.D30)
+
+	for _, s := range page.Systems {
+		require.Len(t, s.Days, statusPageDays)
+		assert.Equal(t, "2026-07-01", s.Days[0].D)
+		assert.Equal(t, "2026-09-28", s.Days[statusPageDays-1].D)
+	}
+	byDate := map[string]publicStatusDay{}
+	for _, day := range page.Systems[1].Days {
+		byDate[day.D] = day
+	}
+	// The 25th: 12h pending (not counted) then 12h up.
+	assert.Equal(t, dayUp, byDate["2026-09-25"].St)
+	require.NotNil(t, byDate["2026-09-25"].Up)
+	assert.Equal(t, 100.0, *byDate["2026-09-25"].Up)
+	// The 27th: 22h up, 1h down, 1h paused (not counted).
+	assert.Equal(t, dayDown, byDate["2026-09-27"].St)
+	require.NotNil(t, byDate["2026-09-27"].Up)
+	assert.InDelta(t, 22.0/23.0*100, *byDate["2026-09-27"].Up, 0.001)
+	assert.Equal(t, dayNone, byDate["2026-09-24"].St)
+	assert.Nil(t, byDate["2026-09-24"].Up)
+	for _, day := range page.Systems[3].Days {
+		assert.Equal(t, dayNone, day.St)
+	}
+}
+
+func TestStatusPageSystemsOverall(t *testing.T) {
+	env := newStatusPageTestEnv(t)
+	down := env.systemRecord(t, map[string]any{"name": "down", "status": "down"})
+	up := env.systemRecord(t, map[string]any{"name": "up"})
+	pending := env.systemRecord(t, map[string]any{"name": "pending", "status": "pending"})
+	monitor := env.monitor(t, map[string]any{"name": "Web"})
+
+	env.page(t, "all-down", true, nil, map[string]any{"systems": []string{down.Id, pending.Id}})
+	assert.Equal(t, "down", env.getPage(t, "all-down", nil).Overall)
+	env.page(t, "mixed", true, []string{monitor.Id}, map[string]any{"systems": []string{down.Id}})
+	assert.Equal(t, overallDegraded, env.getPage(t, "mixed", nil).Overall)
+	env.page(t, "up", true, []string{monitor.Id}, map[string]any{"systems": []string{up.Id, pending.Id}})
+	assert.Equal(t, "up", env.getPage(t, "up", nil).Overall)
+	env.page(t, "pending", true, nil, map[string]any{"systems": []string{pending.Id}})
+	assert.Equal(t, "unknown", env.getPage(t, "pending", nil).Overall)
+}
+
+func TestStatusPageDropsInaccessibleSystems(t *testing.T) {
+	env := newStatusPageTestEnv(t)
+	mine := env.systemRecord(t, map[string]any{"name": "mine"})
+	shared := env.systemRecord(t, map[string]any{"name": "shared", "users": []string{env.owner.Id, env.other.Id}})
+	foreign := env.systemRecord(t, map[string]any{"name": "foreign", "users": []string{env.other.Id}})
+	deleted := env.systemRecord(t, map[string]any{"name": "deleted"})
+	env.page(t, "systems-access", true, nil, map[string]any{"systems": []string{mine.Id, shared.Id, foreign.Id, deleted.Id}})
+
+	assert.Equal(t, []string{"mine", "shared", "deleted"}, systemNames(env.getPage(t, "systems-access", nil)))
+	require.NoError(t, env.hub.Delete(deleted))
+	assert.Equal(t, []string{"mine", "shared"}, systemNames(env.getPage(t, "systems-access", nil)))
+
+	// Revoking the owner's access drops the system.
+	shared.Set("users", []string{env.other.Id})
+	require.NoError(t, env.hub.Save(shared))
+	page := env.getPage(t, "systems-access", nil)
+	assert.Equal(t, []string{"mine"}, systemNames(page))
+	assert.NotContains(t, env.get(t, "systems-access", nil, "").Body.String(), "shared")
+
+	// SHARE_ALL_SYSTEMS lets the owner view every system.
+	t.Setenv("SHARE_ALL_SYSTEMS", "true")
+	require.NoError(t, env.hub.SetCollectionAuthSettings())
+	assert.Equal(t, []string{"mine", "shared", "foreign"}, systemNames(env.getPage(t, "systems-access", nil)))
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/henrygd/beszel/internal/entities/monitor"
 	"github.com/henrygd/beszel/internal/hub/config"
 	"github.com/henrygd/beszel/internal/hub/heartbeat"
+	"github.com/henrygd/beszel/internal/hub/systemevents"
 	"github.com/henrygd/beszel/internal/hub/systems"
 	"github.com/henrygd/beszel/internal/hub/uptime"
 	"github.com/henrygd/beszel/internal/hub/utils"
@@ -54,6 +55,8 @@ type Hub struct {
 	monitorNotices *transitionQueue
 	// statusPages caches and rate limits public status page requests.
 	statusPages *statusPages
+	// systemEvents records the status history of systems.
+	systemEvents *systemevents.Recorder
 }
 
 // NewHub creates a new Hub instance with default configuration
@@ -74,6 +77,8 @@ func NewHub(app core.App) *Hub {
 		hub.HandleMonitorResults("", results)
 	})
 	hub.statusPages = newStatusPages()
+	hub.systemEvents = systemevents.New()
+	hub.systemEvents.Bind(app)
 	hub.hb = heartbeat.New(app, utils.GetEnv)
 	if hub.hb != nil {
 		hub.hbStop = make(chan struct{})
@@ -138,6 +143,10 @@ func (h *Hub) StartHub() error {
 			return err
 		}
 		h.startUptimeEngine()
+		// match the open system status segments to the current statuses
+		if err := h.systemEvents.Reconcile(h); err != nil {
+			h.Logger().Error("Failed to reconcile system status history", "err", err)
+		}
 		// start system updates
 		if err := h.sm.Initialize(); err != nil {
 			return err
@@ -156,6 +165,7 @@ func (h *Hub) StartHub() error {
 	h.App.OnRecordCreate("user_settings").BindFunc(h.um.InitializeUserSettings)
 
 	bindNetworkMonitorsEvents(h)
+	bindStatusPageHooks(h)
 
 	pb, ok := h.App.(*pocketbase.PocketBase)
 	if !ok {

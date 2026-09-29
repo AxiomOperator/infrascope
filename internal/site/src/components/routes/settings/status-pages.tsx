@@ -12,7 +12,8 @@ import {
 	Trash2Icon,
 	XIcon,
 } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useStore } from "@nanostores/react"
+import { type ReactNode, useMemo, useState } from "react"
 import { getErrorMessage } from "@/components/network-monitors-table/monitor-form-utils"
 import { prependBasePath } from "@/components/router"
 import {
@@ -50,15 +51,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { isReadOnlyUser, pb } from "@/lib/api"
+import { $systems } from "@/lib/stores"
 import { getMonitorName, getMonitorTarget } from "@/lib/network-monitor-utils"
 import { useNetworkMonitors } from "@/lib/use-network-monitors"
 import { useOwnedRecords } from "@/lib/use-owned-records"
 import { cn, copyToClipboard } from "@/lib/utils"
-import type { NetworkMonitorRecord, StatusPageRecord } from "@/types"
+import type { NetworkMonitorRecord, StatusPageRecord, SystemRecord } from "@/types"
 
 /** Same pattern as the status_pages.slug field. */
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,62}$/
 const MAX_MONITORS = 100
+const MAX_SYSTEMS = 100
 
 /** Suggest a slug from a title, e.g. "My Services!" -> "my-services". */
 export function slugify(title: string) {
@@ -83,6 +86,7 @@ function getStatusPageUrl(slug: string) {
 export default function StatusPagesSettings() {
 	const { records } = useOwnedRecords<StatusPageRecord>("status_pages", "title")
 	const { monitors } = useNetworkMonitors({})
+	const systems = useStore($systems)
 	const readOnly = isReadOnlyUser()
 	const [dialogOpen, setDialogOpen] = useState(false)
 	const [dialogKey, setDialogKey] = useState(0)
@@ -112,7 +116,8 @@ export default function StatusPagesSettings() {
 					</h3>
 					<p className="text-sm text-muted-foreground leading-relaxed">
 						<Trans>
-							Share the status and uptime of selected monitors on a page that can be viewed without logging in.
+							Share the status and uptime of selected systems and monitors on a page that can be viewed without logging
+							in.
 						</Trans>
 					</p>
 				</div>
@@ -141,7 +146,7 @@ export default function StatusPagesSettings() {
 									<Trans>URL</Trans>
 								</TableHead>
 								<TableHead className="px-4">
-									<Trans>Monitors</Trans>
+									<Trans>Components</Trans>
 								</TableHead>
 								<TableHead className="px-4 text-right sr-only">
 									<Trans>Actions</Trans>
@@ -190,7 +195,16 @@ export default function StatusPagesSettings() {
 										</div>
 									</TableCell>
 									<TableCell className="px-4 py-3 whitespace-nowrap">
-										<Plural value={record.monitors.length} one="# monitor" other="# monitors" />
+										<div className="grid">
+											{(record.systems?.length ?? 0) > 0 && (
+												<span>
+													<Plural value={record.systems.length} one="# system" other="# systems" />
+												</span>
+											)}
+											<span>
+												<Plural value={record.monitors.length} one="# monitor" other="# monitors" />
+											</span>
+										</div>
 									</TableCell>
 									<TableCell className="px-4 py-3 text-right">
 										<DropdownMenu>
@@ -241,6 +255,7 @@ export default function StatusPagesSettings() {
 						key={dialogKey}
 						record={editingRecord}
 						monitors={monitors}
+						systems={systems}
 						onClose={() => setDialogOpen(false)}
 					/>
 				</Dialog>
@@ -301,10 +316,12 @@ function SwitchRow({
 function StatusPageDialog({
 	record,
 	monitors,
+	systems,
 	onClose,
 }: {
 	record: StatusPageRecord | null
 	monitors: NetworkMonitorRecord[]
+	systems: SystemRecord[]
 	onClose: () => void
 }) {
 	const [title, setTitle] = useState(record?.title ?? "")
@@ -316,24 +333,24 @@ function StatusPageDialog({
 	const [showTargets, setShowTargets] = useState(record?.showTargets ?? false)
 	const [showResponseTimes, setShowResponseTimes] = useState(record?.showResponseTimes ?? false)
 	const [selected, setSelected] = useState<string[]>(record?.monitors ?? [])
+	const [selectedSystems, setSelectedSystems] = useState<string[]>(record?.systems ?? [])
 	const [saving, setSaving] = useState(false)
 
-	const monitorsById = useMemo(() => new Map(monitors.map((m) => [m.id, m])), [monitors])
-	const available = useMemo(
+	const monitorItems = useMemo(
 		() =>
 			monitors
-				.filter((m) => !selected.includes(m.id))
-				.sort((a, b) => getMonitorName(a).localeCompare(getMonitorName(b))),
-		[monitors, selected]
+				.map((m) => {
+					const target = getMonitorTarget(m)
+					return { id: m.id, name: getMonitorName(m), detail: m.name && target ? target : undefined }
+				})
+				.sort((a, b) => a.name.localeCompare(b.name)),
+		[monitors]
+	)
+	const systemItems = useMemo(
+		() => systems.map((s) => ({ id: s.id, name: s.name, detail: s.host })).sort((a, b) => a.name.localeCompare(b.name)),
+		[systems]
 	)
 	const slugValid = SLUG_PATTERN.test(slug)
-
-	const move = (index: number, delta: number) => {
-		const next = [...selected]
-		const [item] = next.splice(index, 1)
-		next.splice(index + delta, 0, item)
-		setSelected(next)
-	}
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
@@ -347,6 +364,7 @@ function StatusPageDialog({
 			showTargets,
 			showResponseTimes,
 			monitors: selected,
+			systems: selectedSystems,
 		}
 		setSaving(true)
 		try {
@@ -374,7 +392,7 @@ function StatusPageDialog({
 			<DialogHeader>
 				<DialogTitle>{record ? <Trans>Edit status page</Trans> : <Trans>Add status page</Trans>}</DialogTitle>
 				<DialogDescription>
-					<Trans>Choose which monitors to show and what details are visible.</Trans>
+					<Trans>Choose which systems and monitors to show and what details are visible.</Trans>
 				</DialogDescription>
 			</DialogHeader>
 			<form onSubmit={handleSubmit} className="grid gap-4 min-w-0">
@@ -461,90 +479,31 @@ function StatusPageDialog({
 					checked={showResponseTimes}
 					onCheckedChange={setShowResponseTimes}
 				/>
-				<div className="grid gap-2 min-w-0">
-					<Label htmlFor="sp-add-monitor">
-						<Trans>Monitors</Trans>
-					</Label>
-					{selected.length > 0 && (
-						<ol className="rounded-md border divide-y">
-							{selected.map((id, index) => {
-								const monitor = monitorsById.get(id)
-								const target = monitor ? getMonitorTarget(monitor) : ""
-								return (
-									<li key={id} className="flex items-center gap-2 ps-3 pe-1 py-1 min-w-0">
-										<span className="w-5 shrink-0 text-xs text-muted-foreground tabular-nums">{index + 1}</span>
-										<span className="min-w-0 flex-1 truncate text-sm">
-											{monitor ? getMonitorName(monitor) : <Trans>Unavailable monitor</Trans>}
-											{monitor?.name && target && <span className="ms-2 text-xs text-muted-foreground">{target}</span>}
-										</span>
-										<Button
-											type="button"
-											variant="ghost"
-											size="icon"
-											className="size-7 shrink-0"
-											disabled={index === 0}
-											onClick={() => move(index, -1)}
-											title={t`Move up`}
-										>
-											<ArrowUpIcon className="size-3.5" />
-											<span className="sr-only">
-												<Trans>Move up</Trans>
-											</span>
-										</Button>
-										<Button
-											type="button"
-											variant="ghost"
-											size="icon"
-											className="size-7 shrink-0"
-											disabled={index === selected.length - 1}
-											onClick={() => move(index, 1)}
-											title={t`Move down`}
-										>
-											<ArrowDownIcon className="size-3.5" />
-											<span className="sr-only">
-												<Trans>Move down</Trans>
-											</span>
-										</Button>
-										<Button
-											type="button"
-											variant="ghost"
-											size="icon"
-											className="size-7 shrink-0"
-											onClick={() => setSelected(selected.filter((s) => s !== id))}
-											title={t`Remove`}
-										>
-											<XIcon className="size-3.5" />
-											<span className="sr-only">
-												<Trans>Remove</Trans>
-											</span>
-										</Button>
-									</li>
-								)
-							})}
-						</ol>
-					)}
-					<Select
-						value=""
-						onValueChange={(id) => id && setSelected((current) => [...current, id])}
-						disabled={available.length === 0 || selected.length >= MAX_MONITORS}
-					>
-						<SelectTrigger id="sp-add-monitor">
-							<SelectValue placeholder={available.length === 0 ? t`No more monitors to add` : t`Add monitor…`} />
-						</SelectTrigger>
-						<SelectContent>
-							{available.map((monitor) => (
-								<SelectItem key={monitor.id} value={monitor.id}>
-									{getMonitorName(monitor)}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-					{selected.length >= MAX_MONITORS && (
-						<p className="text-xs text-muted-foreground">
-							<Trans>A status page can show up to {MAX_MONITORS} monitors.</Trans>
-						</p>
-					)}
-				</div>
+				<OrderedPicker
+					id="sp-add-system"
+					label={<Trans>Systems</Trans>}
+					description={<Trans>Only the system name and status history are shown.</Trans>}
+					items={systemItems}
+					selected={selectedSystems}
+					onChange={setSelectedSystems}
+					max={MAX_SYSTEMS}
+					addPlaceholder={t`Add system…`}
+					emptyPlaceholder={t`No more systems to add`}
+					unavailableLabel={<Trans>Unavailable system</Trans>}
+					maxMessage={<Trans>A status page can show up to {MAX_SYSTEMS} systems.</Trans>}
+				/>
+				<OrderedPicker
+					id="sp-add-monitor"
+					label={<Trans>Monitors</Trans>}
+					items={monitorItems}
+					selected={selected}
+					onChange={setSelected}
+					max={MAX_MONITORS}
+					addPlaceholder={t`Add monitor…`}
+					emptyPlaceholder={t`No more monitors to add`}
+					unavailableLabel={<Trans>Unavailable monitor</Trans>}
+					maxMessage={<Trans>A status page can show up to {MAX_MONITORS} monitors.</Trans>}
+				/>
 				<DialogFooter>
 					<Button type="button" variant="outline" onClick={onClose}>
 						<Trans>Cancel</Trans>
@@ -555,5 +514,131 @@ function StatusPageDialog({
 				</DialogFooter>
 			</form>
 		</DialogContent>
+	)
+}
+
+interface PickerItem {
+	id: string
+	name: string
+	/** Secondary text shown next to the name in the list. */
+	detail?: string
+}
+
+/** An ordered list of selected items with controls to reorder, remove and add items. */
+function OrderedPicker({
+	id,
+	label,
+	description,
+	items,
+	selected,
+	onChange,
+	max,
+	addPlaceholder,
+	emptyPlaceholder,
+	unavailableLabel,
+	maxMessage,
+}: {
+	id: string
+	label: ReactNode
+	description?: ReactNode
+	/** All items that can be selected, in display order. */
+	items: PickerItem[]
+	selected: string[]
+	onChange: (selected: string[]) => void
+	max: number
+	addPlaceholder: string
+	emptyPlaceholder: string
+	unavailableLabel: ReactNode
+	maxMessage: ReactNode
+}) {
+	const itemsById = useMemo(() => new Map(items.map((item) => [item.id, item])), [items])
+	const available = useMemo(() => items.filter((item) => !selected.includes(item.id)), [items, selected])
+
+	const move = (index: number, delta: number) => {
+		const next = [...selected]
+		const [item] = next.splice(index, 1)
+		next.splice(index + delta, 0, item)
+		onChange(next)
+	}
+
+	return (
+		<div className="grid gap-2 min-w-0">
+			<Label htmlFor={id}>{label}</Label>
+			{description && <p className="-mt-1 text-xs text-muted-foreground">{description}</p>}
+			{selected.length > 0 && (
+				<ol className="rounded-md border divide-y">
+					{selected.map((itemId, index) => {
+						const item = itemsById.get(itemId)
+						return (
+							<li key={itemId} className="flex items-center gap-2 ps-3 pe-1 py-1 min-w-0">
+								<span className="w-5 shrink-0 text-xs text-muted-foreground tabular-nums">{index + 1}</span>
+								<span className="min-w-0 flex-1 truncate text-sm">
+									{item ? item.name : unavailableLabel}
+									{item?.detail && <span className="ms-2 text-xs text-muted-foreground">{item.detail}</span>}
+								</span>
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									className="size-7 shrink-0"
+									disabled={index === 0}
+									onClick={() => move(index, -1)}
+									title={t`Move up`}
+								>
+									<ArrowUpIcon className="size-3.5" />
+									<span className="sr-only">
+										<Trans>Move up</Trans>
+									</span>
+								</Button>
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									className="size-7 shrink-0"
+									disabled={index === selected.length - 1}
+									onClick={() => move(index, 1)}
+									title={t`Move down`}
+								>
+									<ArrowDownIcon className="size-3.5" />
+									<span className="sr-only">
+										<Trans>Move down</Trans>
+									</span>
+								</Button>
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									className="size-7 shrink-0"
+									onClick={() => onChange(selected.filter((s) => s !== itemId))}
+									title={t`Remove`}
+								>
+									<XIcon className="size-3.5" />
+									<span className="sr-only">
+										<Trans>Remove</Trans>
+									</span>
+								</Button>
+							</li>
+						)
+					})}
+				</ol>
+			)}
+			<Select
+				value=""
+				onValueChange={(itemId) => itemId && onChange([...selected, itemId])}
+				disabled={available.length === 0 || selected.length >= max}
+			>
+				<SelectTrigger id={id}>
+					<SelectValue placeholder={available.length === 0 ? emptyPlaceholder : addPlaceholder} />
+				</SelectTrigger>
+				<SelectContent>
+					{available.map((item) => (
+						<SelectItem key={item.id} value={item.id}>
+							{item.name}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
+			{selected.length >= max && <p className="text-xs text-muted-foreground">{maxMessage}</p>}
+		</div>
 	)
 }

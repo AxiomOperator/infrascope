@@ -22,6 +22,7 @@ import type {
 	PublicStatusPageDay,
 	PublicStatusPageMaintenance,
 	PublicStatusPageMonitor,
+	PublicStatusPageSystem,
 } from "@/types"
 
 const POLL_INTERVAL = 60_000
@@ -264,6 +265,7 @@ function StatusPageContent({ data, rateLimited }: { data: PublicStatusPage; rate
 	const OverallIcon = overall.icon
 	const maintenance = data.maintenance ?? []
 	const monitors = data.monitors ?? []
+	const systems = data.systems ?? []
 
 	return (
 		<div className="grid gap-6">
@@ -304,15 +306,25 @@ function StatusPageContent({ data, rateLimited }: { data: PublicStatusPage; rate
 				</section>
 			)}
 
-			{monitors.length > 0 ? (
-				<section className="rounded-lg border border-border/60 bg-card shadow-xs divide-y">
-					{monitors.map((monitor, i) => (
-						<MonitorRow key={`${monitor.name}-${i}`} monitor={monitor} showResponseTimes={data.showResponseTimes} />
+			{systems.length > 0 && (
+				<ComponentSection title={t`Servers`}>
+					{systems.map((system, i) => (
+						<ComponentRow key={`${system.name}-${i}`} item={system} showResponseTimes={false} />
 					))}
-				</section>
-			) : (
+				</ComponentSection>
+			)}
+
+			{monitors.length > 0 && (
+				<ComponentSection title={systems.length > 0 ? t`Monitors` : undefined}>
+					{monitors.map((monitor, i) => (
+						<ComponentRow key={`${monitor.name}-${i}`} item={monitor} showResponseTimes={data.showResponseTimes} />
+					))}
+				</ComponentSection>
+			)}
+
+			{systems.length === 0 && monitors.length === 0 && (
 				<p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-					<Trans>No monitors on this page.</Trans>
+					<Trans>No systems or monitors on this page.</Trans>
 				</p>
 			)}
 		</div>
@@ -342,16 +354,31 @@ function MaintenanceNotice({ item }: { item: PublicStatusPageMaintenance }) {
 	)
 }
 
-function MonitorRow({ monitor, showResponseTimes }: { monitor: PublicStatusPageMonitor; showResponseTimes: boolean }) {
-	const days = monitor.days ?? []
-	const uptime = monitor.uptime ?? { d1: null, d7: null, d30: null }
-	const status = monitor.status || "unknown"
+/** A list of status rows, with an optional heading. */
+function ComponentSection({ title, children }: { title?: string; children: ReactNode }) {
+	return (
+		<section className="grid gap-2" aria-label={title}>
+			{title && <h2 className="text-sm font-semibold text-muted-foreground px-1">{title}</h2>}
+			<div className="rounded-lg border border-border/60 bg-card shadow-xs divide-y">{children}</div>
+		</section>
+	)
+}
+
+/** A system or monitor; systems have no response time or target. */
+type ComponentItem = PublicStatusPageSystem | PublicStatusPageMonitor
+
+/** A system or monitor with its status, uptime and daily uptime bars. */
+function ComponentRow({ item, showResponseTimes }: { item: ComponentItem; showResponseTimes: boolean }) {
+	const { res, target } = item as Partial<PublicStatusPageMonitor>
+	const days = item.days ?? []
+	const uptime = item.uptime ?? { d1: null, d7: null, d30: null }
+	const status = item.status || "unknown"
 	return (
 		<div className="px-4 py-4 grid gap-3">
 			<div className="flex items-start justify-between gap-3">
 				<div className="min-w-0">
-					<h3 className="font-medium break-words">{monitor.name}</h3>
-					{monitor.target && <p className="text-xs text-muted-foreground break-all">{monitor.target}</p>}
+					<h3 className="font-medium break-words">{item.name}</h3>
+					{target && <p className="text-xs text-muted-foreground break-all">{target}</p>}
 				</div>
 				<Badge className={cn("shrink-0", monitorStatusBadgeColors[status] ?? monitorStatusBadgeColors.unknown)}>
 					{monitorStatusLabel(status)}
@@ -361,12 +388,12 @@ function MonitorRow({ monitor, showResponseTimes }: { monitor: PublicStatusPageM
 				<UptimeStat label={t`24h`} value={uptime.d1} />
 				<UptimeStat label={t`7d`} value={uptime.d7} />
 				<UptimeStat label={t`30d`} value={uptime.d30} />
-				{showResponseTimes && monitor.res != null && monitor.res > 0 && (
+				{showResponseTimes && res != null && res > 0 && (
 					<div className="flex gap-1">
 						<dt>
 							<Trans>Response</Trans>
 						</dt>
-						<dd className="font-medium text-foreground tabular-nums">{Math.round(monitor.res)} ms</dd>
+						<dd className="font-medium text-foreground tabular-nums">{Math.round(res)} ms</dd>
 					</div>
 				)}
 			</dl>

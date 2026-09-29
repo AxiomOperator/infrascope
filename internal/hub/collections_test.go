@@ -761,6 +761,10 @@ func TestApiMonitorAuthRules(t *testing.T) {
 		"monitor": hubMonitor.Id, "status": "down", "start": 1,
 	})
 	require.NoError(t, err)
+	for _, system := range []*core.Record{system1, system2} {
+		_, err = beszelTests.CreateRecord(hub, "system_events", map[string]any{"system": system.Id, "status": "up", "start": 1})
+		require.NoError(t, err)
+	}
 	user1Page, err := beszelTests.CreateRecord(hub, "status_pages", map[string]any{"user": user1.Id, "slug": "user-one", "title": "One"})
 	require.NoError(t, err)
 	user2Page, err := beszelTests.CreateRecord(hub, "status_pages", map[string]any{"user": user2.Id, "slug": "user-two", "title": "Two"})
@@ -992,6 +996,47 @@ func TestApiMonitorAuthRules(t *testing.T) {
 			URL: "/api/collections/status_pages/records", Headers: auth(user3Token), ExpectedStatus: 400,
 			Body:            strings.NewReader(fmt.Sprintf(`{"user":%q,"slug":"stolen","title":"Stolen","monitors":[%q]}`, user3.Id, hubMonitor.Id)),
 			ExpectedContent: []string{"do not have access to all selected monitors"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Users cannot add inaccessible systems to a status page", Method: http.MethodPost,
+			URL: "/api/collections/status_pages/records", Headers: auth(user1Token), ExpectedStatus: 400,
+			Body:            strings.NewReader(fmt.Sprintf(`{"user":%q,"slug":"stolen-system","title":"Stolen","systems":[%q,%q]}`, user1.Id, system1.Id, system2.Id)),
+			ExpectedContent: []string{"do not have access to all selected systems"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Users cannot update a status page with inaccessible systems", Method: http.MethodPatch,
+			URL: "/api/collections/status_pages/records/" + user1Page.Id, Headers: auth(user1Token), ExpectedStatus: 400,
+			Body:            strings.NewReader(fmt.Sprintf(`{"systems+":[%q]}`, system2.Id)),
+			ExpectedContent: []string{"do not have access to all selected systems"}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Users can create status pages with their systems", Method: http.MethodPost,
+			URL: "/api/collections/status_pages/records", Headers: auth(user1Token), ExpectedStatus: 200,
+			Body:            strings.NewReader(fmt.Sprintf(`{"user":%q,"slug":"servers","title":"Servers","systems":[%q]}`, user1.Id, system1.Id)),
+			ExpectedContent: []string{`"slug":"servers"`, system1.Id}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Members list the status history of their systems", Method: http.MethodGet,
+			URL: "/api/collections/system_events/records", Headers: auth(user1Token), ExpectedStatus: 200,
+			ExpectedContent: []string{system1.Id}, NotExpectedContent: []string{system2.Id}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "Guests cannot list system status history", Method: http.MethodGet,
+			URL: "/api/collections/system_events/records", ExpectedStatus: 200,
+			ExpectedContent: []string{`"totalItems":0`}, TestAppFactory: testAppFactory,
+		},
+		{
+			Name: "SHARE_ALL_SYSTEMS lets any user list system status history", Method: http.MethodGet,
+			URL: "/api/collections/system_events/records", Headers: auth(user3Token), ExpectedStatus: 200,
+			ExpectedContent: []string{system1.Id, system2.Id}, TestAppFactory: testAppFactory,
+			BeforeTestFunc: func(t testing.TB, app *pbTests.TestApp, e *core.ServeEvent) { shareAllSystems(true)(t) },
+			AfterTestFunc:  func(t testing.TB, app *pbTests.TestApp, res *http.Response) { shareAllSystems(false)(t) },
+		},
+		{
+			Name: "Users cannot create system status history", Method: http.MethodPost,
+			URL: "/api/collections/system_events/records", Headers: auth(user1Token), ExpectedStatus: 403,
+			Body:            strings.NewReader(fmt.Sprintf(`{"system":%q,"status":"up","start":1}`, system1.Id)),
+			ExpectedContent: []string{"Only superusers"}, TestAppFactory: testAppFactory,
 		},
 		{
 			Name: "Users can create status pages with their monitors", Method: http.MethodPost,

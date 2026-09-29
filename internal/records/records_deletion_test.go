@@ -487,3 +487,61 @@ func TestDeleteOldMonitorEvents(t *testing.T) {
 	records.NewRecordManager(hub).DeleteOldRecords()
 	assert.Equal(t, []string{keptOld, openOld}, ids(aged))
 }
+
+// TestDeleteOldSystemEvents tests age and per-system count retention of system_events
+func TestDeleteOldSystemEvents(t *testing.T) {
+	hub, err := tests.NewTestHub(t.TempDir())
+	require.NoError(t, err)
+	defer hub.Cleanup()
+
+	user, err := tests.CreateUser(hub, "system-events@example.com", "testtesttest")
+	require.NoError(t, err)
+	newSystem := func(name string) string {
+		system, err := tests.CreateRecord(hub, "systems", map[string]any{"name": name, "host": "localhost", "port": "45876", "status": "up", "users": []string{user.Id}})
+		require.NoError(t, err)
+		// Drop the segment recorded on create.
+		_, err = hub.DB().NewQuery("DELETE FROM system_events WHERE system = {:system}").Bind(dbx.Params{"system": system.Id}).Execute()
+		require.NoError(t, err)
+		return system.Id
+	}
+	now := time.Now().UTC()
+	ms := func(d time.Duration) int64 { return now.Add(-d).UnixMilli() }
+	day := 24 * time.Hour
+	addEvent := func(system, status string, start, end int64) string {
+		record, err := tests.CreateRecord(hub, "system_events", map[string]any{"system": system, "status": status, "start": start, "end": end})
+		require.NoError(t, err)
+		return record.Id
+	}
+	ids := func(system string) []string {
+		var rows []struct {
+			Id string `db:"id"`
+		}
+		require.NoError(t, hub.DB().NewQuery("SELECT id FROM system_events WHERE system = {:system} ORDER BY start").Bind(dbx.Params{"system": system}).All(&rows))
+		result := []string{}
+		for _, row := range rows {
+			result = append(result, row.Id)
+		}
+		return result
+	}
+
+	aged := newSystem("aged")
+	addEvent(aged, "up", ms(200*day), ms(100*day))
+	addEvent(aged, "down", ms(100*day), ms(91*day))
+	keptOld := addEvent(aged, "up", ms(91*day), ms(89*day))
+	openOld := addEvent(aged, "down", ms(89*day), 0)
+
+	capped := newSystem("capped")
+	var cappedIds []string
+	for i := range 8 {
+		cappedIds = append(cappedIds, addEvent(capped, "up", ms(time.Duration(10-i)*time.Hour), ms(time.Duration(9-i)*time.Hour)))
+	}
+
+	require.NoError(t, records.DeleteOldSystemEvents(hub, 90*day, 5, 6))
+	assert.Equal(t, []string{keptOld, openOld}, ids(aged))
+	assert.Equal(t, cappedIds[3:], ids(capped))
+
+	// DeleteOldRecords applies the 90 day retention.
+	addEvent(aged, "up", ms(120*day), ms(95*day))
+	records.NewRecordManager(hub).DeleteOldRecords()
+	assert.Equal(t, []string{keptOld, openOld}, ids(aged))
+}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/henrygd/beszel/internal/alerts"
 	"github.com/henrygd/beszel/internal/hub/expirymap"
+	"github.com/henrygd/beszel/internal/hub/systemevents"
 	"github.com/henrygd/beszel/internal/hub/uptime"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
@@ -63,6 +64,7 @@ type publicStatusPage struct {
 	Updated           int64                     `json:"updated"`
 	Overall           string                    `json:"overall"`
 	ShowResponseTimes bool                      `json:"showResponseTimes"`
+	Systems           []publicStatusSystem      `json:"systems"`
 	Monitors          []publicStatusMonitor     `json:"monitors"`
 	Maintenance       []publicStatusMaintenance `json:"maintenance"`
 }
@@ -75,6 +77,16 @@ type publicStatusMonitor struct {
 	// Res is the current response time in milliseconds.
 	Res    float64 `json:"res,omitempty"`
 	Target string  `json:"target,omitempty"`
+}
+
+// publicStatusSystem is a system of a status page. Only the name is
+// published: never the host, port, ids or agent details.
+type publicStatusSystem struct {
+	Name string `json:"name"`
+	// Status is "up", "down", "paused", "pending" or "unknown".
+	Status string            `json:"status"`
+	Uptime uptime.Uptime     `json:"uptime"`
+	Days   []publicStatusDay `json:"days"`
 }
 
 type publicStatusDay struct {
@@ -158,7 +170,7 @@ func canPreviewStatusPage(e *core.RequestEvent, page *core.Record) bool {
 
 // buildStatusPage builds the public data of a status page at now.
 func buildStatusPage(app core.App, page *core.Record, now time.Time) (*publicStatusPage, error) {
-	monitors, err := statusPageMonitors(app, page)
+	monitors, err := viewableByOwner(app, page, "network_monitors", "monitors")
 	if err != nil {
 		return nil, err
 	}
@@ -167,6 +179,10 @@ func buildStatusPage(app core.App, page *core.Record, now time.Time) (*publicSta
 		ids[i] = record.Id
 	}
 	days, err := dailyUptime(app, ids, now)
+	if err != nil {
+		return nil, err
+	}
+	systems, err := statusPageSystems(app, page, now)
 	if err != nil {
 		return nil, err
 	}
@@ -182,6 +198,7 @@ func buildStatusPage(app core.App, page *core.Record, now time.Time) (*publicSta
 		Description:       page.GetString("description"),
 		Updated:           now.UnixMilli(),
 		ShowResponseTimes: showResponseTimes,
+		Systems:           systems,
 		Monitors:          make([]publicStatusMonitor, 0, len(monitors)),
 		Maintenance:       maintenance,
 	}
@@ -215,14 +232,79 @@ func buildStatusPage(app core.App, page *core.Record, now time.Time) (*publicSta
 		}
 		result.Monitors = append(result.Monitors, item)
 	}
-	result.Overall = overallStatus(result.Monitors)
+	statuses := make([]string, 0, len(result.Systems)+len(result.Monitors))
+	for _, system := range result.Systems {
+		// A pending system is waiting on its first connection result (after
+		// it was added, resumed or edited), not failing, so like a paused
+		// system it does not count.
+		if system.Status != uptime.StatusPending {
+			statuses = append(statuses, system.Status)
+		}
+	}
+	for _, monitor := range result.Monitors {
+		statuses = append(statuses, monitor.Status)
+	}
+	result.Overall = overallStatus(statuses)
 	return result, nil
 }
 
-// statusPageMonitors returns the monitors of a page, in page order, that
-// still exist and that the page owner can still view.
-func statusPageMonitors(app core.App, page *core.Record) ([]*core.Record, error) {
-	ids := page.GetStringSlice("monitors")
+// statusPageSystems returns the public data of the systems of a page, in
+// page order, that still exist and that the page owner can still view.
+//
+// Uptime and daily buckets come from system_events: up and down time form
+// the denominator, while paused and pending time (a system waiting on its
+// first connection result after it was added, resumed or edited) do not.
+func statusPageSystems(app core.App, page *core.Record, now time.Time) ([]publicStatusSystem, error) {
+	records, err := viewableByOwner(app, page, "systems", "systems")
+	if err != nil {
+		return nil, err
+	}
+	result := make([]publicStatusSystem, 0, len(records))
+	if len(records) == 0 {
+		return result, nil
+	}
+	ids := make([]string, len(records))
+	for i, record := range records {
+		ids[i] = record.Id
+	}
+	first, since, nowMs := statusPageRange(now)
+	segments, err := systemevents.Load(app, ids, since, nowMs)
+	if err != nil {
+		return nil, err
+	}
+	bySystem := make(map[string][]uptime.Segment, len(ids))
+	rows := make([]statusSegment, 0, len(segments))
+	for _, segment := range segments {
+		bySystem[segment.System] = append(bySystem[segment.System], uptime.Segment{Status: segment.Status, Start: segment.Start, End: segment.End})
+		rows = append(rows, statusSegment{Owner: segment.System, Status: segment.Status, Start: segment.Start, End: segment.End})
+	}
+	days := dailyBuckets(rows, ids, first, nowMs)
+	for i, record := range records {
+		status := record.GetString("status")
+		switch status {
+		case uptime.StatusUp, uptime.StatusDown, uptime.StatusPaused, uptime.StatusPending:
+		default:
+			status = uptime.StatusUnknown
+		}
+		name := record.GetString("name")
+		if name == "" {
+			name = "Server " + strconv.Itoa(i+1)
+		}
+		result = append(result, publicStatusSystem{
+			Name:   name,
+			Status: status,
+			Uptime: uptime.UptimeFromSegments(bySystem[record.Id], now),
+			Days:   days[record.Id],
+		})
+	}
+	return result, nil
+}
+
+// viewableByOwner returns the records of collectionName referenced by the
+// relation field of a page, in page order, that still exist and that the page
+// owner can still view.
+func viewableByOwner(app core.App, page *core.Record, collectionName, field string) ([]*core.Record, error) {
+	ids := page.GetStringSlice(field)
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -230,7 +312,7 @@ func statusPageMonitors(app core.App, page *core.Record) ([]*core.Record, error)
 	if err != nil {
 		return nil, nil
 	}
-	collection, err := app.FindCachedCollectionByNameOrId("network_monitors")
+	collection, err := app.FindCachedCollectionByNameOrId(collectionName)
 	if err != nil {
 		return nil, err
 	}
@@ -284,62 +366,79 @@ func toAny(values []string) []any {
 	return result
 }
 
+// statusPageRange returns the first UTC day of the daily buckets at now and
+// the covered range [since, nowMs) in Unix milliseconds.
+func statusPageRange(now time.Time) (first time.Time, since, nowMs int64) {
+	now = now.UTC()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	first = today.AddDate(0, 0, -(statusPageDays - 1))
+	return first, first.UnixMilli(), now.UnixMilli()
+}
+
+// statusSegment is a status period of a monitor or system (the owner).
+type statusSegment struct {
+	Owner  string `db:"owner"`
+	Status string `db:"status"`
+	Start  int64  `db:"start"`
+	End    int64  `db:"end"`
+}
+
 // dailyUptime returns statusPageDays daily buckets per monitor, for the UTC
 // days ending with the day of now, oldest first. Up and down time form the
 // denominator of a day's uptime; maintenance, unknown and paused time do not.
 func dailyUptime(app core.App, monitorIDs []string, now time.Time) (map[string][]publicStatusDay, error) {
-	now = now.UTC()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	first := today.AddDate(0, 0, -(statusPageDays - 1))
-	since, nowMs := first.UnixMilli(), now.UnixMilli()
-	const dayMs = int64(24 * time.Hour / time.Millisecond)
-
-	type totals struct{ up, down, maint int64 }
-	perMonitor := make(map[string]*[statusPageDays]totals, len(monitorIDs))
-	for _, id := range monitorIDs {
-		perMonitor[id] = &[statusPageDays]totals{}
-	}
+	first, since, nowMs := statusPageRange(now)
+	var rows []statusSegment
 	if len(monitorIDs) > 0 {
-		var rows []struct {
-			Monitor string `db:"monitor"`
-			Status  string `db:"status"`
-			Start   int64  `db:"start"`
-			End     int64  `db:"end"`
-		}
-		err := app.DB().Select("monitor", "status", "start", "end").From("monitor_events").
+		err := app.DB().Select("monitor AS owner", "status", "start", "end").From("monitor_events").
 			Where(dbx.In("monitor", toAny(monitorIDs)...)).
 			AndWhere(dbx.NewExp("([[end]] = 0 OR [[end]] > {:since}) AND [[start]] < {:now}", dbx.Params{"since": since, "now": nowMs})).
 			All(&rows)
 		if err != nil {
 			return nil, err
 		}
-		for _, row := range rows {
-			days := perMonitor[row.Monitor]
-			if days == nil {
-				continue
+	}
+	return dailyBuckets(rows, monitorIDs, first, nowMs), nil
+}
+
+// dailyBuckets returns statusPageDays daily buckets per owner from first
+// (UTC midnight) to nowMs. Up and down time form the denominator of a day's
+// uptime; other statuses do not, and only maintenance marks a day.
+func dailyBuckets(rows []statusSegment, ids []string, first time.Time, nowMs int64) map[string][]publicStatusDay {
+	since := first.UnixMilli()
+	const dayMs = int64(24 * time.Hour / time.Millisecond)
+
+	type totals struct{ up, down, maint int64 }
+	perOwner := make(map[string]*[statusPageDays]totals, len(ids))
+	for _, id := range ids {
+		perOwner[id] = &[statusPageDays]totals{}
+	}
+	for _, row := range rows {
+		days := perOwner[row.Owner]
+		if days == nil {
+			continue
+		}
+		start, end := max(row.Start, since), row.End
+		if end == 0 || end > nowMs {
+			end = nowMs
+		}
+		for day := (start - since) / dayMs; day < statusPageDays && start < end; day++ {
+			dayEnd := since + (day+1)*dayMs
+			overlap := min(end, dayEnd) - start
+			switch row.Status {
+			case uptime.StatusUp:
+				days[day].up += overlap
+			case uptime.StatusDown:
+				days[day].down += overlap
+			case uptime.StatusMaintenance:
+				days[day].maint += overlap
 			}
-			start, end := max(row.Start, since), row.End
-			if end == 0 || end > nowMs {
-				end = nowMs
-			}
-			for day := (start - since) / dayMs; day < statusPageDays && start < end; day++ {
-				dayEnd := since + (day+1)*dayMs
-				overlap := min(end, dayEnd) - start
-				switch row.Status {
-				case uptime.StatusUp:
-					days[day].up += overlap
-				case uptime.StatusDown:
-					days[day].down += overlap
-				case uptime.StatusMaintenance:
-					days[day].maint += overlap
-				}
-				start = dayEnd
-			}
+			start = dayEnd
 		}
 	}
 
-	result := make(map[string][]publicStatusDay, len(monitorIDs))
-	for id, days := range perMonitor {
+	result := make(map[string][]publicStatusDay, len(ids))
+	for id, days := range perOwner {
 		buckets := make([]publicStatusDay, statusPageDays)
 		for i, t := range days {
 			bucket := publicStatusDay{D: first.AddDate(0, 0, i).Format(time.DateOnly), St: dayNone}
@@ -359,14 +458,14 @@ func dailyUptime(app core.App, monitorIDs []string, now time.Time) (map[string][
 		}
 		result[id] = buckets
 	}
-	return result, nil
+	return result
 }
 
-// overallStatus summarizes the monitor statuses of a page.
-func overallStatus(monitors []publicStatusMonitor) string {
+// overallStatus summarizes the system and monitor statuses of a page.
+func overallStatus(statuses []string) string {
 	var active, up, down, pending, maintenance int
-	for _, m := range monitors {
-		switch m.Status {
+	for _, status := range statuses {
+		switch status {
 		case uptime.StatusPaused:
 			continue
 		case uptime.StatusUp:
@@ -474,4 +573,51 @@ func minuteOfDayUTC(t time.Time) int {
 
 func formatISO(t time.Time) string {
 	return t.UTC().Format("2006-01-02T15:04:05.000Z")
+}
+
+// bindStatusPageHooks rejects status pages that list systems the requester
+// (the page owner, see the collection rules) cannot view. Monitors are
+// checked by the network monitor hooks.
+func bindStatusPageHooks(app core.App) {
+	checkSystems := func(e *core.RecordRequestEvent) error {
+		if err := checkReferencedSystems(e); err != nil {
+			return err
+		}
+		return e.Next()
+	}
+	app.OnRecordCreateRequest("status_pages").BindFunc(checkSystems)
+	app.OnRecordUpdateRequest("status_pages").BindFunc(checkSystems)
+}
+
+// checkReferencedSystems returns an error unless the requester can view every
+// system of the submitted status page.
+func checkReferencedSystems(e *core.RecordRequestEvent) error {
+	if e.HasSuperuserAuth() {
+		return nil
+	}
+	ids := e.Record.GetStringSlice("systems")
+	if len(ids) == 0 {
+		return nil
+	}
+	collection, err := e.App.FindCachedCollectionByNameOrId("systems")
+	if err != nil {
+		return err
+	}
+	info, err := e.RequestInfo()
+	if err != nil {
+		return err
+	}
+	records, err := e.App.FindRecordsByIds(collection, ids)
+	if err != nil {
+		return err
+	}
+	if len(records) != len(ids) {
+		return e.BadRequestError("You do not have access to all selected systems", nil)
+	}
+	for _, record := range records {
+		if ok, err := e.App.CanAccessRecord(record, info, collection.ViewRule); err != nil || !ok {
+			return e.BadRequestError("You do not have access to all selected systems", err)
+		}
+	}
+	return nil
 }

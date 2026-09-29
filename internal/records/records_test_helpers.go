@@ -27,3 +27,8 @@ func TwoDecimals(value float64) float64 {
 func DeleteOldMonitorEvents(app core.App, retention time.Duration, countToKeep, countBeforeDeletion int) error {
 	return deleteOldMonitorEvents(app, retention, countToKeep, countBeforeDeletion)
 }
+
+// DeleteOldSystemEvents exposes deleteOldSystemEvents for testing
+func DeleteOldSystemEvents(app core.App, retention time.Duration, countToKeep, countBeforeDeletion int) error {
+	return deleteOldSystemEvents(app, retention, countToKeep, countBeforeDeletion)
+}

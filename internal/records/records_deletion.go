@@ -33,6 +33,10 @@ func (rm *RecordManager) DeleteOldRecords() {
 		if err != nil {
 			slog.Error("Error deleting old monitor events", "err", err)
 		}
+		err = deleteOldSystemEvents(txApp, systemEventsRetention, 5000, 5000)
+		if err != nil {
+			slog.Error("Error deleting old system events", "err", err)
+		}
 		err = deleteOldQuietHours(txApp)
 		if err != nil {
 			slog.Error("Error deleting old quiet hours", "err", err)
@@ -63,25 +67,40 @@ func deleteOldAlertsHistory(app core.App, countToKeep, countBeforeDeletion int) 
 // monitorEventsRetention is how long closed monitor status segments are kept.
 const monitorEventsRetention = 90 * 24 * time.Hour
 
+// systemEventsRetention is how long closed system status segments are kept.
+const systemEventsRetention = 90 * 24 * time.Hour
+
 // Deletes closed monitor_events segments that ended before the retention
 // period, and keeps at most countToKeep of the newest segments per monitor
 // once a monitor has more than countBeforeDeletion. Open segments (end = 0)
 // always cover the present and are never deleted by age.
 func deleteOldMonitorEvents(app core.App, retention time.Duration, countToKeep, countBeforeDeletion int) error {
+	return deleteOldSegments(app, "monitor_events", "monitor", retention, countToKeep, countBeforeDeletion)
+}
+
+// Deletes old system_events segments like deleteOldMonitorEvents, per system.
+func deleteOldSystemEvents(app core.App, retention time.Duration, countToKeep, countBeforeDeletion int) error {
+	return deleteOldSegments(app, "system_events", "system", retention, countToKeep, countBeforeDeletion)
+}
+
+// deleteOldSegments deletes closed segments of table that ended before the
+// retention period and caps the segments per owner (the owner column).
+// table and owner are constants of the callers.
+func deleteOldSegments(app core.App, table, owner string, retention time.Duration, countToKeep, countBeforeDeletion int) error {
 	db := app.DB()
 	cutoff := time.Now().UTC().Add(-retention).UnixMilli()
-	if _, err := db.NewQuery("DELETE FROM monitor_events WHERE end != 0 AND end < {:cutoff}").Bind(dbx.Params{"cutoff": cutoff}).Execute(); err != nil {
+	if _, err := db.NewQuery("DELETE FROM " + table + " WHERE end != 0 AND end < {:cutoff}").Bind(dbx.Params{"cutoff": cutoff}).Execute(); err != nil {
 		return err
 	}
-	var monitors []struct {
-		Id string `db:"monitor"`
+	var owners []struct {
+		Id string `db:"owner"`
 	}
-	err := db.NewQuery("SELECT monitor, COUNT(*) as count FROM monitor_events GROUP BY monitor HAVING count > {:countBeforeDeletion}").Bind(dbx.Params{"countBeforeDeletion": countBeforeDeletion}).All(&monitors)
+	err := db.NewQuery("SELECT " + owner + " AS owner, COUNT(*) as count FROM " + table + " GROUP BY " + owner + " HAVING count > {:countBeforeDeletion}").Bind(dbx.Params{"countBeforeDeletion": countBeforeDeletion}).All(&owners)
 	if err != nil {
 		return err
 	}
-	for _, monitor := range monitors {
-		_, err = db.NewQuery("DELETE FROM monitor_events WHERE monitor = {:monitor} AND id NOT IN (SELECT id FROM monitor_events WHERE monitor = {:monitor} ORDER BY start DESC LIMIT {:countToKeep})").Bind(dbx.Params{"monitor": monitor.Id, "countToKeep": countToKeep}).Execute()
+	for _, o := range owners {
+		_, err = db.NewQuery("DELETE FROM " + table + " WHERE " + owner + " = {:owner} AND id NOT IN (SELECT id FROM " + table + " WHERE " + owner + " = {:owner} ORDER BY start DESC LIMIT {:countToKeep})").Bind(dbx.Params{"owner": o.Id, "countToKeep": countToKeep}).Execute()
 		if err != nil {
 			return err
 		}
