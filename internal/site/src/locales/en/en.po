@@ -393,6 +393,14 @@ msgstr "Agent update required for these options"
 msgid "Alert History"
 msgstr "Alert History"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Alert when average response time exceeds (ms)"
+msgstr "Alert when average response time exceeds (ms)"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Alert when packet loss exceeds (%)"
+msgstr "Alert when packet loss exceeds (%)"
+
 #: src/components/alerts/alert-button.tsx
 #: src/components/alerts/alerts-sheet.tsx
 msgid "Alerts"
@@ -2101,6 +2109,10 @@ msgctxt "Packet loss"
 msgid "Loss"
 msgstr "Loss"
 
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Loss > {loss}%"
+msgstr "Loss > {loss}%"
+
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 msgid "Loss 1h"
@@ -2153,6 +2165,10 @@ msgstr "Max 1h"
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Max redirects"
 msgstr "Max redirects"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Measured over the last hour. Leave empty or 0 to disable."
+msgstr "Measured over the last hour. Leave empty or 0 to disable."
 
 #: src/components/containers-table/containers-table-columns.tsx
 #: src/components/routes/system/info-bar.tsx
@@ -2230,6 +2246,14 @@ msgstr "Monitor down"
 #: src/lib/alerts.ts
 msgid "Monitor is down"
 msgstr "Monitor is down"
+
+#: src/lib/alerts.ts
+msgid "Monitor packet loss"
+msgstr "Monitor packet loss"
+
+#: src/lib/alerts.ts
+msgid "Monitor response time"
+msgstr "Monitor response time"
 
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
@@ -2439,6 +2463,11 @@ msgstr "Notify when the certificate expires within this many days. 0 disables it
 msgid "OAuth 2 / OIDC support"
 msgstr "OAuth 2 / OIDC support"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Off"
+msgstr "Off"
+
 #: src/components/routes/settings/config-yaml.tsx
 msgid "On each restart, systems in the database will be updated to match the systems defined in the file."
 msgstr "On each restart, systems in the database will be updated to match the systems defined in the file."
@@ -2508,12 +2537,12 @@ msgstr "Optional. Defaults to the system resolver."
 msgid "Or continue with"
 msgstr "Or continue with"
 
-#: src/components/routes/system/package-updates-table.tsx
-msgctxt "Version change"
+#: src/components/routes/system/cpu-sheet.tsx
 msgid "Other"
 msgstr "Other"
 
-#: src/components/routes/system/cpu-sheet.tsx
+#: src/components/routes/system/package-updates-table.tsx
+msgctxt "Version change"
 msgid "Other"
 msgstr "Other"
 
@@ -2541,6 +2570,10 @@ msgstr "Package Updates"
 #: src/components/routes/system/charts/monitors-charts.tsx
 msgid "Packet loss (%)"
 msgstr "Packet loss (%)"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Packet loss threshold must be between 0 and {maxLossThreshold}."
+msgstr "Packet loss threshold must be between 0 and {maxLossThreshold}."
 
 #: src/components/command-palette.tsx
 #: src/components/command-palette.tsx
@@ -2999,6 +3032,10 @@ msgid "Response"
 msgstr "Response"
 
 #: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Response time > {latency} ms"
+msgstr "Response time > {latency} ms"
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
 #~ msgid "Response time monitoring from agents."
 #~ msgstr "Response time monitoring from agents."
 
@@ -3006,6 +3043,10 @@ msgstr "Response"
 #: src/components/routes/system/charts/monitors-charts.tsx
 msgid "Response time of the latest {0} checks"
 msgstr "Response time of the latest {0} checks"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Response time threshold must be a whole number of milliseconds."
+msgstr "Response time threshold must be a whole number of milliseconds."
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Restarts"
@@ -3858,6 +3899,14 @@ msgstr "Triggers when a container's health check reports unhealthy"
 #: src/lib/alerts.ts
 msgid "Triggers when a monitor goes down"
 msgstr "Triggers when a monitor goes down"
+
+#: src/lib/alerts.ts
+msgid "Triggers when a monitor's average response time over the last hour exceeds its threshold"
+msgstr "Triggers when a monitor's average response time over the last hour exceeds its threshold"
+
+#: src/lib/alerts.ts
+msgid "Triggers when a monitor's packet loss over the last hour exceeds its threshold"
+msgstr "Triggers when a monitor's packet loss over the last hour exceeds its threshold"
 
 #: src/lib/alerts.ts
 msgid "Triggers when a monitored certificate is about to expire"

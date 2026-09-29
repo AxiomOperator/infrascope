@@ -9,6 +9,8 @@ import {
 	ServerCrashIcon,
 	ServerIcon,
 	ShieldAlertIcon,
+	SignalLowIcon,
+	TimerIcon,
 } from "lucide-react"
 import type { RecordSubscription } from "pocketbase"
 import { EthernetIcon, GpuIcon } from "@/components/ui/icons"
@@ -164,6 +166,18 @@ export const monitorAlertInfo: Record<string, AlertInfo> = {
 		unit: "",
 		icon: ShieldAlertIcon,
 		desc: () => t`Triggers when a monitored certificate is about to expire`,
+	},
+	MonitorLoss: {
+		name: () => t`Monitor packet loss`,
+		unit: "%",
+		icon: SignalLowIcon,
+		desc: () => t`Triggers when a monitor's packet loss over the last hour exceeds its threshold`,
+	},
+	MonitorLatency: {
+		name: () => t`Monitor response time`,
+		unit: " ms",
+		icon: TimerIcon,
+		desc: () => t`Triggers when a monitor's average response time over the last hour exceeds its threshold`,
 	},
 }
 

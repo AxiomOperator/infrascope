@@ -57,6 +57,7 @@ import {
 	ArrowLeftRightIcon,
 	ArrowUpDownIcon,
 	ArrowUpIcon,
+	BellIcon,
 	CircleAlertIcon,
 	EthernetPortIcon,
 	EyeIcon,
@@ -711,6 +712,32 @@ function CertExpiry({ cert }: { cert: MonitorCertInfo }) {
 	)
 }
 
+/** Configured packet loss and response time alert thresholds of a monitor, if any. */
+function AlertThresholds({ monitor }: { monitor: NetworkMonitorRecord }) {
+	const loss = monitor.lossThreshold ?? 0
+	const latency = monitor.latencyThreshold ?? 0
+	if (monitor.protocol === "push" || (!loss && !latency)) {
+		return null
+	}
+	return (
+		<>
+			<Separator orientation="vertical" className="h-2.5 bg-muted-foreground opacity-70" />
+			<BellIcon className="size-3.5 text-muted-foreground -me-0.5" />
+			{loss > 0 && (
+				<span>
+					<Trans>Loss &gt; {loss}%</Trans>
+				</span>
+			)}
+			{loss > 0 && latency > 0 && <span className="opacity-60">·</span>}
+			{latency > 0 && (
+				<span>
+					<Trans>Response time &gt; {latency} ms</Trans>
+				</span>
+			)}
+		</>
+	)
+}
+
 function NetworkMonitorSheetContent({
 	open,
 	onOpenChange,
@@ -794,6 +821,7 @@ function NetworkMonitorSheetContent({
 							</>
 						)}
 						{monitor.certInfo?.expires ? <CertExpiry cert={monitor.certInfo} /> : null}
+						<AlertThresholds monitor={monitor} />
 					</SheetDescription>
 				</SheetHeader>
 				<div className="grid gap-4">

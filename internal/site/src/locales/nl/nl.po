@@ -398,6 +398,14 @@ msgstr ""
 msgid "Alert History"
 msgstr "Melding geschiedenis"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Alert when average response time exceeds (ms)"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Alert when packet loss exceeds (%)"
+msgstr ""
+
 #: src/components/alerts/alert-button.tsx
 #: src/components/alerts/alerts-sheet.tsx
 msgid "Alerts"
@@ -2106,6 +2114,10 @@ msgctxt "Packet loss"
 msgid "Loss"
 msgstr "Verlies"
 
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Loss > {loss}%"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 msgid "Loss 1h"
@@ -2157,6 +2169,10 @@ msgstr "Max. 1 u"
 
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Max redirects"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Measured over the last hour. Leave empty or 0 to disable."
 msgstr ""
 
 #: src/components/containers-table/containers-table-columns.tsx
@@ -2234,6 +2250,14 @@ msgstr ""
 
 #: src/lib/alerts.ts
 msgid "Monitor is down"
+msgstr ""
+
+#: src/lib/alerts.ts
+msgid "Monitor packet loss"
+msgstr ""
+
+#: src/lib/alerts.ts
+msgid "Monitor response time"
 msgstr ""
 
 #: src/components/routes/settings/maintenance.tsx
@@ -2444,6 +2468,11 @@ msgstr ""
 msgid "OAuth 2 / OIDC support"
 msgstr "OAuth 2 / OIDC ondersteuning"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Off"
+msgstr ""
+
 #: src/components/routes/settings/config-yaml.tsx
 msgid "On each restart, systems in the database will be updated to match the systems defined in the file."
 msgstr "Bij elke herstart zullen systemen in de database worden bijgewerkt om overeen te komen met de systemen die in het bestand zijn gedefinieerd."
@@ -2513,14 +2542,14 @@ msgstr ""
 msgid "Or continue with"
 msgstr "Of ga verder met"
 
+#: src/components/routes/system/cpu-sheet.tsx
+msgid "Other"
+msgstr "Overig"
+
 #: src/components/routes/system/package-updates-table.tsx
 msgctxt "Version change"
 msgid "Other"
 msgstr ""
-
-#: src/components/routes/system/cpu-sheet.tsx
-msgid "Other"
-msgstr "Overig"
 
 #. placeholder {0}: state.values.extra.map(([k]) => k).join(", ")
 #: src/components/routes/settings/notification-builder.tsx
@@ -2546,6 +2575,10 @@ msgstr ""
 #: src/components/routes/system/charts/monitors-charts.tsx
 msgid "Packet loss (%)"
 msgstr "Pakketverlies (%)"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Packet loss threshold must be between 0 and {maxLossThreshold}."
+msgstr ""
 
 #: src/components/command-palette.tsx
 #: src/components/command-palette.tsx
@@ -3004,12 +3037,20 @@ msgid "Response"
 msgstr "Reactie"
 
 #: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Response time > {latency} ms"
+msgstr ""
+
+#: src/components/network-monitors-table/network-monitors-table.tsx
 #~ msgid "Response time monitoring from agents."
 #~ msgstr "Bewaking van de reactietijd door agents."
 
 #. placeholder {0}: data.length
 #: src/components/routes/system/charts/monitors-charts.tsx
 msgid "Response time of the latest {0} checks"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Response time threshold must be a whole number of milliseconds."
 msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
@@ -3862,6 +3903,14 @@ msgstr "Wordt geactiveerd wanneer de statuscontrole van een container een ongezo
 
 #: src/lib/alerts.ts
 msgid "Triggers when a monitor goes down"
+msgstr ""
+
+#: src/lib/alerts.ts
+msgid "Triggers when a monitor's average response time over the last hour exceeds its threshold"
+msgstr ""
+
+#: src/lib/alerts.ts
+msgid "Triggers when a monitor's packet loss over the last hour exceeds its threshold"
 msgstr ""
 
 #: src/lib/alerts.ts

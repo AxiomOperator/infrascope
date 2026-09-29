@@ -184,6 +184,26 @@ export function formatBulkMonitorLine(monitor: BulkMonitorLineSource) {
 	return trimTrailingEmptyFields([monitor.target, monitor.protocol, port, interval, server]).join(",")
 }
 
+/** Largest packet loss threshold in percent; the hub requires it below 100. */
+export const maxLossThreshold = 99.9
+
+/**
+ * Parses a monitor alert threshold input. Empty means 0 (off). Returns null when
+ * the value is not a number in [0, max], or not a whole number when integer is set.
+ */
+export function parseMonitorThreshold(
+	value: string,
+	{ max, integer = false }: { max?: number; integer?: boolean } = {}
+) {
+	const trimmed = value.trim()
+	if (!trimmed) return 0
+	const num = Number(trimmed)
+	if (!Number.isFinite(num) || num < 0 || (max !== undefined && num > max) || (integer && !Number.isInteger(num))) {
+		return null
+	}
+	return num
+}
+
 /** Error message of a failed request, including PocketBase field validation errors. */
 export function getErrorMessage(err: unknown) {
 	const response = (err as ClientResponseError)?.response as

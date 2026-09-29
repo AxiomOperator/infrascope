@@ -30,7 +30,9 @@ import {
 	httpPayloadFromForm,
 	hubMinInterval,
 	isHttpsTarget,
+	maxLossThreshold,
 	type MonitorProtocol,
+	parseMonitorThreshold,
 } from "./monitor-form-utils"
 import { hasCustomHttpOptions, MonitorHttpOptions, SwitchField } from "./monitor-http-options"
 import { MonitorPushUrl } from "./monitor-push-url"
@@ -137,6 +139,11 @@ export function EditMonitorDialog({
 	)
 }
 
+/** Input value of a monitor alert threshold; empty when off. */
+function thresholdInput(value?: number) {
+	return value ? String(value) : ""
+}
+
 /** Initial runner of the form: the monitor's, else the current system's page, else the hub. */
 function initialRunsOn(monitor?: NetworkMonitorRecord, systemId?: string): RunsOn {
 	if (monitor) return monitor.system ? "agent" : "hub"
@@ -168,6 +175,8 @@ function MonitorDialogContent({
 	const [retryInterval, setRetryInterval] = useState(monitor?.retryInterval ? String(monitor.retryInterval) : "")
 	const [notify, setNotify] = useState(monitor?.notify ?? true)
 	const [certExpiryDays, setCertExpiryDays] = useState(String(monitor?.certExpiryDays ?? 0))
+	const [lossThreshold, setLossThreshold] = useState(thresholdInput(monitor?.lossThreshold))
+	const [latencyThreshold, setLatencyThreshold] = useState(thresholdInput(monitor?.latencyThreshold))
 	const [httpForm, setHttpForm] = useState<HttpFormState>(() => httpFormFromMonitor(monitor))
 	const [loading, setLoading] = useState(false)
 	const [selectedSystemId, setSelectedSystemId] = useState(monitor?.system ?? "")
@@ -201,6 +210,8 @@ function MonitorDialogContent({
 		setRetryInterval(monitor?.retryInterval ? String(monitor.retryInterval) : "")
 		setNotify(monitor?.notify ?? true)
 		setCertExpiryDays(String(monitor?.certExpiryDays ?? 0))
+		setLossThreshold(thresholdInput(monitor?.lossThreshold))
+		setLatencyThreshold(thresholdInput(monitor?.latencyThreshold))
 		setHttpForm(httpFormFromMonitor(monitor))
 		setSelectedSystemId(monitor?.system ?? "")
 		setSelectedSystemIds(new Set())
@@ -246,6 +257,15 @@ function MonitorDialogContent({
 			if (isHub && Number(monitorInterval) < hubMinInterval) {
 				throw new Error(t`Hub monitors must use an interval of at least ${hubMinInterval} seconds.`)
 			}
+			// push monitors have no loss or response time to alert on
+			const lossValue = isPush ? 0 : parseMonitorThreshold(lossThreshold, { max: maxLossThreshold })
+			if (lossValue === null) {
+				throw new Error(t`Packet loss threshold must be between 0 and ${maxLossThreshold}.`)
+			}
+			const latencyValue = isPush ? 0 : parseMonitorThreshold(latencyThreshold, { max: 600000, integer: true })
+			if (latencyValue === null) {
+				throw new Error(t`Response time threshold must be a whole number of milliseconds.`)
+			}
 			const basePayload = buildMonitorPayload(
 				{
 					system: targetSystems[0],
@@ -265,6 +285,8 @@ function MonitorDialogContent({
 				retryInterval: isPush ? 0 : Number(retryInterval) || 0,
 				notify,
 				certExpiryDays: protocol === "http" && isHttpsTarget(basePayload.target) ? Number(certExpiryDays) || 0 : 0,
+				lossThreshold: lossValue,
+				latencyThreshold: latencyValue,
 			}
 			if (protocol === "http") {
 				const { http, httpSecrets } = httpPayloadFromForm(httpForm)
@@ -580,6 +602,45 @@ function MonitorDialogContent({
 					label={<Trans>Notifications</Trans>}
 					description={<Trans>Send notifications when this monitor goes down or recovers.</Trans>}
 				/>
+				{!isPush && (
+					<div className="grid gap-2">
+						<div className="grid sm:grid-cols-2 items-end gap-3">
+							<div className="grid gap-2">
+								<Label htmlFor="monitor-loss-threshold">
+									<Trans>Alert when packet loss exceeds (%)</Trans>
+								</Label>
+								<Input
+									id="monitor-loss-threshold"
+									type="number"
+									value={lossThreshold}
+									onChange={(e) => setLossThreshold(e.target.value)}
+									placeholder={t`Off`}
+									min={0}
+									max={maxLossThreshold}
+									step="any"
+								/>
+							</div>
+							<div className="grid gap-2">
+								<Label htmlFor="monitor-latency-threshold">
+									<Trans>Alert when average response time exceeds (ms)</Trans>
+								</Label>
+								<Input
+									id="monitor-latency-threshold"
+									type="number"
+									value={latencyThreshold}
+									onChange={(e) => setLatencyThreshold(e.target.value)}
+									placeholder={t`Off`}
+									min={0}
+									max={600000}
+									step={1}
+								/>
+							</div>
+						</div>
+						<p className="text-xs text-muted-foreground">
+							<Trans>Measured over the last hour. Leave empty or 0 to disable.</Trans>
+						</p>
+					</div>
+				)}
 				{isEditing && isPush && monitor.protocol === "push" && (
 					<MonitorPushUrl monitorId={monitor.id} pushToken={monitor.pushToken} />
 				)}

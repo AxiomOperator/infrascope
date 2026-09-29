@@ -705,6 +705,10 @@ export interface NetworkMonitorRecord {
 	httpSecrets?: MonitorHTTPSecrets | null
 	notify: boolean
 	certExpiryDays: number
+	/** Alert when loss over the last hour exceeds this percent; 0 disables it. */
+	lossThreshold?: number
+	/** Alert when the average response time over the last hour exceeds this many ms; 0 disables it. */
+	latencyThreshold?: number
 	/** Push URL token; only returned to users who can edit the monitor. */
 	pushToken?: string
 	enabled: boolean
