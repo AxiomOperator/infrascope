@@ -222,7 +222,7 @@ func (a *Agent) getSystemStats(cacheTimeMs uint16) system.Stats {
 	a.updateDiskIo(cacheTimeMs, &systemStats)
 
 	// storage pool stats
-	a.storagePoolManager.Update(&systemStats)
+	a.storagePoolManager.Update(&systemStats, cacheTimeMs)
 	a.storagePoolManager.markDuplicateCharts(&systemStats, a.fsStats, btrfs.MountID)
 
 	// network stats (per cache interval)
@@ -277,7 +277,7 @@ func (a *Agent) getSystemStats(cacheTimeMs uint16) system.Stats {
 	systemStats.WiFi = wifi.Signals(a.systemInfo.WiFi)
 
 	// update system info
-	a.systemInfo.ConnectionType = a.connectionManager.ConnectionType
+	a.systemInfo.ConnectionType = a.connectionManager.connectionType()
 	a.systemInfo.Cpu = systemStats.Cpu
 	a.systemInfo.LoadAvg = systemStats.LoadAvg
 	a.systemInfo.MemPct = systemStats.MemPct

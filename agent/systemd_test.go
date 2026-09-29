@@ -3,11 +3,15 @@
 package agent
 
 import (
+	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
+	"github.com/henrygd/beszel/internal/entities/systemd"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUnescapeServiceName(t *testing.T) {
@@ -182,4 +186,60 @@ func TestGetServicePatterns(t *testing.T) {
 			assert.Equal(t, tt.expected, result, "Patterns should match expected values")
 		})
 	}
+}
+
+// TestSystemdManagerConcurrentAccess exercises the stats accessors while a
+// worker-like goroutine mutates the map; run with -race.
+func TestSystemdManagerConcurrentAccess(t *testing.T) {
+	sm := &systemdManager{serviceStatsMap: make(map[string]*systemd.Service)}
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for i := range 200 {
+			name := fmt.Sprintf("svc%d.service", i%10)
+			sm.Lock()
+			if i%3 == 0 {
+				delete(sm.serviceStatsMap, name)
+			} else {
+				sm.serviceStatsMap[name] = &systemd.Service{Name: name}
+				if s := sm.serviceStatsMap[name]; s != nil {
+					s.Mem = uint64(i)
+				}
+			}
+			sm.hasFreshStats = true
+			sm.Unlock()
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for range 200 {
+			_ = sm.getServiceStatsCount()
+			_ = sm.getFailedServiceCount()
+			if services, ok := sm.consumeFreshStats(); ok {
+				for _, s := range services {
+					_ = s.Mem
+				}
+			}
+		}
+	}()
+	wg.Wait()
+}
+
+func TestSystemdConsumeFreshStatsReturnsCopies(t *testing.T) {
+	sm := &systemdManager{serviceStatsMap: map[string]*systemd.Service{
+		"a.service": {Name: "a", Mem: 1},
+	}}
+	_, fresh := sm.consumeFreshStats()
+	assert.False(t, fresh)
+
+	sm.hasFreshStats = true
+	services, fresh := sm.consumeFreshStats()
+	require.True(t, fresh)
+	require.Len(t, services, 1)
+	services[0].Mem = 99
+	assert.Equal(t, uint64(1), sm.serviceStatsMap["a.service"].Mem, "snapshot must not alias the live map entries")
+
+	_, fresh = sm.consumeFreshStats()
+	assert.False(t, fresh, "fresh flag is cleared after consumption")
 }

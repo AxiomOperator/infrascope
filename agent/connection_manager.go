@@ -22,8 +22,9 @@ import (
 // them based on availability and managing reconnection attempts.
 type ConnectionManager struct {
 	agent *Agent // Reference to the parent agent
-	// mu guards State and isConnecting, which are read and written from both
-	// the main event loop and the goroutine spawned by connect().
+	// mu guards State, isConnecting, ConnectionType and wsTicker, which are
+	// read and written from the main event loop, the goroutine spawned by
+	// connect() and stats collection.
 	mu             sync.Mutex
 	State          ConnectionState      // Current connection state
 	eventChan      chan ConnectionEvent // Channel for connection events
@@ -67,7 +68,11 @@ func newConnectionManager(agent *Agent) *ConnectionManager {
 }
 
 // startWsTicker starts or resets the WebSocket connection attempt ticker.
+// The ticker is created once and afterwards only reset, so the channel read by
+// the event loop never changes.
 func (c *ConnectionManager) startWsTicker() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.wsTicker == nil {
 		c.wsTicker = time.NewTicker(wsTickerInterval)
 	} else {
@@ -77,9 +82,43 @@ func (c *ConnectionManager) startWsTicker() {
 
 // stopWsTicker stops the WebSocket connection attempt ticker.
 func (c *ConnectionManager) stopWsTicker() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.wsTicker != nil {
 		c.wsTicker.Stop()
 	}
+}
+
+// wsTickerChan returns the ticker channel for the event loop.
+func (c *ConnectionManager) wsTickerChan() <-chan time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.wsTicker.C
+}
+
+// connectionType returns the current connection type.
+func (c *ConnectionManager) connectionType() system.ConnectionType {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.ConnectionType
+}
+
+func (c *ConnectionManager) setConnectionType(t system.ConnectionType) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ConnectionType = t
+}
+
+// tryStartConnecting atomically claims the isConnecting flag. It returns false
+// if another reconnection attempt is already in flight.
+func (c *ConnectionManager) tryStartConnecting() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.isConnecting {
+		return false
+	}
+	c.isConnecting = true
+	return true
 }
 
 // getState returns the current connection state.
@@ -138,6 +177,7 @@ func (c *ConnectionManager) Start(serverOptions ServerOptions) error {
 	defer stopSignals()
 
 	c.startWsTicker()
+	wsTickerC := c.wsTickerChan()
 	c.connect()
 
 	// update health status immediately and every 90 seconds
@@ -148,10 +188,12 @@ func (c *ConnectionManager) Start(serverOptions ServerOptions) error {
 		select {
 		case connectionEvent := <-c.eventChan:
 			c.handleEvent(connectionEvent)
-		case <-c.wsTicker.C:
-			// skip if connect() is still running its own attempt
-			if !c.isConnectingNow() {
+		case <-wsTickerC:
+			// skip if connect() is still running its own attempt; claiming the
+			// flag atomically avoids racing a connect() that starts meanwhile
+			if c.tryStartConnecting() {
 				_ = c.startWebSocketConnection()
+				c.setConnecting(false)
 			}
 		case <-healthTicker:
 			_ = health.Update()
@@ -223,18 +265,18 @@ func (c *ConnectionManager) handleStateChange(newState ConnectionState) {
 	switch newState {
 	case WebSocketConnected:
 		slog.Info("WebSocket connected", "host", c.wsClient.hubURL.Host)
-		c.ConnectionType = system.ConnectionTypeWebSocket
+		c.setConnectionType(system.ConnectionTypeWebSocket)
 		c.stopWsTicker()
 		_ = c.agent.StopServer()
 		c.setConnecting(false)
 	case SSHConnected:
 		// stop new ws connection attempts
 		slog.Info("SSH connection established")
-		c.ConnectionType = system.ConnectionTypeSSH
+		c.setConnectionType(system.ConnectionTypeSSH)
 		c.stopWsTicker()
 		c.setConnecting(false)
 	case Disconnected:
-		c.ConnectionType = system.ConnectionTypeNone
+		c.setConnectionType(system.ConnectionTypeNone)
 		// Always keep the ticker running while disconnected. A pending WebSocket
 		// handshake started by connect() can fail asynchronously (e.g. the hub
 		// closes the socket, or the deadline set in OnOpen expires) after
@@ -260,7 +302,7 @@ func (c *ConnectionManager) connect() {
 	c.setConnecting(true)
 	defer c.setConnecting(false)
 
-	if c.wsClient != nil && time.Since(c.wsClient.lastConnectAttempt) < 5*time.Second {
+	if c.wsClient != nil && time.Since(c.wsClient.lastAttempt()) < 5*time.Second {
 		time.Sleep(5 * time.Second)
 	}
 
@@ -287,7 +329,7 @@ func (c *ConnectionManager) startWebSocketConnection() error {
 	if c.wsClient == nil {
 		return errors.New("WebSocket client not initialized")
 	}
-	if time.Since(c.wsClient.lastConnectAttempt) < 5*time.Second {
+	if time.Since(c.wsClient.lastAttempt()) < 5*time.Second {
 		return errors.New("already connecting")
 	}
 

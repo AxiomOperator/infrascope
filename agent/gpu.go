@@ -156,7 +156,10 @@ func (c *gpuCollector) start() {
 	}
 }
 
-// collect executes the command, parses output with the assigned parser function
+// collect executes the command, parses output with the assigned parser function.
+// The child process is always reaped: on every early exit (invalid data, scanner
+// error) it is killed and waited on so long-running collectors like
+// `nvidia-smi -l` never linger or leave zombies behind.
 func (c *gpuCollector) collect() error {
 	cmd := exec.Command(c.name, c.cmdArgs...)
 	stdout, err := cmd.StdoutPipe()
@@ -166,6 +169,13 @@ func (c *gpuCollector) collect() error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
+	waited := false
+	defer func() {
+		if !waited {
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+		}
+	}()
 
 	scanner := bufio.NewScanner(stdout)
 	if c.buf == nil {
@@ -183,6 +193,7 @@ func (c *gpuCollector) collect() error {
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("scanner error: %w", err)
 	}
+	waited = true
 	return cmd.Wait()
 }
 

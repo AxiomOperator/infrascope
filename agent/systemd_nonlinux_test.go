@@ -3,6 +3,7 @@
 package agent
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,13 +32,13 @@ func TestSystemdManagerGetServiceDetails(t *testing.T) {
 	manager, err := newSystemdManager()
 	assert.NoError(t, err)
 
-	result, err := manager.getServiceDetails("any-service")
+	result, err := manager.getServiceDetails(context.Background(), "any-service")
 	assert.Error(t, err)
 	assert.Equal(t, "systemd manager unavailable", err.Error())
 	assert.Nil(t, result)
 
 	// Test with empty service name
-	result, err = manager.getServiceDetails("")
+	result, err = manager.getServiceDetails(context.Background(), "")
 	assert.Error(t, err)
 	assert.Equal(t, "systemd manager unavailable", err.Error())
 	assert.Nil(t, result)

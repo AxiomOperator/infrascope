@@ -24,7 +24,27 @@ const (
 	// pacmanSyncInterval limits how often checkupdates downloads fresh sync
 	// databases. Checks in between reuse the last synced copy.
 	pacmanSyncInterval = 12 * time.Hour
+	// updateCheckRetryBase and updateCheckRetryMax bound the backoff after a
+	// failed update check (package manager or registry), so a transient failure
+	// is retried well before the full check interval elapses.
+	updateCheckRetryBase = 5 * time.Minute
+	updateCheckRetryMax  = 15 * time.Minute
 )
+
+// updateCheckRetryDelay returns how long to wait before retrying after the
+// given number of consecutive failures: 5m, 10m, then 15m, never longer than
+// the regular check interval.
+func updateCheckRetryDelay(failures int, interval time.Duration) time.Duration {
+	delay := updateCheckRetryBase
+	for i := 1; i < failures && delay < updateCheckRetryMax; i++ {
+		delay += updateCheckRetryBase
+	}
+	delay = min(delay, updateCheckRetryMax)
+	if interval > 0 && interval < delay {
+		delay = interval
+	}
+	return delay
+}
 
 // packageUpdatesResult is the outcome of one package manager check.
 type packageUpdatesResult struct {
@@ -44,9 +64,14 @@ type packageUpdatesManager struct {
 	name      string
 	check     packageUpdatesCheck
 	interval  time.Duration
-	result    packageUpdatesResult
-	checkedAt time.Time
+	result    packageUpdatesResult // last successful result
+	checkedAt time.Time            // time of the last successful check
 	running   bool
+	// Failure tracking: a failed check keeps the previous result and is retried
+	// after a short backoff instead of being cached as "no updates".
+	lastErr  error
+	failures int
+	retryAt  time.Time
 }
 
 // newPackageUpdatesManager returns nil if disabled or no supported package manager
@@ -93,11 +118,20 @@ func packageUpdatesInterval() (interval time.Duration, enabled bool) {
 func (pm *packageUpdatesManager) get(now time.Time) []uint16 {
 	pm.Lock()
 	defer pm.Unlock()
-	if !pm.running && (pm.checkedAt.IsZero() || now.Sub(pm.checkedAt) >= pm.interval) {
+	if !pm.running && pm.dueLocked(now) {
 		pm.running = true
 		go pm.refresh()
 	}
 	return pm.result.counts
+}
+
+// dueLocked reports whether a check should start. After a failure the retry
+// time wins over the regular interval. Callers must hold the lock.
+func (pm *packageUpdatesManager) dueLocked(now time.Time) bool {
+	if !pm.retryAt.IsZero() {
+		return !now.Before(pm.retryAt)
+	}
+	return pm.checkedAt.IsZero() || now.Sub(pm.checkedAt) >= pm.interval
 }
 
 // list returns the per-package details of the last check. It never starts a check.
@@ -119,15 +153,23 @@ func (pm *packageUpdatesManager) refresh() {
 	ctx, cancel := context.WithTimeout(context.Background(), packageUpdatesTimeout)
 	defer cancel()
 	result, err := pm.check(ctx)
-	if err != nil {
-		slog.Debug("Package updates check failed", "err", err)
-		result = packageUpdatesResult{}
-	}
 	pm.Lock()
+	defer pm.Unlock()
+	pm.running = false
+	if err != nil {
+		// Keep the previous result: a failed check says nothing about pending updates.
+		pm.lastErr = err
+		pm.failures++
+		delay := updateCheckRetryDelay(pm.failures, pm.interval)
+		pm.retryAt = time.Now().Add(delay)
+		slog.Warn("Package updates check failed", "manager", pm.name, "err", err, "retry_in", delay)
+		return
+	}
 	pm.result = result
 	pm.checkedAt = time.Now()
-	pm.running = false
-	pm.Unlock()
+	pm.lastErr = nil
+	pm.failures = 0
+	pm.retryAt = time.Time{}
 }
 
 func runningInContainer() bool {

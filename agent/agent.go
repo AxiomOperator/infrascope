@@ -44,7 +44,8 @@ type Agent struct {
 	cache                     *systemDataCache                                      // Cache for system stats based on cache time
 	connectionManager         *ConnectionManager                                    // Channel to signal connection events
 	handlerRegistry           *HandlerRegistry                                      // Registry for routing incoming messages
-	server                    *ssh.Server                                           // SSH server
+	server                    *ssh.Server                                           // SSH server (guarded by serverMu)
+	serverMu                  sync.Mutex                                            // Guards server
 	dataDir                   string                                                // Directory for persisting data
 	keys                      []gossh.PublicKey                                     // SSH public keys
 	smartManager              *SmartManager                                         // Manages SMART data
@@ -212,8 +213,8 @@ func (a *Agent) gatherStats(options common.DataRequestOptions) *system.CombinedD
 			numFailed := a.systemdManager.getFailedServiceCount()
 			data.Info.Services = []uint16{totalCount, numFailed}
 		}
-		if a.systemdManager.hasFreshStats {
-			data.SystemdServices = a.systemdManager.getServiceStats(nil, false)
+		if services, fresh := a.systemdManager.consumeFreshStats(); fresh {
+			data.SystemdServices = services
 			data.SystemdServicesUpdated = true
 			// Preserve an explicit zero count so the hub can distinguish a fresh
 			// empty snapshot from a response that omitted systemd data.

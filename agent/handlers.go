@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/fxamacker/cbor/v2"
 	"github.com/henrygd/beszel/internal/common"
@@ -16,6 +17,8 @@ import (
 
 // HandlerContext provides context for request handlers
 type HandlerContext struct {
+	// Ctx bounds long-running work (Docker API, D-Bus). Nil means no deadline.
+	Ctx         context.Context
 	Client      *WebSocketClient
 	Agent       *Agent
 	Request     *common.HubRequest[cbor.RawMessage]
@@ -23,6 +26,14 @@ type HandlerContext struct {
 	HubVerified bool
 	// SendResponse abstracts how a handler sends responses (WS or SSH)
 	SendResponse func(data any, requestID *uint32) error
+}
+
+// context returns the request context, or context.Background if none is set.
+func (hctx *HandlerContext) context() context.Context {
+	if hctx.Ctx != nil {
+		return hctx.Ctx
+	}
+	return context.Background()
 }
 
 // RequestHandler defines the interface for handling specific websocket request types
@@ -129,8 +140,7 @@ func (h *GetContainerLogsHandler) Handle(hctx *HandlerContext) error {
 		return err
 	}
 
-	ctx := context.Background()
-	logContent, err := hctx.Agent.dockerManager.getLogs(ctx, req.ContainerID)
+	logContent, err := hctx.Agent.dockerManager.getLogs(hctx.context(), req.ContainerID)
 	if err != nil {
 		return err
 	}
@@ -154,8 +164,7 @@ func (h *GetContainerInfoHandler) Handle(hctx *HandlerContext) error {
 		return err
 	}
 
-	ctx := context.Background()
-	info, err := hctx.Agent.dockerManager.getContainerInfo(ctx, req.ContainerID)
+	info, err := hctx.Agent.dockerManager.getContainerInfo(hctx.context(), req.ContainerID)
 	if err != nil {
 		return err
 	}
@@ -218,6 +227,9 @@ func (h *GetPackageUpdatesHandler) Handle(hctx *HandlerContext) error {
 ////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////
 
+// systemdDetailsTimeout bounds a systemd service details lookup over D-Bus.
+const systemdDetailsTimeout = 30 * time.Second
+
 // GetSystemdInfoHandler handles detailed systemd service info requests
 type GetSystemdInfoHandler struct{}
 
@@ -234,7 +246,9 @@ func (h *GetSystemdInfoHandler) Handle(hctx *HandlerContext) error {
 		return errors.New("service name is required")
 	}
 
-	details, err := hctx.Agent.systemdManager.getServiceDetails(req.ServiceName)
+	ctx, cancel := context.WithTimeout(hctx.context(), systemdDetailsTimeout)
+	defer cancel()
+	details, err := hctx.Agent.systemdManager.getServiceDetails(ctx, req.ServiceName)
 	if err != nil {
 		return err
 	}

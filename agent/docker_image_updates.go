@@ -12,8 +12,22 @@ import (
 const imageUpdateInterval = time.Hour
 
 type imageUpdateStatus struct {
-	available bool
-	checkedAt time.Time
+	available bool      // result of the last successful check
+	checkedAt time.Time // time of the last successful check
+	// Failure tracking: a failed check keeps the previous result and is retried
+	// after a short backoff (see updateCheckRetryDelay) instead of the full interval.
+	lastErr  error
+	failures int
+	retryAt  time.Time
+}
+
+// due reports whether the entry should be checked. After a failure the retry
+// time wins over the regular interval.
+func (s *imageUpdateStatus) due(now time.Time) bool {
+	if !s.retryAt.IsZero() {
+		return !now.Before(s.retryAt)
+	}
+	return s.checkedAt.IsZero() || now.Sub(s.checkedAt) >= imageUpdateInterval
 }
 
 func normalizedImageReference(image string) string {
@@ -45,7 +59,7 @@ func (dm *dockerManager) refreshImageUpdates(containers []*container.ApiInfo, no
 	active := make(map[string]struct{}, len(containers))
 	pending := make(map[string]*imageUpdateStatus)
 	for _, ctr := range containers {
-		if len(ctr.Names) > 0 && dm.shouldExcludeContainer(ctr.Names[0][1:]) {
+		if len(ctr.Names) > 0 && dm.shouldExcludeContainer(containerName(ctr)) {
 			continue
 		}
 		key := normalizedImageReference(ctr.Image)
@@ -58,7 +72,7 @@ func (dm *dockerManager) refreshImageUpdates(containers []*container.ApiInfo, no
 			entry = &imageUpdateStatus{}
 			dm.imageUpdates[key] = entry
 		}
-		if entry.checkedAt.IsZero() || now.Sub(entry.checkedAt) >= imageUpdateInterval {
+		if entry.due(now) {
 			pending[key] = entry
 		}
 	}
@@ -82,14 +96,22 @@ func (dm *dockerManager) refreshImageUpdates(containers []*container.ApiInfo, no
 				defer wg.Done()
 				defer func() { <-sem }()
 				available, err := dm.checkImageUpdate(key)
-				if err != nil {
-					available = false
-					slog.Debug("Image update check failed", "image", key, "err", err)
-				}
 				dm.imageUpdatesMutex.Lock()
+				defer dm.imageUpdatesMutex.Unlock()
+				if err != nil {
+					// Keep the previous result; retry sooner than the full interval.
+					entry.lastErr = err
+					entry.failures++
+					delay := updateCheckRetryDelay(entry.failures, imageUpdateInterval)
+					entry.retryAt = time.Now().Add(delay)
+					slog.Debug("Image update check failed", "image", key, "err", err, "retry_in", delay)
+					return
+				}
 				entry.available = available
 				entry.checkedAt = time.Now()
-				dm.imageUpdatesMutex.Unlock()
+				entry.lastErr = nil
+				entry.failures = 0
+				entry.retryAt = time.Time{}
 			}()
 		}
 		wg.Wait()

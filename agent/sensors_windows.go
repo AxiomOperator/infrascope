@@ -24,11 +24,13 @@ import (
 	"github.com/shirou/gopsutil/v4/sensors"
 )
 
-// Note: This is always called from Agent.gatherStats() which holds Agent.Lock(),
-// so no internal concurrency protection is needed.
-
 // lhmProcess is a wrapper around the LHM .NET process.
+//
+// Reads share one stdin/stdout pipe, so mu serializes them. getTempsWithTimeout
+// can abandon a read that times out while it keeps running in the background;
+// the mutex guarantees a later poll never interleaves with it.
 type lhmProcess struct {
+	mu                   sync.Mutex
 	cmd                  *exec.Cmd
 	stdin                io.WriteCloser
 	stdout               io.ReadCloser
@@ -140,6 +142,9 @@ func (lhm *lhmProcess) cleanupProcess() {
 }
 
 func (lhm *lhmProcess) getTemps(ctx context.Context) (temps []sensors.TemperatureStat, err error) {
+	lhm.mu.Lock()
+	defer lhm.mu.Unlock()
+
 	if !useLHM || lhm.stoppedNoSensors {
 		// Fall back to gopsutil if we can't get sensors from LHM
 		return sensors.TemperaturesWithContext(ctx)

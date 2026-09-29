@@ -21,12 +21,19 @@ import (
 
 var errNoActiveTime = errors.New("no active time")
 
+const (
+	// systemdUnitTimeout bounds the D-Bus property reads for a single unit.
+	systemdUnitTimeout = 10 * time.Second
+	// systemdListTimeout bounds listing the units during a refresh.
+	systemdListTimeout = 30 * time.Second
+)
+
 // systemdManager manages the collection of systemd service statistics.
 type systemdManager struct {
 	sync.Mutex
 	serviceStatsMap map[string]*systemd.Service
 	isRunning       bool
-	hasFreshStats   bool
+	hasFreshStats   bool // guarded by the embedded mutex
 	patterns        []string
 }
 
@@ -71,6 +78,9 @@ func newSystemdManager() (*systemdManager, error) {
 		patterns:        getServicePatterns(),
 	}
 
+	// The connection is only used to prime the stats map; the background worker
+	// opens its own connection for each refresh.
+	defer conn.Close()
 	manager.startWorker(conn)
 
 	return manager, nil
@@ -94,7 +104,22 @@ func (sm *systemdManager) startWorker(conn *dbus.Conn) {
 
 // getServiceStatsCount returns the number of systemd services.
 func (sm *systemdManager) getServiceStatsCount() int {
+	sm.Lock()
+	defer sm.Unlock()
 	return len(sm.serviceStatsMap)
+}
+
+// consumeFreshStats returns a snapshot of the services and true if they were
+// refreshed since the last call, clearing the fresh flag. It returns false
+// without a snapshot otherwise.
+func (sm *systemdManager) consumeFreshStats() ([]*systemd.Service, bool) {
+	sm.Lock()
+	fresh := sm.hasFreshStats
+	sm.Unlock()
+	if !fresh {
+		return nil, false
+	}
+	return sm.getServiceStats(nil, false), true
 }
 
 // getFailedServiceCount returns the number of systemd services in a failed state.
@@ -124,8 +149,11 @@ func (sm *systemdManager) getServiceStats(conn *dbus.Conn, refresh bool) []*syst
 		// return nil
 		sm.Lock()
 		defer sm.Unlock()
+		// Return copies: the worker keeps updating the map entries in place
+		// while the caller serializes the snapshot.
 		for _, service := range sm.serviceStatsMap {
-			services = append(services, service)
+			serviceCopy := *service
+			services = append(services, &serviceCopy)
 		}
 		sm.hasFreshStats = false
 		return services
@@ -139,7 +167,9 @@ func (sm *systemdManager) getServiceStats(conn *dbus.Conn, refresh bool) []*syst
 		defer conn.Close()
 	}
 
-	units, err := conn.ListUnitsByPatternsContext(context.Background(), []string{"loaded"}, sm.patterns)
+	listCtx, cancelList := context.WithTimeout(context.Background(), systemdListTimeout)
+	units, err := conn.ListUnitsByPatternsContext(listCtx, []string{"loaded"}, sm.patterns)
+	cancelList()
 	if err != nil {
 		slog.Error("Error listing systemd service units", "err", err)
 		return nil
@@ -164,9 +194,9 @@ func (sm *systemdManager) getServiceStats(conn *dbus.Conn, refresh bool) []*syst
 			delete(sm.serviceStatsMap, unitName)
 		}
 	}
+	sm.hasFreshStats = true
 	sm.Unlock()
 
-	sm.hasFreshStats = true
 	return services
 }
 
@@ -175,7 +205,8 @@ func (sm *systemdManager) updateServiceStats(conn *dbus.Conn, unit dbus.UnitStat
 	sm.Lock()
 	defer sm.Unlock()
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), systemdUnitTimeout)
+	defer cancel()
 
 	// if service has never been active (no active since time), skip it
 	if activeEnterTsProp, err := conn.GetUnitTypePropertyContext(ctx, unit.Name, "Unit", "ActiveEnterTimestamp"); err == nil {
@@ -232,9 +263,10 @@ func (sm *systemdManager) updateServiceStats(conn *dbus.Conn, unit dbus.UnitStat
 	return service, nil
 }
 
-// getServiceDetails collects extended information for a specific systemd service.
-func (sm *systemdManager) getServiceDetails(serviceName string) (systemd.ServiceDetails, error) {
-	conn, err := dbus.NewSystemConnectionContext(context.Background())
+// getServiceDetails collects extended information for a specific systemd
+// service. ctx bounds the whole lookup, including the D-Bus connection.
+func (sm *systemdManager) getServiceDetails(ctx context.Context, serviceName string) (systemd.ServiceDetails, error) {
+	conn, err := dbus.NewSystemConnectionContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +277,6 @@ func (sm *systemdManager) getServiceDetails(serviceName string) (systemd.Service
 		unitName += ".service"
 	}
 
-	ctx := context.Background()
 	props, err := conn.GetUnitPropertiesContext(ctx, unitName)
 	if err != nil {
 		return nil, err

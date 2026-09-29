@@ -37,7 +37,11 @@ func (a *Agent) StartServer(opts ServerOptions) error {
 	if disableSSH, _ := utils.GetEnv("DISABLE_SSH"); disableSSH == "true" {
 		return errors.New("SSH disabled")
 	}
+	// Hold serverMu from the check until a.server is set so two concurrent
+	// calls cannot both start a server.
+	a.serverMu.Lock()
 	if a.server != nil {
+		a.serverMu.Unlock()
 		return errors.New("server already started")
 	}
 
@@ -46,6 +50,7 @@ func (a *Agent) StartServer(opts ServerOptions) error {
 	if opts.Network == "unix" {
 		// remove existing socket file if it exists
 		if err := os.Remove(opts.Addr); err != nil && !os.IsNotExist(err) {
+			a.serverMu.Unlock()
 			return err
 		}
 	}
@@ -53,6 +58,7 @@ func (a *Agent) StartServer(opts ServerOptions) error {
 	// start listening on the address
 	ln, err := net.Listen(opts.Network, opts.Addr)
 	if err != nil {
+		a.serverMu.Unlock()
 		return err
 	}
 	defer ln.Close()
@@ -68,7 +74,7 @@ func (a *Agent) StartServer(opts ServerOptions) error {
 	// set default handler
 	ssh.Handle(a.handleSession)
 
-	a.server = &ssh.Server{
+	server := &ssh.Server{
 		ServerConfigCallback: func(ctx ssh.Context) *gossh.ServerConfig {
 			return config
 		},
@@ -91,9 +97,19 @@ func (a *Agent) StartServer(opts ServerOptions) error {
 		// close idle connections after 70 seconds
 		IdleTimeout: 70 * time.Second,
 	}
+	a.server = server
+	a.serverMu.Unlock()
 
 	// Start SSH server on the listener
-	return a.server.Serve(ln)
+	err = server.Serve(ln)
+
+	// Allow a later restart if Serve stopped on its own.
+	a.serverMu.Lock()
+	if a.server == server {
+		a.server = nil
+	}
+	a.serverMu.Unlock()
+	return err
 }
 
 // getHubVersion extracts the hub version from the SSH client version string
@@ -258,12 +274,15 @@ func GetNetwork(addr string) string {
 // StopServer stops the SSH server if it's running.
 // It returns an error if the server is not running or if there's an error stopping it.
 func (a *Agent) StopServer() error {
-	if a.server == nil {
+	a.serverMu.Lock()
+	server := a.server
+	a.server = nil
+	a.serverMu.Unlock()
+	if server == nil {
 		return errors.New("SSH server not running")
 	}
 
 	slog.Info("Stopping SSH server")
-	_ = a.server.Close()
-	a.server = nil
+	_ = server.Close()
 	return nil
 }

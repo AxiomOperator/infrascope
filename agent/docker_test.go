@@ -2133,3 +2133,101 @@ func TestConvertContainerPortsToString(t *testing.T) {
 		})
 	}
 }
+
+func TestGetDockerStatsToleratesMalformedContainers(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/containers/json":
+			fmt.Fprint(w, `[{"Id":"","Names":["/noid"],"Status":"Up 2 hours"},{"Id":"abc","Names":[],"Status":"Up 2 hours"},{"Id":"0123456789abcdef","Status":"Up 2 hours"}]`)
+		case strings.Contains(r.URL.Path, "/stats"):
+			fmt.Fprint(w, `{"memory_stats":{"usage":1048576},"cpu_stats":{},"networks":{}}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	dm := newDockerManagerForVersionTest(server)
+	dm.dockerVersionChecked = true
+	dm.imageUpdatesDisabled = true
+
+	var stats []*container.Stats
+	require.NotPanics(t, func() {
+		var err error
+		stats, err = dm.getDockerStats(defaultCacheTimeMs)
+		require.NoError(t, err)
+	})
+	require.Len(t, stats, 2, "the container without an id is skipped")
+	names := map[string]string{}
+	for _, stat := range stats {
+		names[stat.Id] = stat.Name
+	}
+	assert.Equal(t, map[string]string{"abc": "abc", "0123456789ab": "0123456789ab"}, names)
+}
+
+func TestContainerNameHelpers(t *testing.T) {
+	assert.Equal(t, "abc", shortContainerID("abc"))
+	assert.Equal(t, "0123456789ab", shortContainerID("0123456789abcdef"))
+	assert.Equal(t, "web", containerName(&container.ApiInfo{Names: []string{"/web"}}))
+	assert.Equal(t, "web", containerName(&container.ApiInfo{Names: []string{"web"}}))
+	assert.Equal(t, "0123456789ab", containerName(&container.ApiInfo{Id: "0123456789abcdef"}))
+	assert.Equal(t, "short", containerName(&container.ApiInfo{IdShort: "short", Names: []string{""}}))
+}
+
+func TestGetContainerInfoStripsSecrets(t *testing.T) {
+	rt := &recordingRoundTripper{
+		statusCode: 200,
+		body: `{"Name":"/demo","Path":"/bin/app","Args":["--password=hunter2"],` +
+			`"Config":{"Env":["SECRET=1"],"Cmd":["--token=abc"],"Entrypoint":["/bin/app","--key=xyz"],"Image":"demo:latest"}}`,
+	}
+	dm := &dockerManager{client: &http.Client{Transport: rt}}
+
+	body, err := dm.getContainerInfo(context.Background(), "0123456789ab")
+	require.NoError(t, err)
+	for _, secret := range []string{"SECRET=1", "hunter2", "--token=abc", "--key=xyz", "/bin/app"} {
+		assert.NotContains(t, string(body), secret)
+	}
+	var info map[string]any
+	require.NoError(t, json.Unmarshal(body, &info))
+	assert.NotContains(t, info, "Args")
+	assert.NotContains(t, info, "Path")
+	config := info["Config"].(map[string]any)
+	assert.Equal(t, "demo:latest", config["Image"])
+	for _, key := range []string{"Env", "Cmd", "Entrypoint"} {
+		assert.NotContains(t, config, key)
+	}
+}
+
+func TestContainerDetailsHonorExcludeContainers(t *testing.T) {
+	var paths []string
+	dm := &dockerManager{
+		excludeContainers: []string{"secret-*"},
+		client: &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			paths = append(paths, r.URL.Path)
+			body := "log line\n"
+			if strings.HasSuffix(r.URL.Path, "/json") {
+				name := "/secret-db"
+				if strings.Contains(r.URL.Path, "bbbbbbbbbbbb") {
+					name = "/public-web"
+				}
+				body = `{"Name":"` + name + `","Config":{}}`
+			}
+			return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
+		})},
+	}
+
+	_, err := dm.getContainerInfo(context.Background(), "aaaaaaaaaaaa")
+	assert.ErrorIs(t, err, errContainerExcluded)
+
+	paths = nil
+	_, err = dm.getLogs(context.Background(), "aaaaaaaaaaaa")
+	assert.ErrorIs(t, err, errContainerExcluded)
+	assert.Equal(t, []string{"/containers/aaaaaaaaaaaa/json"}, paths, "logs of excluded containers must not be fetched")
+
+	info, err := dm.getContainerInfo(context.Background(), "bbbbbbbbbbbb")
+	require.NoError(t, err)
+	assert.Contains(t, string(info), "public-web")
+
+	logs, err := dm.getLogs(context.Background(), "bbbbbbbbbbbb")
+	require.NoError(t, err)
+	assert.Equal(t, "log line\n", logs)
+}

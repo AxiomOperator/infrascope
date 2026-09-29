@@ -66,22 +66,22 @@ func TestIndependentPoolBackendCaches(t *testing.T) {
 			managers := []*poolBackend{states[0].backend(), states[1].backend()}
 			zm := &StoragePoolManager{backends: managers, detailInterval: time.Hour}
 			var stats system.Stats
-			zm.Update(&stats)
+			zm.Update(&stats, defaultDataCacheTimeMs)
 			require.Len(t, stats.ZfsPools, 2)
 			require.True(t, zm.GetDetail(true).Complete)
 			baseline := poolKernelSample{at: time.Now().Add(-time.Second)}
 			for i, m := range managers {
 				m.lastPoolStats = time.Time{}
-				m.kernelSamples[states[i].name] = baseline
+				m.kernelSamples[defaultDataCacheTimeMs][states[i].name] = baseline
 				states[i].alloc = 20
 				states[i].read = 100
 			}
 			states[failed].err = errors.New("collection failed")
-			zm.Update(&stats)
+			zm.Update(&stats, defaultDataCacheTimeMs)
 			healthy := 1 - failed
 			assert.Equal(t, uint64(10), managers[failed].poolData[0].Alloc)
 			assert.Equal(t, uint64(20), managers[healthy].poolData[0].Alloc)
-			assert.Equal(t, baseline, managers[failed].kernelSamples[states[failed].name])
+			assert.Equal(t, baseline, managers[failed].kernelSamples[defaultDataCacheTimeMs][states[failed].name])
 			assert.Zero(t, stats.ZfsPools[states[failed].name].ReadBytes)
 			assert.Positive(t, stats.ZfsPools[states[healthy].name].ReadBytes)
 			partial := zm.GetDetail(true)
@@ -95,7 +95,7 @@ func TestIndependentPoolBackendCaches(t *testing.T) {
 			// Successful empty inventory removes only the healthy backend's pool.
 			states[healthy].empty = true
 			managers[healthy].lastPoolStats = time.Time{}
-			zm.Update(&stats)
+			zm.Update(&stats, defaultDataCacheTimeMs)
 			require.Len(t, stats.ZfsPools, 1)
 			assert.Contains(t, stats.ZfsPools, states[failed].name)
 			partial = zm.GetDetail(true)
@@ -105,12 +105,12 @@ func TestIndependentPoolBackendCaches(t *testing.T) {
 			// Recovery uses the retained I/O baseline, then normal removal works.
 			states[failed].err = nil
 			managers[failed].lastPoolStats = time.Time{}
-			zm.Update(&stats)
+			zm.Update(&stats, defaultDataCacheTimeMs)
 			assert.Positive(t, stats.ZfsPools[states[failed].name].ReadBytes)
 			assert.True(t, zm.GetDetail(true).Complete)
 			states[failed].empty = true
 			managers[failed].lastPoolStats = time.Time{}
-			zm.Update(&stats)
+			zm.Update(&stats, defaultDataCacheTimeMs)
 			assert.Empty(t, stats.ZfsPools)
 			assert.Empty(t, zm.GetDetail(true).Pools)
 		})
@@ -122,7 +122,7 @@ func TestIndependentBackendsWithoutCache(t *testing.T) {
 	b := &poolTestBackend{name: "b:uuid", alloc: 20}
 	zm := &StoragePoolManager{backends: []*poolBackend{z.backend(), b.backend()}, detailInterval: time.Hour}
 	var stats system.Stats
-	zm.Update(&stats)
+	zm.Update(&stats, defaultDataCacheTimeMs)
 	require.Len(t, stats.ZfsPools, 1)
 	assert.Contains(t, stats.ZfsPools, "b:uuid")
 	detail := zm.GetDetail(true)
@@ -140,7 +140,7 @@ func TestConcurrentBackendDetailsAndMetrics(t *testing.T) {
 			defer wg.Done()
 			for j := 0; j < 10; j++ {
 				if metrics {
-					zm.Update(&system.Stats{})
+					zm.Update(&system.Stats{}, defaultDataCacheTimeMs)
 				} else {
 					zm.GetDetail(true)
 				}
@@ -159,7 +159,7 @@ func TestStoragePoolBackendOrder(t *testing.T) {
 	}
 	m := &StoragePoolManager{backends: []*poolBackend{b, z}, detailInterval: time.Hour}
 	var stats system.Stats
-	m.Update(&stats)
+	m.Update(&stats, defaultDataCacheTimeMs)
 	require.Len(t, stats.ZfsPools, 2)
 	detail := m.GetDetail(true)
 	require.True(t, detail.Complete)
@@ -203,9 +203,9 @@ func TestUpdatePopulatesZfsPools(t *testing.T) {
 
 	var stats system.Stats
 	// The first kernel sample establishes the cumulative-counter baseline.
-	zm.Update(&stats)
-	zm.backends[0].kernelSamples["tank"] = poolKernelSample{at: time.Now().Add(-time.Second)}
-	zm.Update(&stats)
+	zm.Update(&stats, defaultDataCacheTimeMs)
+	zm.backends[0].kernelSamples[defaultDataCacheTimeMs]["tank"] = poolKernelSample{at: time.Now().Add(-time.Second)}
+	zm.Update(&stats, defaultDataCacheTimeMs)
 	require.NotNil(t, stats.ZfsPools)
 	require.Contains(t, stats.ZfsPools, "tank")
 	assert.InDelta(t, 22350.8105, stats.ZfsPools["tank"].Total, 0.0001) // Size in GiB
@@ -214,6 +214,44 @@ func TestUpdatePopulatesZfsPools(t *testing.T) {
 	assert.InDelta(t, 1250, stats.ZfsPools["tank"].ReadBytes, 5)
 	assert.InDelta(t, 5120, stats.ZfsPools["tank"].WriteBytes, 5)
 
+}
+
+// TestUpdateKernelStatsPerInterval verifies that realtime (1s) polling does not
+// consume the baseline of the default 60s interval: each interval computes its
+// rate against its own previous sample.
+func TestUpdateKernelStatsPerInterval(t *testing.T) {
+	zm := &StoragePoolManager{detailInterval: time.Hour, backends: []*poolBackend{{name: "zfs"}}}
+	zm.backends[0].poolStatsFn = func() ([]zfs.PoolStat, error) {
+		return []zfs.PoolStat{{Name: "tank", Size: 1, Alloc: 1, Health: "ONLINE"}}, nil
+	}
+	zm.backends[0].datasetsFn = func() ([]zfs.Dataset, error) { return nil, nil }
+	var nread uint64
+	zm.backends[0].kernelStatsFn = func() ([]zfs.PoolKernelStat, error) {
+		return []zfs.PoolKernelStat{{Name: "tank", Health: "ONLINE", NRead: nread}}, nil
+	}
+	const realtime uint16 = 1000
+
+	var stats system.Stats
+	// Establish baselines for both intervals, then age the 60s baseline.
+	zm.Update(&stats, defaultDataCacheTimeMs)
+	zm.Update(&stats, realtime)
+	zm.backends[0].kernelSamples[defaultDataCacheTimeMs]["tank"] = poolKernelSample{nread: 0, at: time.Now().Add(-60 * time.Second)}
+
+	// Realtime polls advance only the realtime baseline.
+	for range 3 {
+		nread += 6000
+		zm.backends[0].kernelSamples[realtime]["tank"] = poolKernelSample{
+			nread: zm.backends[0].kernelSamples[realtime]["tank"].nread,
+			at:    time.Now().Add(-time.Second),
+		}
+		zm.Update(&stats, realtime)
+		assert.InDelta(t, 6000, stats.ZfsPools["tank"].ReadBytes, 100)
+	}
+	assert.Equal(t, uint64(0), zm.backends[0].kernelSamples[defaultDataCacheTimeMs]["tank"].nread)
+
+	// The 60s point covers all 18000 bytes over 60 seconds, not the last 1s delta.
+	zm.Update(&stats, defaultDataCacheTimeMs)
+	assert.InDelta(t, 300, stats.ZfsPools["tank"].ReadBytes, 5)
 }
 
 // TestUpdateKernelStatsMissing verifies pools without a kernel sample report zero
@@ -229,7 +267,7 @@ func TestUpdateKernelStatsMissing(t *testing.T) {
 	}
 
 	var stats system.Stats
-	zm.Update(&stats)
+	zm.Update(&stats, defaultDataCacheTimeMs)
 	require.NotNil(t, stats.ZfsPools)
 	assert.Equal(t, uint64(0), stats.ZfsPools["tank"].ReadBytes)
 	assert.Equal(t, uint64(0), stats.ZfsPools["tank"].WriteBytes)
@@ -241,15 +279,15 @@ func TestUpdateKernelCounterReset(t *testing.T) {
 		return []zfs.PoolStat{{Name: "tank", Health: "ONLINE"}}, nil
 	}
 	zm.backends[0].datasetsFn = func() ([]zfs.Dataset, error) { return nil, nil }
-	zm.backends[0].kernelSamples = map[string]poolKernelSample{
+	zm.backends[0].kernelSamples = map[uint16]map[string]poolKernelSample{defaultDataCacheTimeMs: {
 		"tank": {nread: 100, nwrite: 200, at: time.Now().Add(-time.Second)},
-	}
+	}}
 	zm.backends[0].kernelStatsFn = func() ([]zfs.PoolKernelStat, error) {
 		return []zfs.PoolKernelStat{{Name: "tank", Health: "ONLINE", NRead: 10, NWrite: 20}}, nil
 	}
 
 	var stats system.Stats
-	zm.Update(&stats)
+	zm.Update(&stats, defaultDataCacheTimeMs)
 	assert.Equal(t, uint64(0), stats.ZfsPools["tank"].ReadBytes)
 	assert.Equal(t, uint64(0), stats.ZfsPools["tank"].WriteBytes)
 }
@@ -263,8 +301,8 @@ func TestUpdateNoZfs(t *testing.T) {
 	}
 
 	var stats system.Stats
-	zm.Update(&stats)
-	zm.Update(&stats)
+	zm.Update(&stats, defaultDataCacheTimeMs)
+	zm.Update(&stats, defaultDataCacheTimeMs)
 	assert.Nil(t, stats.ZfsPools)
 	assert.Equal(t, 1, calls, "failed pool discovery should be cached until the next refresh interval")
 }
@@ -278,8 +316,8 @@ func TestUpdateEmptyPools(t *testing.T) {
 	}
 
 	var stats system.Stats
-	zm.Update(&stats)
-	zm.Update(&stats)
+	zm.Update(&stats, defaultDataCacheTimeMs)
+	zm.Update(&stats, defaultDataCacheTimeMs)
 	assert.Nil(t, stats.ZfsPools)
 	assert.Equal(t, 1, calls, "an empty pool inventory should be cached until the next refresh interval")
 }
@@ -433,7 +471,7 @@ func TestBtrfsRawCapacityPropagates(t *testing.T) {
 		poolStatusesFn: func() ([]zfs.PoolStatus, error) { return nil, nil },
 		datasetsFn:     func() ([]zfs.Dataset, error) { return nil, nil }}}}
 	var stats system.Stats
-	zm.Update(&stats)
+	zm.Update(&stats, defaultDataCacheTimeMs)
 	require.True(t, stats.ZfsPools["b:raw"].Raw)
 	detail := zm.GetDetail(true)
 	require.True(t, detail.Complete)
@@ -495,13 +533,13 @@ func TestBtrfsPoolIdentities(t *testing.T) {
 	first := "b:11111111-1111-4111-8111-111111111111"
 	second := "b:22222222-2222-4222-8222-222222222222"
 	var stats system.Stats
-	zm.Update(&stats)
+	zm.Update(&stats, defaultDataCacheTimeMs)
 	require.Len(t, stats.ZfsPools, 3)
 	assert.Contains(t, stats.ZfsPools, "tank")
 	assert.Equal(t, "ONLINE", stats.ZfsPools[first].Health)
 	assert.Equal(t, "DEGRADED", stats.ZfsPools[second].Health)
-	assert.Equal(t, uint64(100), zm.backends[1].kernelSamples[first].nread)
-	assert.Equal(t, uint64(200), zm.backends[1].kernelSamples[second].nread)
+	assert.Equal(t, uint64(100), zm.backends[1].kernelSamples[defaultDataCacheTimeMs][first].nread)
+	assert.Equal(t, uint64(200), zm.backends[1].kernelSamples[defaultDataCacheTimeMs][second].nread)
 	detail := zm.GetDetail(true)
 	require.Len(t, detail.Pools, 3)
 	assert.Equal(t, "zfs-device", detail.Pools[0].Vdevs[0].Name)
@@ -512,7 +550,7 @@ func TestBtrfsPoolIdentities(t *testing.T) {
 	label = "renamed"
 	zm.backends[0].lastPoolStats = time.Time{}
 	zm.backends[1].lastPoolStats = time.Time{}
-	zm.Update(&stats)
+	zm.Update(&stats, defaultDataCacheTimeMs)
 	require.Len(t, stats.ZfsPools, 3)
 	assert.Equal(t, "renamed", stats.ZfsPools[first].DisplayName)
 	assert.Equal(t, first, zm.GetDetail(true).Pools[1].Name)

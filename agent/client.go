@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
@@ -15,6 +16,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -35,7 +37,27 @@ const (
 	// hubNonceAuthFileName marks that a hub has signed a per-connection nonce.
 	// From then on the agent refuses the replayable token-only signature.
 	hubNonceAuthFileName = "hub-nonce-auth"
+	// maxConcurrentSlowRequests bounds how many slow requests (see slowActions)
+	// run at once off the WebSocket read loop.
+	maxConcurrentSlowRequests = 4
+	// slowRequestTimeout bounds a slow request, including the time spent
+	// waiting for a free slot. It stays below wsDeadline.
+	slowRequestTimeout = 90 * time.Second
 )
+
+// slowActions are hub requests that can take a long time (smartctl, D-Bus,
+// Docker API, package managers). They run in their own goroutine so the
+// WebSocket read loop keeps processing pings and GetData while they execute;
+// otherwise a slow handler can exceed wsDeadline and drop the connection.
+// Responses are routed by request id, so they may arrive out of order.
+var slowActions = map[common.WebSocketAction]bool{
+	common.GetContainerLogs:  true,
+	common.GetContainerInfo:  true,
+	common.GetSmartData:      true,
+	common.GetSystemdInfo:    true,
+	common.GetZfsData:        true,
+	common.GetPackageUpdates: true,
+}
 
 // errNoHubURL is returned when HUB_URL is unset. This is not a failure
 // condition: an agent configured with only a public key runs in SSH-only mode,
@@ -60,16 +82,25 @@ type WebSocketClient struct {
 	gws.BuiltinEventHandler
 	options            *gws.ClientOption                   // WebSocket client configuration options
 	agent              *Agent                              // Reference to the parent agent
-	Conn               *gws.Conn                           // Active WebSocket connection
+	Conn               *gws.Conn                           // Active WebSocket connection (guarded by mu)
 	hubURL             *url.URL                            // Parsed hub URL for connection
 	token              string                              // Authentication token for hub registration
 	fingerprint        string                              // System fingerprint for identification
 	hubRequest         *common.HubRequest[cbor.RawMessage] // Reusable request structure for message parsing
-	lastConnectAttempt time.Time                           // Timestamp of last connection attempt
+	lastConnectAttempt time.Time                           // Timestamp of last connection attempt (guarded by mu)
 	hubVerified        atomic.Bool                         // Whether the hub on the current connection has been cryptographically verified
-	nonce              string                              // Random per-connection value the hub must sign
+	nonce              string                              // Random per-connection value the hub must sign (guarded by mu)
 	nonceAuthSeen      atomic.Bool                         // Whether a hub has signed a nonce, so token-only signatures are refused
 	tlsConfig          *tls.Config                         // Optional TLS configuration with custom CA certificates
+
+	// mu guards Conn, lastConnectAttempt and nonce, which are read from the
+	// read loop, handler goroutines and the connection manager.
+	mu sync.Mutex
+	// connectMu serializes Connect so two attempts never race to replace Conn.
+	connectMu sync.Mutex
+
+	slowSlotsOnce sync.Once
+	slowSlots     chan struct{} // semaphore bounding concurrent slow requests
 }
 
 // newWebSocketClient creates a new WebSocket client for the given agent.
@@ -207,29 +238,61 @@ func (client *WebSocketClient) getOptions() *gws.ClientOption {
 // Connect establishes a WebSocket connection to the hub.
 // It closes any existing connection before attempting to reconnect.
 func (client *WebSocketClient) Connect() (err error) {
+	client.connectMu.Lock()
+	defer client.connectMu.Unlock()
+
+	client.mu.Lock()
 	client.lastConnectAttempt = time.Now()
+	client.mu.Unlock()
 
 	// make sure previous connection is closed
 	client.Close()
 
 	// every connection must prove the hub's identity again
 	client.hubVerified.Store(false)
-	nonce := make([]byte, common.HubAuthNonceSize)
-	if _, err := rand.Read(nonce); err != nil {
+	nonceBytes := make([]byte, common.HubAuthNonceSize)
+	if _, err := rand.Read(nonceBytes); err != nil {
 		return err
 	}
-	client.nonce = hex.EncodeToString(nonce)
+	nonce := hex.EncodeToString(nonceBytes)
+	client.mu.Lock()
+	client.nonce = nonce
+	client.mu.Unlock()
 	options := client.getOptions()
-	options.RequestHeader.Set(common.HubAuthNonceHeader, client.nonce)
+	options.RequestHeader.Set(common.HubAuthNonceHeader, nonce)
 
-	client.Conn, _, err = gws.NewClient(client, options)
+	conn, _, err := gws.NewClient(client, options)
 	if err != nil {
 		return err
 	}
+	client.mu.Lock()
+	client.Conn = conn
+	client.mu.Unlock()
 
-	go client.Conn.ReadLoop()
+	go conn.ReadLoop()
 
 	return nil
+}
+
+// lastAttempt returns the time of the last connection attempt.
+func (client *WebSocketClient) lastAttempt() time.Time {
+	client.mu.Lock()
+	defer client.mu.Unlock()
+	return client.lastConnectAttempt
+}
+
+// currentConn returns the active connection, or nil.
+func (client *WebSocketClient) currentConn() *gws.Conn {
+	client.mu.Lock()
+	defer client.mu.Unlock()
+	return client.Conn
+}
+
+// currentNonce returns the nonce of the current connection attempt.
+func (client *WebSocketClient) currentNonce() string {
+	client.mu.Lock()
+	defer client.mu.Unlock()
+	return client.nonce
 }
 
 // OnOpen handles WebSocket connection establishment.
@@ -248,7 +311,9 @@ func (client *WebSocketClient) OnClose(conn *gws.Conn, err error) {
 }
 
 // OnMessage handles incoming WebSocket messages from the hub.
-// It decodes CBOR messages and routes them to appropriate handlers.
+// It decodes CBOR messages and routes them to appropriate handlers. Slow
+// requests with a request id are handed off to a goroutine (see slowActions)
+// so they never block the read loop.
 func (client *WebSocketClient) OnMessage(conn *gws.Conn, message *gws.Message) {
 	defer message.Close()
 	conn.SetDeadline(time.Now().Add(wsDeadline))
@@ -257,6 +322,8 @@ func (client *WebSocketClient) OnMessage(conn *gws.Conn, message *gws.Message) {
 		return
 	}
 
+	// Data is decoded into a RawMessage copy, so the request stays valid after
+	// the message buffer is released.
 	var HubRequest common.HubRequest[cbor.RawMessage]
 
 	err := cbor.Unmarshal(message.Data.Bytes(), &HubRequest)
@@ -265,8 +332,83 @@ func (client *WebSocketClient) OnMessage(conn *gws.Conn, message *gws.Message) {
 		return
 	}
 
-	if err := client.handleHubRequest(&HubRequest, HubRequest.Id); err != nil {
+	r := &wsResponder{client: client, conn: conn}
+	if client.dispatchSlowRequest(&HubRequest, r) {
+		return
+	}
+
+	if err := client.handleHubRequestWith(context.Background(), &HubRequest, HubRequest.Id, r.sendResponse); err != nil {
 		slog.Error("Error handling message", "err", err)
+		r.sendError(HubRequest.Id, err)
+	}
+}
+
+// responder sends responses for requests read from one connection. Binding to
+// the connection keeps a late response from a slow request off a newer
+// connection.
+type responder interface {
+	sendResponse(data any, requestID *uint32) error
+	sendError(requestID *uint32, err error)
+}
+
+type wsResponder struct {
+	client *WebSocketClient
+	conn   *gws.Conn
+}
+
+func (r *wsResponder) sendResponse(data any, requestID *uint32) error {
+	if requestID != nil {
+		return r.client.sendMessageOn(r.conn, newAgentResponse(data, requestID))
+	}
+	// Legacy format - send data directly
+	return r.client.sendMessageOn(r.conn, data)
+}
+
+// sendError reports a failed request to the hub so it does not wait for its
+// timeout. Legacy requests without an id get no error response.
+func (r *wsResponder) sendError(requestID *uint32, err error) {
+	if requestID == nil || err == nil {
+		return
+	}
+	_ = r.client.sendMessageOn(r.conn, common.AgentResponse{Id: requestID, Error: err.Error()})
+}
+
+// dispatchSlowRequest runs slow requests in a goroutine, bounded by
+// maxConcurrentSlowRequests. It reports whether the request was dispatched.
+// Requests without an id (legacy hubs) are matched to responses by order, so
+// they are always handled inline.
+func (client *WebSocketClient) dispatchSlowRequest(req *common.HubRequest[cbor.RawMessage], r responder) bool {
+	if req.Id == nil || !slowActions[req.Action] {
+		return false
+	}
+	go client.handleSlowRequest(req, r)
+	return true
+}
+
+func (client *WebSocketClient) slowRequestSlots() chan struct{} {
+	client.slowSlotsOnce.Do(func() {
+		client.slowSlots = make(chan struct{}, maxConcurrentSlowRequests)
+	})
+	return client.slowSlots
+}
+
+// handleSlowRequest runs one slow request with a timeout once a slot is free.
+func (client *WebSocketClient) handleSlowRequest(req *common.HubRequest[cbor.RawMessage], r responder) {
+	ctx, cancel := context.WithTimeout(context.Background(), slowRequestTimeout)
+	defer cancel()
+
+	slots := client.slowRequestSlots()
+	select {
+	case slots <- struct{}{}:
+		defer func() { <-slots }()
+	case <-ctx.Done():
+		r.sendError(req.Id, errors.New("agent busy: too many concurrent requests"))
+		return
+	}
+
+	if err := client.handleHubRequestWith(ctx, req, req.Id, r.sendResponse); err != nil {
+		slog.Error("Error handling message", "action", req.Action, "err", err)
+		r.sendError(req.Id, err)
 	}
 }
 
@@ -310,7 +452,7 @@ func (client *WebSocketClient) handleAuthChallenge(msg *common.HubRequest[cbor.R
 // a signature over the token and this connection's nonce. Older hubs sign only
 // the token, which is accepted with a warning until a hub has signed a nonce.
 func (client *WebSocketClient) verifySignature(signature []byte) error {
-	if client.nonce != "" && client.verifyChallenge(common.HubAuthChallenge(client.token, client.nonce), signature) {
+	if nonce := client.currentNonce(); nonce != "" && client.verifyChallenge(common.HubAuthChallenge(client.token, nonce), signature) {
 		client.markNonceAuthSeen()
 		return nil
 	}
@@ -367,35 +509,50 @@ func (client *WebSocketClient) markNonceAuthSeen() {
 // Close closes the WebSocket connection gracefully.
 // This method is safe to call multiple times.
 func (client *WebSocketClient) Close() {
-	if client.Conn != nil {
-		_ = client.Conn.WriteClose(1000, nil)
+	if conn := client.currentConn(); conn != nil {
+		_ = conn.WriteClose(1000, nil)
 	}
 }
 
 // handleHubRequest routes the request to the appropriate handler using the handler registry.
 func (client *WebSocketClient) handleHubRequest(msg *common.HubRequest[cbor.RawMessage], requestID *uint32) error {
-	ctx := &HandlerContext{
+	return client.handleHubRequestWith(context.Background(), msg, requestID, client.sendResponse)
+}
+
+// handleHubRequestWith routes the request using the given context and response sender.
+func (client *WebSocketClient) handleHubRequestWith(ctx context.Context, msg *common.HubRequest[cbor.RawMessage], requestID *uint32, send func(data any, requestID *uint32) error) error {
+	hctx := &HandlerContext{
+		Ctx:          ctx,
 		Client:       client,
 		Agent:        client.agent,
 		Request:      msg,
 		RequestID:    requestID,
 		HubVerified:  client.hubVerified.Load(),
-		SendResponse: client.sendResponse,
+		SendResponse: send,
 	}
-	return client.agent.handlerRegistry.Handle(ctx)
+	return client.agent.handlerRegistry.Handle(hctx)
 }
 
 // sendMessage encodes the given data to CBOR and sends it as a binary message over the WebSocket connection to the hub.
 func (client *WebSocketClient) sendMessage(data any) error {
+	return client.sendMessageOn(client.currentConn(), data)
+}
+
+// sendMessageOn encodes data to CBOR and writes it to conn. gws serializes
+// concurrent writes on a connection.
+func (client *WebSocketClient) sendMessageOn(conn *gws.Conn, data any) error {
+	if conn == nil {
+		return errors.New("not connected")
+	}
 	bytes, err := cbor.Marshal(data)
 	if err != nil {
 		return err
 	}
-	err = client.Conn.WriteMessage(gws.OpcodeBinary, bytes)
+	err = conn.WriteMessage(gws.OpcodeBinary, bytes)
 	if err != nil {
 		// If writing fails (e.g., broken pipe due to network issues),
 		// close the connection to trigger reconnection logic (#1263)
-		client.Close()
+		_ = conn.WriteClose(1000, nil)
 	}
 	return err
 }

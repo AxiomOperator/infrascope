@@ -9,8 +9,11 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -22,6 +25,14 @@ import (
 )
 
 var errTemperatureFetchTimeout = errors.New("temperature collection timed out")
+
+// errTemperatureFetchInProgress is returned when an earlier read that timed out
+// is still running and no recent cached result is available.
+var errTemperatureFetchInProgress = errors.New("previous temperature collection still running")
+
+// tempCacheMaxAge bounds how old cached temperatures may be when they are
+// served in place of a read that is still in flight.
+const tempCacheMaxAge = time.Minute
 
 // Matches sensors.TemperaturesWithContext to allow for panic recovery (gopsutil/issues/1832)
 type getTempsFn func(ctx context.Context) ([]sensors.TemperatureStat, error)
@@ -37,6 +48,15 @@ type SensorConfig struct {
 	skipGPU        bool
 	sensorShadow   string
 	firstRun       bool
+
+	// readInFlight is set while a sensor read goroutine is running. A read that
+	// times out keeps running in the background; later polls must not start
+	// another one (LHM on Windows shares one stdin/stdout pipe, and a stalled
+	// read would otherwise leak a goroutine per poll).
+	readInFlight atomic.Bool
+	cacheMu      sync.Mutex
+	cachedTemps  []sensors.TemperatureStat // last successful read
+	cachedAt     time.Time
 }
 
 func (a *Agent) newSensorConfig() *SensorConfig {
@@ -126,7 +146,7 @@ func (a *Agent) updateTemperatures(systemStats *system.Stats) {
 	temps, err := a.getTempsWithTimeout(getSensorTemps)
 	if err != nil {
 		// retry once on panic (gopsutil/issues/1832)
-		if !errors.Is(err, errTemperatureFetchTimeout) {
+		if !errors.Is(err, errTemperatureFetchTimeout) && !errors.Is(err, errTemperatureFetchInProgress) {
 			temps, err = a.getTempsWithTimeout(getSensorTemps)
 		}
 		if err != nil {
@@ -194,32 +214,69 @@ func (a *Agent) getTempsWithPanicRecovery(getTemps getTempsFn) (temps []sensors.
 	return
 }
 
+// getTempsWithTimeout reads sensors in a goroutine and gives up after the
+// configured timeout. Only one read runs at a time: if an earlier read timed out
+// and is still running, recent cached temperatures are returned (or
+// errTemperatureFetchInProgress if there are none) instead of starting another.
 func (a *Agent) getTempsWithTimeout(getTemps getTempsFn) ([]sensors.TemperatureStat, error) {
 	type result struct {
 		temps []sensors.TemperatureStat
 		err   error
 	}
+	cfg := a.sensorConfig
+
+	if !cfg.readInFlight.CompareAndSwap(false, true) {
+		if temps, ok := cfg.cachedTempsIfFresh(time.Now()); ok {
+			slog.Debug("Temperature read still in flight, using cached data")
+			return temps, nil
+		}
+		return nil, errTemperatureFetchInProgress
+	}
 
 	// Use a longer timeout on the first run to allow for initialization
 	// (e.g. Windows LHM subprocess startup)
-	timeout := a.sensorConfig.timeout
-	if a.sensorConfig.firstRun {
-		a.sensorConfig.firstRun = false
+	timeout := cfg.timeout
+	if cfg.firstRun {
+		cfg.firstRun = false
 		timeout = 10 * time.Second
 	}
 
 	resultCh := make(chan result, 1)
 	go func() {
 		temps, err := a.getTempsWithPanicRecovery(getTemps)
+		if err == nil {
+			cfg.storeCachedTemps(temps, time.Now())
+		}
+		// Clear the flag before delivering the result so an immediate retry
+		// (e.g. after a recovered panic) is not treated as overlapping.
+		cfg.readInFlight.Store(false)
 		resultCh <- result{temps: temps, err: err}
 	}()
 
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 	select {
 	case res := <-resultCh:
 		return res.temps, res.err
-	case <-time.After(timeout):
+	case <-timer.C:
 		return nil, errTemperatureFetchTimeout
 	}
+}
+
+func (cfg *SensorConfig) storeCachedTemps(temps []sensors.TemperatureStat, at time.Time) {
+	cfg.cacheMu.Lock()
+	defer cfg.cacheMu.Unlock()
+	cfg.cachedTemps = slices.Clone(temps)
+	cfg.cachedAt = at
+}
+
+func (cfg *SensorConfig) cachedTempsIfFresh(now time.Time) ([]sensors.TemperatureStat, bool) {
+	cfg.cacheMu.Lock()
+	defer cfg.cacheMu.Unlock()
+	if cfg.cachedAt.IsZero() || now.Sub(cfg.cachedAt) > tempCacheMaxAge {
+		return nil, false
+	}
+	return slices.Clone(cfg.cachedTemps), true
 }
 
 // isValidSensor checks if a sensor is valid based on the sensor name and the sensor config

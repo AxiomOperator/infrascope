@@ -369,10 +369,47 @@ func TestPackageUpdatesManagerCaching(t *testing.T) {
 	waitIdle()
 	assert.Len(t, calls, 2)
 
-	// failed check clears the counts and the list
-	assert.Nil(t, pm.get(time.Now()))
-	assert.Nil(t, pm.list().Packages)
-	assert.False(t, pm.list().SecurityKnown)
+	// a failed check keeps the previous result instead of reporting "no updates"
+	assert.Equal(t, []uint16{3, 1}, pm.get(time.Now()))
+	assert.Equal(t, packages, pm.list().Packages)
+	assert.True(t, pm.list().SecurityKnown)
+	pm.Lock()
+	assert.EqualError(t, pm.lastErr, "boom")
+	checkedAt := pm.checkedAt
+	pm.Unlock()
+	assert.Equal(t, list.CheckedAt, checkedAt.Unix(), "checkedAt tracks the last successful check")
+	// ...and does not retry before the backoff elapses
+	assert.Len(t, calls, 2)
+
+	// retried after the short backoff, well before the full interval
+	pm.get(time.Now().Add(updateCheckRetryBase + time.Second))
+	waitIdle()
+	assert.Len(t, calls, 3)
+	pm.Lock()
+	assert.Equal(t, 2, pm.failures)
+	assert.WithinDuration(t, time.Now().Add(2*updateCheckRetryBase), pm.retryAt, 5*time.Second)
+	pm.Unlock()
+
+	// a successful retry replaces the result and clears the failure state
+	result, resultErr = packageUpdatesResult{counts: []uint16{0, 0}}, nil
+	pm.get(time.Now().Add(updateCheckRetryMax + time.Second))
+	waitIdle()
+	assert.Len(t, calls, 4)
+	assert.Equal(t, []uint16{0, 0}, pm.get(time.Now()))
+	pm.Lock()
+	assert.NoError(t, pm.lastErr)
+	assert.Zero(t, pm.failures)
+	assert.True(t, pm.retryAt.IsZero())
+	pm.Unlock()
+}
+
+func TestUpdateCheckRetryDelay(t *testing.T) {
+	assert.Equal(t, 5*time.Minute, updateCheckRetryDelay(1, time.Hour))
+	assert.Equal(t, 10*time.Minute, updateCheckRetryDelay(2, time.Hour))
+	assert.Equal(t, 15*time.Minute, updateCheckRetryDelay(3, time.Hour))
+	assert.Equal(t, 15*time.Minute, updateCheckRetryDelay(50, time.Hour))
+	// never longer than the regular interval
+	assert.Equal(t, 2*time.Minute, updateCheckRetryDelay(1, 2*time.Minute))
 }
 
 func TestGetPackageUpdatesHandler(t *testing.T) {

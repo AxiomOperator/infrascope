@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -593,6 +594,96 @@ func TestGetTempsWithTimeout(t *testing.T) {
 		assert.Nil(t, temps)
 		assert.ErrorIs(t, err, errTemperatureFetchTimeout)
 	})
+}
+
+func TestGetTempsWithTimeoutSingleReaderInFlight(t *testing.T) {
+	agent := &Agent{
+		sensorConfig: &SensorConfig{
+			context: context.Background(),
+			timeout: 10 * time.Millisecond,
+		},
+	}
+
+	var calls, concurrent, maxConcurrent atomic.Int32
+	release := make(chan struct{})
+	stalled := func(ctx context.Context) ([]sensors.TemperatureStat, error) {
+		calls.Add(1)
+		n := concurrent.Add(1)
+		defer concurrent.Add(-1)
+		for {
+			m := maxConcurrent.Load()
+			if n <= m || maxConcurrent.CompareAndSwap(m, n) {
+				break
+			}
+		}
+		<-release
+		return []sensors.TemperatureStat{{SensorKey: "late", Temperature: 40}}, nil
+	}
+
+	// First read stalls and times out, but its goroutine keeps running.
+	_, err := agent.getTempsWithTimeout(stalled)
+	require.ErrorIs(t, err, errTemperatureFetchTimeout)
+
+	// Later polls must not start another reader while the first is in flight.
+	for range 5 {
+		temps, err := agent.getTempsWithTimeout(stalled)
+		assert.Nil(t, temps)
+		assert.ErrorIs(t, err, errTemperatureFetchInProgress)
+	}
+	assert.EqualValues(t, 1, calls.Load(), "only one reader may run at a time")
+
+	// Once the stalled read finishes, its result is cached and new reads start again.
+	close(release)
+	require.Eventually(t, func() bool { return !agent.sensorConfig.readInFlight.Load() }, time.Second, time.Millisecond)
+	temps, err := agent.getTempsWithTimeout(func(ctx context.Context) ([]sensors.TemperatureStat, error) {
+		calls.Add(1)
+		return []sensors.TemperatureStat{{SensorKey: "fresh", Temperature: 41}}, nil
+	})
+	require.NoError(t, err)
+	require.Len(t, temps, 1)
+	assert.Equal(t, "fresh", temps[0].SensorKey)
+	assert.EqualValues(t, 2, calls.Load())
+	assert.EqualValues(t, 1, maxConcurrent.Load())
+}
+
+func TestGetTempsWithTimeoutServesRecentCacheWhileInFlight(t *testing.T) {
+	agent := &Agent{
+		sensorConfig: &SensorConfig{
+			context: context.Background(),
+			timeout: 10 * time.Millisecond,
+		},
+	}
+	_, err := agent.getTempsWithTimeout(func(ctx context.Context) ([]sensors.TemperatureStat, error) {
+		return []sensors.TemperatureStat{{SensorKey: "cpu", Temperature: 42}}, nil
+	})
+	require.NoError(t, err)
+
+	release := make(chan struct{})
+	defer close(release)
+	_, err = agent.getTempsWithTimeout(func(ctx context.Context) ([]sensors.TemperatureStat, error) {
+		<-release
+		return nil, nil
+	})
+	require.ErrorIs(t, err, errTemperatureFetchTimeout)
+
+	temps, err := agent.getTempsWithTimeout(func(ctx context.Context) ([]sensors.TemperatureStat, error) {
+		t.Error("must not start a second reader")
+		return nil, nil
+	})
+	require.NoError(t, err)
+	require.Len(t, temps, 1)
+	assert.Equal(t, "cpu", temps[0].SensorKey)
+
+	// Stale cache is not served.
+	agent.sensorConfig.cacheMu.Lock()
+	agent.sensorConfig.cachedAt = time.Now().Add(-2 * tempCacheMaxAge)
+	agent.sensorConfig.cacheMu.Unlock()
+	temps, err = agent.getTempsWithTimeout(func(ctx context.Context) ([]sensors.TemperatureStat, error) {
+		t.Error("must not start a second reader")
+		return nil, nil
+	})
+	assert.Nil(t, temps)
+	assert.ErrorIs(t, err, errTemperatureFetchInProgress)
 }
 
 func TestUpdateTemperaturesSkipsOnTimeout(t *testing.T) {

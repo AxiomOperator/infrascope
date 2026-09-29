@@ -65,7 +65,11 @@ type poolBackend struct {
 	lastUsageRefresh time.Time
 	usageRefreshing  bool
 
-	kernelSamples map[string]poolKernelSample
+	// kernelSamples holds the previous cumulative I/O counters per cache
+	// interval (cacheTimeMs -> pool -> sample), like disk and network I/O, so
+	// realtime 1s polling does not turn the stored 60s point into a 1s rate.
+	// Only accessed from Update, which runs under the agent lock.
+	kernelSamples map[uint16]map[string]poolKernelSample
 
 	// Detail data (pools, vdevs, scrub, datasets) is cached and refreshed on
 	// an interval. Accessed from handler goroutines, so it is mutex-protected.
@@ -137,23 +141,24 @@ func btrfsSource[T any](convert func(btrfs.Filesystem) T) func() ([]T, error) {
 // Update refreshes systemStats.ZfsPools with the latest pool data. I/O
 // throughput and health come from inexpensive kernel kstats on Linux. Pool
 // capacity and dataset usage come from separately cached utility calls. The
-// pool map is empty when both backends are absent.
-func (m *StoragePoolManager) Update(systemStats *system.Stats) {
+// pool map is empty when both backends are absent. I/O rates are computed
+// against the previous sample of the same cacheTimeMs interval.
+func (m *StoragePoolManager) Update(systemStats *system.Stats, cacheTimeMs uint16) {
 	// Rebuild the combined map so successful pool removals clear old samples.
 	systemStats.ZfsPools = nil
 	for _, backend := range m.backends {
-		backend.updateBackendStats(systemStats)
+		backend.updateBackendStats(systemStats, cacheTimeMs)
 	}
 }
 
-func (b *poolBackend) updateBackendStats(systemStats *system.Stats) {
+func (b *poolBackend) updateBackendStats(systemStats *system.Stats, cacheTimeMs uint16) {
 	pools := b.poolStats()
 	if len(pools) == 0 {
 		b.kernelSamples = nil
 		return
 	}
 
-	kernelStats, ioRates := b.kernelStats()
+	kernelStats, ioRates := b.kernelStats(cacheTimeMs)
 
 	if systemStats.ZfsPools == nil {
 		systemStats.ZfsPools = make(map[string]*system.ZfsPool, len(pools))
@@ -220,9 +225,10 @@ func (b *poolBackend) storePoolStats(pools []zfs.PoolStat, err error) {
 }
 
 // kernelStats reads cumulative pool counters and converts them to per-second
-// rates. Counter decreases indicate a pool export/import and reset the
-// baseline instead of producing an underflow spike.
-func (b *poolBackend) kernelStats() (map[string]zfs.PoolKernelStat, map[string]zfs.PoolIoStats) {
+// rates over the time since the previous sample of the same cache interval.
+// Counter decreases indicate a pool export/import and reset the baseline
+// instead of producing an underflow spike.
+func (b *poolBackend) kernelStats(cacheTimeMs uint16) (map[string]zfs.PoolKernelStat, map[string]zfs.PoolIoStats) {
 	if b.kernelStatsFn == nil {
 		return nil, nil
 	}
@@ -235,9 +241,10 @@ func (b *poolBackend) kernelStats() (map[string]zfs.PoolKernelStat, map[string]z
 	byName := make(map[string]zfs.PoolKernelStat, len(stats))
 	rates := make(map[string]zfs.PoolIoStats, len(stats))
 	nextSamples := make(map[string]poolKernelSample, len(stats))
+	previousSamples := b.kernelSamples[cacheTimeMs]
 	for _, stat := range stats {
 		byName[stat.Name] = stat
-		if previous, ok := b.kernelSamples[stat.Name]; ok && now.After(previous.at) &&
+		if previous, ok := previousSamples[stat.Name]; ok && now.After(previous.at) &&
 			stat.NRead >= previous.nread && stat.NWrite >= previous.nwrite {
 			seconds := now.Sub(previous.at).Seconds()
 			rates[stat.Name] = zfs.PoolIoStats{
@@ -247,7 +254,10 @@ func (b *poolBackend) kernelStats() (map[string]zfs.PoolKernelStat, map[string]z
 		}
 		nextSamples[stat.Name] = poolKernelSample{nread: stat.NRead, nwrite: stat.NWrite, at: now}
 	}
-	b.kernelSamples = nextSamples
+	if b.kernelSamples == nil {
+		b.kernelSamples = make(map[uint16]map[string]poolKernelSample)
+	}
+	b.kernelSamples[cacheTimeMs] = nextSamples
 	return byName, rates
 }
 

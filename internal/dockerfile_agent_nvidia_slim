@@ -118,4 +118,9 @@ VOLUME ["/var/lib/beszel-agent"]
 
 WORKDIR /var/lib/beszel-agent
 
+# The agent intentionally runs as root (no USER directive): it typically needs
+# host access that an unprivileged user lacks, e.g. the Docker/Podman socket,
+# SMART data via smartctl on block devices, GPU and sensor devices, and
+# host /proc, /sys and D-Bus mounts. Restrict access with the container's
+# mounts and capabilities instead.
 ENTRYPOINT ["/agent"]

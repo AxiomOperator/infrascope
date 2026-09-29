@@ -123,6 +123,28 @@ func (d *dockerManager) dequeue() {
 	}
 }
 
+// shortContainerID returns the 12-character short form of a container id, or
+// the id unchanged if the API returned something shorter.
+func shortContainerID(id string) string {
+	if len(id) > 12 {
+		return id[:12]
+	}
+	return id
+}
+
+// containerName returns the container's primary name without the leading
+// slash the Docker API adds. It falls back to the short id when the API
+// returns no names.
+func containerName(ctr *container.ApiInfo) string {
+	if len(ctr.Names) > 0 && ctr.Names[0] != "" {
+		return strings.TrimPrefix(ctr.Names[0], "/")
+	}
+	if ctr.IdShort != "" {
+		return ctr.IdShort
+	}
+	return shortContainerID(ctr.Id)
+}
+
 // shouldExcludeContainer checks if a container name matches any exclusion pattern
 func (dm *dockerManager) shouldExcludeContainer(name string) bool {
 	if len(dm.excludeContainers) == 0 {
@@ -172,11 +194,15 @@ func (dm *dockerManager) getDockerStats(cacheTimeMs uint16) ([]*container.Stats,
 	var failedContainers []*container.ApiInfo
 
 	for _, ctr := range dm.apiContainerList {
-		ctr.IdShort = ctr.Id[:12]
+		if ctr == nil || ctr.Id == "" {
+			slog.Debug("Skipping container without id")
+			continue
+		}
+		ctr.IdShort = shortContainerID(ctr.Id)
 
 		// Skip this container if it matches the exclusion pattern
-		if dm.shouldExcludeContainer(ctr.Names[0][1:]) {
-			slog.Debug("Excluding container", "name", ctr.Names[0][1:])
+		if name := containerName(ctr); dm.shouldExcludeContainer(name) {
+			slog.Debug("Excluding container", "name", name)
 			continue
 		}
 
@@ -492,7 +518,7 @@ func (dm *dockerManager) getPodmanContainerHealth(containerID string) (container
 
 // Updates stats for individual container with cache-time-aware delta tracking
 func (dm *dockerManager) updateContainerStats(ctr *container.ApiInfo, cacheTimeMs uint16) error {
-	name := ctr.Names[0][1:]
+	name := containerName(ctr)
 
 	resp, err := dm.client.Get(fmt.Sprintf("http://localhost/containers/%s/stats?stream=0&one-shot=1", ctr.IdShort))
 	if err != nil {
@@ -829,8 +855,20 @@ func buildDockerContainerEndpoint(containerID, action string, query url.Values) 
 	return u.String(), nil
 }
 
-// getContainerInfo fetches the inspection data for a container
-func (dm *dockerManager) getContainerInfo(ctx context.Context, containerID string) ([]byte, error) {
+// errContainerExcluded is returned for detail requests (inspect, logs) on
+// containers hidden by EXCLUDE_CONTAINERS.
+var errContainerExcluded = errors.New("container is excluded from monitoring by EXCLUDE_CONTAINERS")
+
+// sensitiveInspectConfigKeys are removed from Config in inspect output. Env,
+// Cmd and Entrypoint regularly carry credentials passed on the command line.
+var sensitiveInspectConfigKeys = []string{"Env", "Cmd", "Entrypoint"}
+
+// sensitiveInspectTopLevelKeys are removed from the top level of inspect
+// output; Path and Args mirror the resolved entrypoint and command.
+var sensitiveInspectTopLevelKeys = []string{"Args", "Path"}
+
+// inspectContainer fetches the raw inspect document for a container.
+func (dm *dockerManager) inspectContainer(ctx context.Context, containerID string) (map[string]any, error) {
 	endpoint, err := buildDockerContainerEndpoint(containerID, "json", nil)
 	if err != nil {
 		return nil, err
@@ -851,13 +889,37 @@ func (dm *dockerManager) getContainerInfo(ctx context.Context, containerID strin
 		return nil, fmt.Errorf("container info request failed: %s: %s", resp.Status, strings.TrimSpace(string(body)))
 	}
 
-	// Remove sensitive environment variables from Config.Env
 	var containerInfo map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&containerInfo); err != nil {
 		return nil, err
 	}
+	return containerInfo, nil
+}
+
+// inspectExcluded reports whether inspect output belongs to an excluded container.
+func (dm *dockerManager) inspectExcluded(containerInfo map[string]any) bool {
+	name, _ := containerInfo["Name"].(string)
+	return dm.shouldExcludeContainer(strings.TrimPrefix(name, "/"))
+}
+
+// getContainerInfo fetches the inspection data for a container, with fields
+// that can contain secrets removed.
+func (dm *dockerManager) getContainerInfo(ctx context.Context, containerID string) ([]byte, error) {
+	containerInfo, err := dm.inspectContainer(ctx, containerID)
+	if err != nil {
+		return nil, err
+	}
+	if dm.inspectExcluded(containerInfo) {
+		return nil, errContainerExcluded
+	}
+
 	if config, ok := containerInfo["Config"].(map[string]any); ok {
-		delete(config, "Env")
+		for _, key := range sensitiveInspectConfigKeys {
+			delete(config, key)
+		}
+	}
+	for _, key := range sensitiveInspectTopLevelKeys {
+		delete(containerInfo, key)
 	}
 
 	return json.Marshal(containerInfo)
@@ -865,6 +927,16 @@ func (dm *dockerManager) getContainerInfo(ctx context.Context, containerID strin
 
 // getLogs fetches the logs for a container
 func (dm *dockerManager) getLogs(ctx context.Context, containerID string) (string, error) {
+	if len(dm.excludeContainers) > 0 {
+		// Resolve the name first so excluded containers' logs are never returned.
+		containerInfo, err := dm.inspectContainer(ctx, containerID)
+		if err != nil {
+			return "", err
+		}
+		if dm.inspectExcluded(containerInfo) {
+			return "", errContainerExcluded
+		}
+	}
 	query := url.Values{
 		"stdout": []string{"1"},
 		"stderr": []string{"1"},

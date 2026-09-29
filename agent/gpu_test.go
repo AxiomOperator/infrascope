@@ -1294,7 +1294,7 @@ echo "0, NVIDIA Test GPU, 50, 1024, 4096, 25, 100"`
 				return nil
 			},
 			validate: func(t *testing.T, gm *GPUManager) {
-				gpu, exists := gm.GpuDataMap["0"]
+				gpu, exists := gpuDataLocked(gm, "0")
 				assert.True(t, exists)
 				if exists {
 					assert.Equal(t, "Test GPU", gpu.Name)
@@ -1316,7 +1316,7 @@ echo '{"card0": {"Temperature (Sensor edge) (C)": "49.0", "Current Socket Graphi
 				return nil
 			},
 			validate: func(t *testing.T, gm *GPUManager) {
-				gpu, exists := gm.GpuDataMap["34756"]
+				gpu, exists := gpuDataLocked(gm, "34756")
 				assert.True(t, exists)
 				if exists {
 					assert.Equal(t, "Rembrandt [Radeon 680M]", gpu.Name)
@@ -1338,7 +1338,7 @@ echo "11-14-2024 22:54:33 RAM 1024/4096MB GR3D_FREQ 80% tj@70C VDD_GPU_SOC 1000m
 				return nil
 			},
 			validate: func(t *testing.T, gm *GPUManager) {
-				gpu, exists := gm.GpuDataMap["0"]
+				gpu, exists := gpuDataLocked(gm, "0")
 				assert.True(t, exists)
 				if exists {
 					assert.InDelta(t, 70.0, gpu.Temperature, 0.1)
@@ -1363,7 +1363,7 @@ echo '[{"device_name":"NVIDIA Test GPU","temp":"52C","power_draw":"31W","gpu_uti
 				return nil
 			},
 			validate: func(t *testing.T, gm *GPUManager) {
-				gpu, exists := gm.GpuDataMap["n0"]
+				gpu, exists := gpuDataLocked(gm, "n0")
 				assert.True(t, exists)
 				if exists {
 					assert.Equal(t, "NVIDIA Test GPU", gpu.Name)
@@ -1421,7 +1421,7 @@ echo "0, NVIDIA Priority GPU, 45, 512, 2048, 12, 25"`
 	require.NotNil(t, gm)
 
 	time.Sleep(150 * time.Millisecond)
-	gpu, ok := gm.GpuDataMap["0"]
+	gpu, ok := gpuDataLocked(gm, "0")
 	require.True(t, ok)
 	assert.Equal(t, "Priority GPU", gpu.Name)
 	assert.Equal(t, 45.0, gpu.Temperature)
@@ -1450,8 +1450,8 @@ echo '{"card0": {"Temperature (Sensor edge) (C)": "49.0", "Current Socket Graphi
 	require.NotNil(t, gm)
 
 	time.Sleep(150 * time.Millisecond)
-	_, intelOk := gm.GpuDataMap["i0"]
-	_, amdOk := gm.GpuDataMap["34756"]
+	_, intelOk := gpuDataLocked(gm, "i0")
+	_, amdOk := gpuDataLocked(gm, "34756")
 	assert.True(t, intelOk)
 	assert.True(t, amdOk)
 }
@@ -1471,7 +1471,7 @@ echo "0, NVIDIA Fallback GPU, 41, 256, 1024, 8, 14"`
 	require.NotNil(t, gm)
 
 	time.Sleep(150 * time.Millisecond)
-	gpu, ok := gm.GpuDataMap["0"]
+	gpu, ok := gpuDataLocked(gm, "0")
 	require.True(t, ok)
 	assert.Equal(t, "Fallback GPU", gpu.Name)
 }
@@ -2023,4 +2023,16 @@ func TestIntelCollectorDeviceEnv(t *testing.T) {
 	require.Contains(t, argsStr, "-d sriov")
 	require.Contains(t, argsStr, "-s ")
 	require.Contains(t, argsStr, "-J")
+}
+
+// gpuDataLocked returns a copy of a GPU entry read under the manager lock, since
+// collector goroutines keep updating the map while tests inspect it.
+func gpuDataLocked(gm *GPUManager, id string) (system.GPUData, bool) {
+	gm.Lock()
+	defer gm.Unlock()
+	gpu, ok := gm.GpuDataMap[id]
+	if !ok || gpu == nil {
+		return system.GPUData{}, ok
+	}
+	return *gpu, true
 }

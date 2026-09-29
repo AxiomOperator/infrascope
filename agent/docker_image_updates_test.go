@@ -118,10 +118,12 @@ func TestImageUpdateCacheAndStats(t *testing.T) {
 	require.EqualValues(t, 2, lookups.Load())
 	require.False(t, dm.cachedImageUpdate("nginx:latest"))
 
-	// An expired positive result is cleared on failure, and the failure itself
-	// is cached so realtime stats do not retry a broken registry every second.
+	// A failed check keeps the previous (positive) result instead of caching
+	// "no update", records the error, and backs off so realtime stats do not
+	// retry a broken registry every second.
+	key := "docker.io/library/nginx:latest"
 	dm.imageUpdatesMutex.Lock()
-	dm.imageUpdates["docker.io/library/nginx:latest"].available = true
+	dm.imageUpdates[key].available = true
 	dm.imageUpdatesMutex.Unlock()
 	fail.Store(true)
 	expire()
@@ -134,9 +136,31 @@ func TestImageUpdateCacheAndStats(t *testing.T) {
 	require.Len(t, stats, 2)
 	require.Equal(t, failedInspections, inspections.Load())
 	for _, stat := range stats {
-		require.False(t, stat.UpdateAvailable)
+		require.True(t, stat.UpdateAvailable, "a failed check must not clear the previous result")
 		require.Equal(t, 1.0, stat.Mem)
 	}
+	dm.imageUpdatesMutex.RLock()
+	entry := dm.imageUpdates[key]
+	require.Error(t, entry.lastErr)
+	require.Equal(t, 1, entry.failures)
+	require.WithinDuration(t, time.Now().Add(updateCheckRetryBase), entry.retryAt, 5*time.Second)
+	dm.imageUpdatesMutex.RUnlock()
+
+	// Once the backoff elapses the check is retried, and success clears the failure.
+	fail.Store(false)
+	upToDate.Store(true)
+	dm.imageUpdatesMutex.Lock()
+	dm.imageUpdates[key].retryAt = time.Now().Add(-time.Second)
+	dm.imageUpdatesMutex.Unlock()
+	_, err = dm.getDockerStats(defaultCacheTimeMs)
+	require.NoError(t, err)
+	waitForImageUpdates(t, dm)
+	require.False(t, dm.cachedImageUpdate("nginx:latest"))
+	dm.imageUpdatesMutex.RLock()
+	require.NoError(t, dm.imageUpdates[key].lastErr)
+	require.Zero(t, dm.imageUpdates[key].failures)
+	require.True(t, dm.imageUpdates[key].retryAt.IsZero())
+	dm.imageUpdatesMutex.RUnlock()
 }
 
 func TestImageDiscoveryDoesNotBlockStats(t *testing.T) {

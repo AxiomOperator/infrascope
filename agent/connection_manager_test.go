@@ -8,10 +8,14 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
 
+	gliderssh "github.com/gliderlabs/ssh"
+	"github.com/henrygd/beszel/internal/entities/system"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh"
@@ -432,4 +436,68 @@ func TestShouldExitOnErr(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+// TestConnectionManagerConcurrentAccess exercises state shared between the
+// event loop, connect() goroutines and stats collection; run with -race.
+func TestConnectionManagerConcurrentAccess(t *testing.T) {
+	cm := newConnectionManager(&Agent{})
+	cm.startWsTicker()
+	defer cm.stopWsTicker()
+	tickerC := cm.wsTickerChan()
+
+	var wg sync.WaitGroup
+	for i := range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range 50 {
+				cm.startWsTicker()
+				cm.stopWsTicker()
+				cm.setConnectionType(system.ConnectionType(i % 3))
+				_ = cm.connectionType()
+				_ = cm.wsTickerChan()
+			}
+		}()
+	}
+	wg.Wait()
+	assert.Equal(t, tickerC, cm.wsTickerChan(), "ticker channel must stay stable")
+}
+
+func TestTryStartConnectingIsExclusive(t *testing.T) {
+	cm := newConnectionManager(&Agent{})
+	var wins atomic.Int32
+	var wg sync.WaitGroup
+	for range 32 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if cm.tryStartConnecting() {
+				wins.Add(1)
+			}
+		}()
+	}
+	wg.Wait()
+	assert.EqualValues(t, 1, wins.Load())
+	assert.True(t, cm.isConnectingNow())
+	cm.setConnecting(false)
+	assert.True(t, cm.tryStartConnecting())
+}
+
+func TestStopServerConcurrent(t *testing.T) {
+	agent := &Agent{}
+	agent.server = &gliderssh.Server{}
+	var stopped atomic.Int32
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if agent.StopServer() == nil {
+				stopped.Add(1)
+			}
+		}()
+	}
+	wg.Wait()
+	assert.EqualValues(t, 1, stopped.Load())
 }
