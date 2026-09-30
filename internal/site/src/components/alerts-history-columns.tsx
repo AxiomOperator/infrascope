@@ -4,10 +4,12 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { MessageSquareTextIcon } from "lucide-react"
 import { useState } from "react"
 import { AckBadge, AlertAckPanel } from "@/components/alert-ack"
+import { SeverityBadge } from "@/components/notification-channels"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { getAlertInfo } from "@/lib/alerts"
+import { effectiveSeverity } from "@/lib/notification-channels"
 import { cn, formatDuration, formatShortDate, toFixedFloat } from "@/lib/utils"
 import type { AlertsHistoryRecord } from "@/types"
 
@@ -89,6 +91,7 @@ export const alertsHistoryColumns: ColumnDef<AlertsHistoryRecord>[] = [
 				<span className="flex items-center gap-2 ps-1 min-w-40">
 					{Icon && <Icon className="size-3.5" />}
 					{name}
+					<SeverityBadge severity={effectiveSeverity(row.original)} />
 				</span>
 			)
 		},

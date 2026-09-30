@@ -23,6 +23,9 @@ func UpsertUserAlerts(e *core.RequestEvent) error {
 		Name      string   `json:"name"`
 		Systems   []string `json:"systems"`
 		Overwrite bool     `json:"overwrite"`
+		// Severity and Channels, when given, are set on every alert.
+		Severity *string  `json:"severity"`
+		Channels []string `json:"channels"`
 	}{}
 	err := e.BindBody(&reqData)
 	if err != nil || userID == "" || reqData.Name == "" || len(reqData.Systems) == 0 {
@@ -34,6 +37,22 @@ func UpsertUserAlerts(e *core.RequestEvent) error {
 			return e.BadRequestError("Monitor loss threshold must be at least 0 and below 100", nil)
 		}
 		reqData.Min = 0
+	}
+
+	if reqData.Severity != nil && *reqData.Severity != "" {
+		if _, ok := ParseSeverity(*reqData.Severity); !ok {
+			return e.BadRequestError("Invalid severity", nil)
+		}
+	}
+	if len(reqData.Channels) > 0 {
+		reqData.Channels = slices.Compact(slices.Sorted(slices.Values(reqData.Channels)))
+		owned, err := channelIDsOwnedBy(e.App, userID, reqData.Channels)
+		if err != nil {
+			return err
+		}
+		if len(owned) != len(reqData.Channels) {
+			return e.BadRequestError("Invalid notification channels", nil)
+		}
 	}
 
 	alertsCollection, err := e.App.FindCachedCollectionByNameOrId("alerts")
@@ -70,6 +89,12 @@ func UpsertUserAlerts(e *core.RequestEvent) error {
 
 			alertRecord.Set("value", reqData.Value)
 			alertRecord.Set("min", reqData.Min)
+			if reqData.Severity != nil {
+				alertRecord.Set("severity", *reqData.Severity)
+			}
+			if reqData.Channels != nil {
+				alertRecord.Set("channels", reqData.Channels)
+			}
 
 			if err := txApp.SaveNoValidate(alertRecord); err != nil {
 				return err

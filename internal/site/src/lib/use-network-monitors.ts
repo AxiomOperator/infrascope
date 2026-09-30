@@ -111,7 +111,7 @@ async function fetchMonitorStats(
 
 const NETWORK_MONITOR_FIELDS = [
 	"id,system,locations,quorum,locationStatus,users,name,target,protocol,port,server,interval,timeout,retries,retryInterval",
-	"http,httpSecrets,notify,certExpiryDays,pushToken,enabled",
+	"http,httpSecrets,notify,severity,channels,certExpiryDays,pushToken,enabled",
 	"res,resMin1h,resMax1h,resAvg1h,loss1h,certInfo,updated",
 	"status,statusChanged,lastCheck,lastError,lastStatusCode,recent,uptime",
 	"dependsOn,suppressedBy",
@@ -426,7 +426,7 @@ function applyMonitorEvents(
 }
 
 const DOWN_MONITOR_FIELDS =
-	"id,system,name,target,protocol,port,status,statusChanged,lastError,lastStatusCode,notify,enabled"
+	"id,system,name,target,protocol,port,status,statusChanged,lastError,lastStatusCode,notify,severity,enabled"
 
 /**
  * Enabled monitors with notifications that are currently down. Refetches when a

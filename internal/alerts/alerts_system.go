@@ -452,6 +452,12 @@ func (am *AlertManager) sendSystemAlert(alert SystemAlertData) {
 		Link:      am.hub.MakeLink("system", alert.systemRecord.Id),
 		LinkText:  "View " + systemName,
 		HistoryID: historyID,
+		Severity:  alert.alertData.severity(SeverityWarning),
+		Channels:  alert.alertData.Channels,
+		Name:      systemName,
+		Value:     fmt.Sprintf("%.2f%s", alert.val, alert.unit),
+		Status:    alertStatusLabel(alert.triggered),
+		AlertType: alert.alertData.Name,
 	})
 }
 

@@ -26,6 +26,10 @@ msgstr ""
 msgid "-2 – lowest"
 msgstr ""
 
+#: src/components/push-notifications.tsx
+msgid "(this device)"
+msgstr ""
+
 #. placeholder {0}: day.incidents
 #: src/components/network-monitors-table/daily-uptime-bar.tsx
 msgid "{0, plural, one {# incident} other {# incidents}}"
@@ -57,6 +61,11 @@ msgctxt "New version available"
 msgid "{0} available"
 msgstr "{0} disponível"
 
+#. placeholder {0}: known.length
+#: src/components/notification-channels.tsx
+msgid "{0} channels"
+msgstr ""
+
 #. placeholder {0}: days.length
 #: src/components/routes/status-page.tsx
 msgid "{0} days ago"
@@ -65,6 +74,11 @@ msgstr ""
 #. placeholder {0}: formatDurationMs(day.downMs)
 #: src/components/network-monitors-table/daily-uptime-bar.tsx
 msgid "{0} down"
+msgstr ""
+
+#. placeholder {0}: device.failures
+#: src/components/push-notifications.tsx
+msgid "{0} failed deliveries"
 msgstr ""
 
 #. placeholder {0}: locations.length
@@ -394,6 +408,7 @@ msgstr "Estado ativo"
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/routes/settings/notification-builder.tsx
+#: src/components/routes/settings/notification-channels.tsx
 msgid "Add"
 msgstr ""
 
@@ -412,6 +427,11 @@ msgstr ""
 
 #: src/components/alert-ack.tsx
 msgid "Add a note..."
+msgstr ""
+
+#: src/components/routes/settings/notification-channels.tsx
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Add channel"
 msgstr ""
 
 #: src/components/status-page-settings.tsx
@@ -437,7 +457,6 @@ msgid "Add note"
 msgstr ""
 
 #: src/components/routes/settings/notification-builder.tsx
-#: src/components/routes/settings/notifications.tsx
 msgid "Add notification"
 msgstr ""
 
@@ -567,12 +586,21 @@ msgstr ""
 msgid "Allow email subscriptions"
 msgstr ""
 
+#: src/components/push-notifications.tsx
+msgid "Allow notifications for this site in your browser settings, then try again."
+msgstr ""
+
 #: src/components/docker-discovery-settings.tsx
 msgid "Also monitor Traefik router hosts"
 msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "An incoming webhook URL, or a bot token like xoxb-… for bot mode."
+msgstr ""
+
+#: src/components/routes/settings/notification-channels.tsx
+msgctxt "Severity threshold, e.g. Warning and above"
+msgid "and above"
 msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
@@ -625,15 +653,15 @@ msgstr "A cópia automática requer um contexto seguro."
 msgid "Automatically create incidents"
 msgstr ""
 
-#: src/components/routes/system/package-updates-table.tsx
-msgctxt "Package version available to install"
-msgid "Available"
-msgstr ""
-
 #: src/components/routes/system/storage-pools-table.tsx
 msgctxt "Disk space available"
 msgid "Available"
 msgstr "Disponível"
+
+#: src/components/routes/system/package-updates-table.tsx
+msgctxt "Package version available to install"
+msgid "Available"
+msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Avatar URL"
@@ -790,6 +818,10 @@ msgstr "Bits (Kbps, Mbps, Gbps)"
 msgid "Body"
 msgstr ""
 
+#: src/components/routes/settings/notification-templates.tsx
+msgid "Body template"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Boot state"
 msgstr "Estado de inicialização"
@@ -830,6 +862,30 @@ msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
 msgid "Branding and domain"
+msgstr ""
+
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Browser notifications are not available in this version."
+msgstr ""
+
+#: src/components/push-notifications.tsx
+msgid "Browser notifications are not available on this hub."
+msgstr ""
+
+#: src/components/push-notifications.tsx
+msgid "Browser notifications enabled"
+msgstr ""
+
+#: src/components/push-notifications.tsx
+msgid "Browser notifications on this device"
+msgstr ""
+
+#: src/components/push-notifications.tsx
+msgid "Browser notifications require a secure connection. Open InfraScope over HTTPS (or on localhost) to enable them."
+msgstr ""
+
+#: src/components/notification-channels.tsx
+msgid "Browser push"
 msgstr ""
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
@@ -891,6 +947,7 @@ msgstr "Pode parar"
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/notification-builder.tsx
+#: src/components/routes/settings/notification-channels.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/status-pages.tsx
@@ -937,6 +994,7 @@ msgstr ""
 msgid "Certificate expiry notification (days)"
 msgstr ""
 
+#: src/components/routes/settings/notification-channels.tsx
 #: src/components/routes/system/package-updates-table.tsx
 msgid "Change"
 msgstr ""
@@ -974,6 +1032,10 @@ msgstr ""
 msgid "Channel token"
 msgstr ""
 
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Channels"
+msgstr ""
+
 #: src/components/routes/system/charts/sensor-charts.tsx
 msgid "Charge"
 msgstr "Carga"
@@ -1004,6 +1066,7 @@ msgid "Check {email} for a reset link."
 msgstr "Verifique {email} para um link de redefinição."
 
 #: src/components/routes/settings/layout.tsx
+#: src/components/routes/settings/notification-channels.tsx
 msgid "Check logs for more details."
 msgstr "Verifique os logs para mais detalhes."
 
@@ -1024,6 +1087,7 @@ msgid "Check your monitoring service"
 msgstr "Verifique o seu serviço de monitorização"
 
 #: src/components/routes/settings/notification-builder.tsx
+#: src/components/routes/settings/notification-channels.tsx
 msgid "Check your notification service"
 msgstr "Verifique seu serviço de notificação"
 
@@ -1140,6 +1204,10 @@ msgstr "Instruções de linha de comando"
 
 #: src/components/routes/settings/status-pages.tsx
 msgid "Components"
+msgstr ""
+
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Configure"
 msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
@@ -1341,6 +1409,10 @@ msgstr ""
 msgid "Create account"
 msgstr "Criar conta"
 
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Create channels from these"
+msgstr ""
+
 #: src/components/incidents/create-incident-button.tsx
 #: src/components/incidents/incident-dialog.tsx
 #: src/components/routes/settings/incidents.tsx
@@ -1364,9 +1436,17 @@ msgstr ""
 msgid "Credentials aren't visible to you and are kept unchanged."
 msgstr ""
 
+#: src/components/notification-channels.tsx
+msgid "Critical"
+msgstr ""
+
 #: src/components/routes/settings/general.tsx
 msgid "Critical (%)"
 msgstr "Crítico (%)"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Critical alerts bypass quiet hours"
+msgstr ""
 
 #: src/components/incidents/incident-ui.tsx
 msgid "Critical impact"
@@ -1416,6 +1496,10 @@ msgstr ""
 msgid "Custom headers"
 msgstr ""
 
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Custom message template"
+msgstr ""
+
 #: src/components/routes/settings/notification-builder.tsx
 #: src/components/routes/settings/notification-builder.tsx
 #: src/components/routes/settings/notification-builder.tsx
@@ -1444,9 +1528,12 @@ msgstr ""
 msgid "Databases"
 msgstr ""
 
-#: src/components/network-monitors-table/monitor-dialog.tsx
-#: src/lib/shoutrrr.ts
-#: src/lib/shoutrrr.ts
+#: src/components/notification-channels.tsx
+msgid "default"
+msgstr ""
+
+#: src/components/notification-channels.tsx
+msgctxt "Default severity of an alert type"
 msgid "Default"
 msgstr ""
 
@@ -1455,13 +1542,37 @@ msgctxt "Default system layout option"
 msgid "Default"
 msgstr "Predefinido"
 
+#: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/routes/settings/notification-channels.tsx
+#: src/lib/shoutrrr.ts
+#: src/lib/shoutrrr.ts
+msgid "Default"
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Default (10)"
+msgstr ""
+
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Default channel"
+msgstr ""
+
+#: src/components/notification-channels.tsx
+#: src/components/notification-channels.tsx
+msgid "Default channels"
+msgstr ""
+
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Default channels receive every alert at or above their minimum severity, unless an alert is sent to specific channels."
 msgstr ""
 
 #: src/components/routes/settings/general.tsx
 msgid "Default time period"
 msgstr "Período de tempo padrão"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Default title and body of your notifications. Channels can override them. Invalid templates fall back to the built-in message."
+msgstr ""
 
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
@@ -1470,6 +1581,7 @@ msgstr "Período de tempo padrão"
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/notification-builder.tsx
+#: src/components/routes/settings/notification-channels.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/status-pages.tsx
@@ -1477,6 +1589,11 @@ msgstr "Período de tempo padrão"
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Delete"
 msgstr "Excluir"
+
+#. placeholder {0}: channel.name
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Delete {0}"
+msgstr ""
 
 #. placeholder {0}: info.name
 #: src/components/routes/settings/notification-builder.tsx
@@ -1491,8 +1608,17 @@ msgstr "Excluir impressão digital"
 msgid "Delete note"
 msgstr ""
 
+#. placeholder {0}: channel.name
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Delete the channel \"{0}\"? Alerts sent only to it will use the default channels."
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 msgid "Deliver as critical alert"
+msgstr ""
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Deliver critical alerts, such as a system or monitor going down, even during quiet hours."
 msgstr ""
 
 #: src/components/add-system.tsx
@@ -1528,6 +1654,10 @@ msgstr ""
 msgid "Device key"
 msgstr ""
 
+#: src/components/push-notifications.tsx
+msgid "Device name"
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 msgid "Device names, #channel tags or email addresses. Leave empty to push to all devices."
 msgstr ""
@@ -1536,8 +1666,16 @@ msgstr ""
 msgid "Devices"
 msgstr ""
 
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Devices subscribed to browser notifications"
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 msgid "Direct message"
+msgstr ""
+
+#: src/components/push-notifications.tsx
+msgid "Disable"
 msgstr ""
 
 #. Context: Battery state
@@ -1654,11 +1792,17 @@ msgstr ""
 #: src/components/routes/settings/incidents.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/notification-builder.tsx
+#: src/components/routes/settings/notification-channels.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/status-pages.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Edit"
 msgstr "Editar"
+
+#. placeholder {0}: channel.name
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Edit {0}"
+msgstr ""
 
 #. placeholder {0}: info.name
 #: src/components/routes/settings/notification-builder.tsx
@@ -1676,6 +1820,10 @@ msgstr ""
 
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Edit as URL"
+msgstr ""
+
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Edit channel"
 msgstr ""
 
 #: src/components/incidents/incident-dialog.tsx
@@ -1697,13 +1845,14 @@ msgstr "Editar Sistema"
 #: src/components/login/auth-form.tsx
 #: src/components/login/forgot-pass-form.tsx
 #: src/components/login/otp-forms.tsx
+#: src/components/notification-channels.tsx
 #: src/components/status-subscribe.tsx
 msgid "Email"
 msgstr "Email"
 
 #: src/components/routes/settings/notifications.tsx
-msgid "Email notifications"
-msgstr "Notificações por email"
+#~ msgid "Email notifications"
+#~ msgstr "Notificações por email"
 
 #: src/components/routes/settings/status-pages.tsx
 msgid "Embed the status or uptime of this page in a README or website."
@@ -1721,6 +1870,23 @@ msgstr "Vazia"
 
 #: src/components/network-monitors-table/monitor-check-options.tsx
 msgid "Empty checks the whole server"
+msgstr ""
+
+#: src/components/push-notifications.tsx
+msgid "Enable"
+msgstr ""
+
+#. placeholder {0}: channel.name
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Enable {0}"
+msgstr ""
+
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Enabled"
+msgstr ""
+
+#: src/components/push-notifications.tsx
+msgid "Enabled on this device"
 msgstr ""
 
 #: src/components/network-monitors-table/monitor-check-options.tsx
@@ -1802,7 +1968,7 @@ msgstr ""
 msgid "Enter email address to reset password"
 msgstr "Digite o endereço de email para redefinir a senha"
 
-#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notification-channels.tsx
 msgid "Enter email address..."
 msgstr "Digite o endereço de email..."
 
@@ -1840,6 +2006,8 @@ msgstr ""
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/notification-builder.tsx
+#: src/components/routes/settings/notification-channels.tsx
+#: src/components/routes/settings/notification-channels.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/status-pages.tsx
@@ -1951,6 +2119,14 @@ msgstr "Serviços com falha"
 msgid "Failed to authenticate"
 msgstr "Falha na autenticação"
 
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Failed to create channels"
+msgstr ""
+
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Failed to delete channel"
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 msgid "Failed to delete monitors."
@@ -1958,6 +2134,14 @@ msgstr "Falha ao eliminar monitores."
 
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Failed to delete quiet hours."
+msgstr ""
+
+#: src/components/push-notifications.tsx
+msgid "Failed to disable browser notifications"
+msgstr ""
+
+#: src/components/push-notifications.tsx
+msgid "Failed to enable browser notifications"
 msgstr ""
 
 #: src/components/routes/system/package-updates-table.tsx
@@ -1972,8 +2156,16 @@ msgstr ""
 msgid "Failed to post update"
 msgstr ""
 
+#: src/components/push-notifications.tsx
+msgid "Failed to remove device"
+msgstr ""
+
 #: src/components/system-host-key.tsx
 msgid "Failed to reset host key"
+msgstr ""
+
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Failed to save channel"
 msgstr ""
 
 #: src/components/incidents/incident-dialog.tsx
@@ -1985,7 +2177,6 @@ msgid "Failed to save maintenance"
 msgstr ""
 
 #: src/components/routes/settings/layout.tsx
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Failed to save settings"
@@ -1999,6 +2190,7 @@ msgstr ""
 msgid "Failed to send heartbeat"
 msgstr "Falha ao enviar o batimento cardíaco"
 
+#: src/components/push-notifications.tsx
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Failed to send test notification"
 msgstr "Falha ao enviar notificação de teste"
@@ -2006,6 +2198,10 @@ msgstr "Falha ao enviar notificação de teste"
 #: src/components/alerts/alerts-sheet.tsx
 msgid "Failed to update alert"
 msgstr "Falha ao atualizar alerta"
+
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Failed to update channel"
+msgstr ""
 
 #: src/components/network-monitors-table/network-monitors-table.tsx
 msgid "Failed to update monitors."
@@ -2086,6 +2282,10 @@ msgstr ""
 #: src/lib/i18n.ts
 msgid "Full"
 msgstr "Cheia"
+
+#: src/components/routes/settings/notification-templates.tsx
+msgid "Functions:"
+msgstr ""
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Games"
@@ -2362,13 +2562,21 @@ msgstr ""
 msgid "Incoming webhook"
 msgstr ""
 
+#: src/components/notification-channels.tsx
+msgid "Info"
+msgstr ""
+
 #: src/components/login/auth-form.tsx
 msgid "InfraScope supports OpenID Connect and many OAuth2 authentication providers."
 msgstr "InfraScope suporta OpenID Connect e muitos provedores de autenticação OAuth2."
 
 #: src/components/routes/settings/notifications.tsx
-msgid "InfraScope uses <0>Shoutrrr</0> to integrate with popular notification services."
-msgstr "InfraScope usa <0>Shoutrrr</0> para integrar com serviços de notificação populares."
+#~ msgid "InfraScope uses <0>Shoutrrr</0> to integrate with popular notification services."
+#~ msgstr "InfraScope usa <0>Shoutrrr</0> para integrar com serviços de notificação populares."
+
+#: src/components/routes/settings/notification-channels.tsx
+msgid "InfraScope uses <0>Shoutrrr</0> to integrate with popular notification services. The URL is stored encrypted."
+msgstr ""
 
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
@@ -2383,6 +2591,10 @@ msgstr "Intervalo (segundos)"
 #: src/components/login/auth-form.tsx
 msgid "Invalid email address."
 msgstr "Endereço de email inválido."
+
+#: src/components/routes/settings/notification-templates.tsx
+msgid "Invalid template"
+msgstr ""
 
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Invert keyword (fail when found)"
@@ -2674,6 +2886,10 @@ msgstr ""
 msgid "Message"
 msgstr ""
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Message templates"
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 msgid "Message type"
 msgstr ""
@@ -2686,6 +2902,10 @@ msgstr ""
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 msgid "Min 1h"
 msgstr "Mín. 1 h"
+
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Minimum severity"
+msgstr ""
 
 #: src/components/routes/system/package-updates-table.tsx
 msgctxt "Version change"
@@ -2797,6 +3017,7 @@ msgstr ""
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
+#: src/components/routes/settings/notification-channels.tsx
 #: src/components/systemd-table/systemd-table-columns.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Name"
@@ -2856,6 +3077,14 @@ msgstr "Não"
 
 #: src/components/routes/settings/incidents.tsx
 msgid "No active incidents."
+msgstr ""
+
+#: src/components/routes/settings/notification-channels.tsx
+msgid "No channels configured. Alerts are not sent anywhere."
+msgstr ""
+
+#: src/components/notification-channels.tsx
+msgid "No channels yet"
 msgstr ""
 
 #: src/components/network-monitors-table/daily-uptime-bar.tsx
@@ -2937,6 +3166,10 @@ msgstr "Sem resultados."
 msgid "No S.M.A.R.T. attributes available for this device."
 msgstr "Nenhum atributo S.M.A.R.T. disponível para este dispositivo."
 
+#: src/components/routes/settings/notification-channels.tsx
+msgid "No service configured."
+msgstr ""
+
 #: src/components/incidents/incident-dialog.tsx
 #: src/components/routes/settings/status-pages.tsx
 msgid "No status pages."
@@ -2958,8 +3191,8 @@ msgid "No updates yet."
 msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
-msgid "No webhook or push notifications configured."
-msgstr ""
+#~ msgid "No webhook or push notifications configured."
+#~ msgstr ""
 
 #: src/components/network-monitors-table/monitor-check-options.tsx
 #: src/components/routes/system/storage-pools-table.tsx
@@ -2975,6 +3208,10 @@ msgstr ""
 msgid "Notes"
 msgstr ""
 
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Notification service"
+msgstr ""
+
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Notification services"
 msgstr ""
@@ -2985,6 +3222,14 @@ msgstr ""
 #: src/components/routes/settings/notifications.tsx
 msgid "Notifications"
 msgstr "Notificações"
+
+#: src/components/push-notifications.tsx
+msgid "Notifications are blocked"
+msgstr ""
+
+#: src/components/push-notifications.tsx
+msgid "Notifications are blocked for this site. Allow them in your browser settings to enable browser notifications."
+msgstr ""
 
 #: src/components/unreachable-badge.tsx
 msgid "Notifications are suppressed until the parent recovers."
@@ -3058,6 +3303,10 @@ msgstr "Senha de uso único"
 
 #: src/components/network-monitors-table/network-monitors-table.tsx
 msgid "Ongoing"
+msgstr ""
+
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Only receives alerts that are sent to it explicitly."
 msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
@@ -3322,11 +3571,12 @@ msgstr ""
 msgid "Play notification sound"
 msgstr ""
 
-#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notification-channels.tsx
 msgid "Please <0>configure an SMTP server</0> to ensure alerts are delivered."
 msgstr "Por favor, <0>configure um servidor SMTP</0> para garantir que os alertas sejam entregues."
 
 #: src/components/alerts/alerts-sheet.tsx
+#: src/components/push-notifications.tsx
 #: src/components/system-host-key.tsx
 msgid "Please check logs for more details."
 msgstr "Por favor, verifique os logs para mais detalhes."
@@ -3403,6 +3653,10 @@ msgstr "Utilização precisa no momento registrado"
 #: src/components/routes/settings/general.tsx
 msgid "Preferred Language"
 msgstr "Idioma Preferido"
+
+#: src/components/routes/settings/notification-templates.tsx
+msgid "Preview"
+msgstr ""
 
 #: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
 msgid "Preview import"
@@ -3525,9 +3779,18 @@ msgstr "Ler"
 msgid "Read errors"
 msgstr "Erros de leitura"
 
+#: src/components/push-notifications.tsx
+msgid "Receive alerts as system notifications from this browser, even when InfraScope is not open."
+msgstr ""
+
 #: src/components/routes/system/charts/network-charts.tsx
 msgid "Received"
 msgstr "Recebido"
+
+#. placeholder {0}: severityLabel(draft.minSeverity)
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Receives alerts of severity {0} and above, and alerts sent to it."
+msgstr ""
 
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
@@ -3587,6 +3850,8 @@ msgstr ""
 msgid "Reminders"
 msgstr ""
 
+#: src/components/push-notifications.tsx
+#: src/components/push-notifications.tsx
 #: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/status-pages.tsx
 #: src/components/status-page-settings.tsx
@@ -3797,9 +4062,13 @@ msgstr ""
 msgid "Save {foo}"
 msgstr "Guardar {foo}"
 
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Save address using enter key or comma. Add at least one valid address."
+msgstr ""
+
 #: src/components/routes/settings/notifications.tsx
-msgid "Save address using enter key or comma. Leave blank to disable email notifications."
-msgstr "Salve o endereço usando a tecla enter ou vírgula. Deixe em branco para desativar notificações por email."
+#~ msgid "Save address using enter key or comma. Leave blank to disable email notifications."
+#~ msgstr "Salve o endereço usando a tecla enter ou vírgula. Deixe em branco para desativar notificações por email."
 
 #: src/components/routes/settings/general.tsx
 #: src/components/routes/settings/notifications.tsx
@@ -3969,6 +4238,9 @@ msgstr ""
 msgid "Send periodic outbound pings to an external monitoring service so you can monitor InfraScope without exposing it to the internet."
 msgstr "Envie pings de saída periódicos para um serviço de monitorização externo para que possa monitorizar o InfraScope sem o expor à internet."
 
+#: src/components/push-notifications.tsx
+#: src/components/push-notifications.tsx
+#: src/components/push-notifications.tsx
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Send test"
 msgstr ""
@@ -3979,6 +4251,10 @@ msgstr "Enviar heartbeat de teste"
 
 #: src/lib/shoutrrr.ts
 msgid "Send title as"
+msgstr ""
+
+#: src/components/notification-channels.tsx
+msgid "Send to"
 msgstr ""
 
 #: src/lib/shoutrrr.ts
@@ -3999,6 +4275,10 @@ msgstr ""
 
 #: src/components/network-monitors-table/monitor-check-options.tsx
 msgid "Sends PING and expects PONG, authenticating first when a password is set."
+msgstr ""
+
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Sends push notifications to the browsers and devices where you enabled notifications."
 msgstr ""
 
 #: src/components/routes/system/charts/network-charts.tsx
@@ -4062,11 +4342,16 @@ msgid "Settings"
 msgstr "Configurações"
 
 #: src/components/routes/settings/layout.tsx
+#: src/components/routes/settings/notifications.tsx
 msgid "Settings saved"
 msgstr "Definições guardadas"
 
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Setup guide"
+msgstr ""
+
+#: src/components/notification-channels.tsx
+msgid "Severity"
 msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
@@ -4394,7 +4679,16 @@ msgstr "Unidade de temperatura"
 msgid "Temperatures of system sensors"
 msgstr "Temperaturas dos sensores do sistema"
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Templates can be at most 2000 characters."
+msgstr ""
+
+#: src/components/routes/settings/notification-templates.tsx
+msgid "Templates use Go template syntax. Leave a field blank to use the built-in message. Available variables:"
+msgstr ""
+
 #: src/components/routes/settings/notification-builder.tsx
+#: src/components/routes/settings/notification-channels.tsx
 msgid "Test"
 msgstr ""
 
@@ -4406,7 +4700,9 @@ msgstr ""
 msgid "Test heartbeat"
 msgstr "Testar heartbeat"
 
+#: src/components/push-notifications.tsx
 #: src/components/routes/settings/notification-builder.tsx
+#: src/components/routes/settings/notification-channels.tsx
 msgid "Test notification sent"
 msgstr "Notificação de teste enviada"
 
@@ -4495,6 +4791,10 @@ msgstr "Em seguida, faça login no backend e redefina a senha da sua conta de us
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "This action cannot be undone. This will permanently delete all current records for {name} from the database."
 msgstr "Esta ação não pode ser desfeita. Isso excluirá permanentemente todos os registros atuais de {name} do banco de dados."
+
+#: src/components/push-notifications.tsx
+msgid "This browser does not support push notifications."
+msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
 msgid "This custom domain is already used by another status page."
@@ -4586,7 +4886,11 @@ msgstr ""
 msgid "Title color"
 msgstr ""
 
-#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notification-templates.tsx
+msgid "Title template"
+msgstr ""
+
+#: src/components/routes/settings/notification-channels.tsx
 msgid "To email(s)"
 msgstr "Para email(s)"
 
@@ -4748,6 +5052,7 @@ msgid "Triggers when usage of any disk exceeds a threshold"
 msgstr "Dispara quando o uso de qualquer disco excede um limite"
 
 #: src/components/routes/settings/maintenance.tsx
+#: src/components/routes/settings/notification-channels.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -4850,6 +5155,7 @@ msgstr ""
 #: src/components/incidents/incident-dialog.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/notification-builder.tsx
+#: src/components/routes/settings/notification-channels.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/status-pages.tsx
 msgid "Update"
@@ -5084,6 +5390,10 @@ msgstr "Quer nos ajudar a melhorar ainda mais nossas traduções? Confira <0>Cro
 msgid "Wants"
 msgstr "Deseja"
 
+#: src/components/notification-channels.tsx
+msgid "Warning"
+msgstr ""
+
 #: src/components/routes/settings/general.tsx
 msgid "Warning (%)"
 msgstr "Aviso (%)"
@@ -5105,9 +5415,13 @@ msgstr ""
 msgid "webhook {0}"
 msgstr ""
 
+#: src/components/notification-channels.tsx
+msgid "Webhook / Push"
+msgstr ""
+
 #: src/components/routes/settings/notifications.tsx
-msgid "Webhook / Push notifications"
-msgstr "Notificações Webhook / Push"
+#~ msgid "Webhook / Push notifications"
+#~ msgstr "Notificações Webhook / Push"
 
 #: src/lib/shoutrrr.ts
 msgid "Webhook ID"
@@ -5149,6 +5463,10 @@ msgstr "Quando ativado, este token permite que os agentes se registrem automatic
 #: src/components/routes/settings/heartbeat.tsx
 msgid "When using POST, each heartbeat includes a JSON payload with system status summary, list of down systems, and triggered alerts."
 msgstr "Ao usar POST, cada heartbeat inclui um payload JSON com o resumo do estado do sistema, a lista de sistemas inativos e os alertas acionados."
+
+#: src/components/routes/settings/notification-channels.tsx
+msgid "Where alerts are sent: email, webhook and push services, or browser notifications. Critical alerts include down systems and monitors; threshold alerts are warnings."
+msgstr ""
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "While any of these monitors is down, alerts for this monitor are suppressed and it shows as unreachable."
@@ -5213,6 +5531,10 @@ msgstr "Sim"
 msgid "you"
 msgstr ""
 
+#: src/components/routes/settings/notification-channels.tsx
+msgid "You have no channels yet, so alerts are sent to your previous notification settings:"
+msgstr ""
+
 #: src/components/routes/settings/notifications.tsx
 msgid "You have unsaved changes."
 msgstr ""
@@ -5225,6 +5547,11 @@ msgstr ""
 msgid "You will not get reminders for this alert."
 msgstr ""
 
+#: src/components/push-notifications.tsx
+msgid "Your devices"
+msgstr ""
+
 #: src/components/routes/settings/layout.tsx
+#: src/components/routes/settings/notifications.tsx
 msgid "Your user settings have been updated."
 msgstr "As configurações do seu usuário foram atualizadas."

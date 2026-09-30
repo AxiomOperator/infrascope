@@ -3,7 +3,6 @@ package alerts
 
 import (
 	"fmt"
-	"net/mail"
 	"net/url"
 	"sync"
 	"time"
@@ -11,7 +10,6 @@ import (
 	"github.com/nicholas-fedor/shoutrrr"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/mailer"
 )
 
 type hubLike interface {
@@ -37,6 +35,8 @@ type AlertManager struct {
 	systemSuppressed func(systemID string) bool
 	// ackSecret overrides the key of acknowledgement links (tests).
 	ackSecret []byte
+	// browserSender delivers browser (Web Push) channels; nil disables them.
+	browserSender BrowserSender
 }
 
 type AlertMessageData struct {
@@ -49,7 +49,24 @@ type AlertMessageData struct {
 	// HistoryID is the open alerts_history row the message notifies, if
 	// any; notifications of it include a one-click acknowledgement link.
 	HistoryID string
+	// Severity routes the message to channels (empty: warning).
+	Severity Severity
+	// Channels are explicit channel ids (empty: default routing).
+	Channels []string
+	// Name is the system or monitor name, Value the alert's value and
+	// Status "triggered", "resolved" or "reminder"; for templates.
+	Name   string
+	Value  string
+	Status string
+	// MonitorID and AlertType identify the alert (browser notification tag).
+	MonitorID string
+	AlertType string
+	// AckLink is set on delivery from HistoryID.
+	AckLink string
 }
+
+// AlertMessage is the message of an alert.
+type AlertMessage = AlertMessageData
 
 type UserNotificationSettings struct {
 	Emails   []string `json:"emails"`
@@ -147,6 +164,7 @@ func (am *AlertManager) bindEvents() {
 	am.hub.OnRecordAfterDeleteSuccess("zfs_pools").BindFunc(resolveZfsPoolHistoryOnDelete)
 	am.hub.OnRecordCreateRequest("user_settings").BindFunc(validateReminderSettings)
 	am.hub.OnRecordUpdateRequest("user_settings").BindFunc(validateReminderSettings)
+	am.bindChannelEvents()
 
 	am.hub.OnServe().BindFunc(func(e *core.ServeEvent) error {
 		// Populate all alerts into cache on startup
@@ -206,79 +224,28 @@ func (am *AlertManager) isNotificationSilencedAt(userID, systemID string, now ti
 	return false
 }
 
-// SendAlert sends an alert to the user
+// SendAlert sends an alert to the user's channels, unless quiet hours
+// silence it.
 func (am *AlertManager) SendAlert(data AlertMessageData) error {
-	// Check if alert is silenced
-	if am.IsNotificationSilenced(data.UserID, data.SystemID) {
+	if am.silencedAt(data.UserID, data.SystemID, data.Severity, time.Now()) {
 		am.hub.Logger().Info("Notification silenced", "user", data.UserID, "system", data.SystemID, "title", data.Title)
 		return nil
 	}
 	return am.deliverAlert(data)
 }
 
-// deliverAlert sends an alert to the user's destinations without checking
-// quiet hours.
-func (am *AlertManager) deliverAlert(data AlertMessageData) error {
-	if link := am.ackLink(data.HistoryID, data.UserID, time.Now()); link != "" {
-		data.Message += "\n\nAcknowledge: " + link
+// silencedAt reports whether quiet hours silence an alert of severity at
+// now. Critical alerts bypass quiet hours when the user opted in.
+func (am *AlertManager) silencedAt(userID, systemID string, severity Severity, now time.Time) bool {
+	if !am.isNotificationSilencedAt(userID, systemID, now) {
+		return false
 	}
-	// get user settings
-	record, err := am.hub.FindFirstRecordByFilter(
-		"user_settings", "user={:user}",
-		dbx.Params{"user": data.UserID},
-	)
-	if err != nil {
-		return err
-	}
-	// unmarshal user settings
-	userAlertSettings := UserNotificationSettings{
-		Emails:   []string{},
-		Webhooks: []string{},
-	}
-	if err := record.UnmarshalJSONField("settings", &userAlertSettings); err != nil {
-		am.hub.Logger().Error("Failed to unmarshal user settings", "err", err)
-	}
-	// send alerts via webhooks
-	send := sendPublicNotification
-	if len(userAlertSettings.Webhooks) > 0 {
-		// Read the owner's current role at delivery time, including for URLs
-		// saved before an admin was demoted. Never fall back on lookup failure.
-		owner, err := am.hub.FindRecordById("users", data.UserID)
-		if err != nil {
-			return fmt.Errorf("load notification owner: %w", err)
-		}
-		if owner.GetString("role") == "admin" {
-			send = shoutrrr.Send
+	if severity.orDefault(SeverityWarning) == SeverityCritical {
+		if prefs, ok, _ := am.loadUserPrefs(userID); ok && prefs.CriticalBypassQuietHours {
+			return false
 		}
 	}
-	for _, webhook := range userAlertSettings.Webhooks {
-		if err := am.sendShoutrrrAlert(webhook, data.Title, data.Message, data.Link, data.LinkText, send); err != nil {
-			am.hub.Logger().Error("Failed to send shoutrrr alert", "err", err)
-		}
-	}
-	// send alerts via email
-	if len(userAlertSettings.Emails) == 0 {
-		return nil
-	}
-	addresses := []mail.Address{}
-	for _, email := range userAlertSettings.Emails {
-		addresses = append(addresses, mail.Address{Address: email})
-	}
-	message := mailer.Message{
-		To:      addresses,
-		Subject: data.Title,
-		Text:    data.Message + fmt.Sprintf("\n\n%s", data.Link),
-		From: mail.Address{
-			Address: am.hub.Settings().Meta.SenderAddress,
-			Name:    am.hub.Settings().Meta.SenderName,
-		},
-	}
-	err = am.hub.NewMailClient().Send(&message)
-	if err != nil {
-		return err
-	}
-	am.hub.Logger().Info("Sent email alert", "to", message.To, "subj", message.Subject)
-	return nil
+	return true
 }
 
 // SendShoutrrrAlert sends an alert via a Shoutrrr URL
@@ -314,12 +281,13 @@ func (am *AlertManager) sendShoutrrrAlert(notificationUrl, title, message, link,
 	}
 
 	// Add link
-	switch scheme {
-	case "ntfy":
+	switch {
+	case link == "":
+	case scheme == "ntfy":
 		queryParams.Add("Actions", fmt.Sprintf("view, %s, %s", linkText, link))
-	case "lark":
+	case scheme == "lark":
 		queryParams.Add("link", link)
-	case "bark":
+	case scheme == "bark":
 		queryParams.Add("url", link)
 	default:
 		message += "\n\n" + link

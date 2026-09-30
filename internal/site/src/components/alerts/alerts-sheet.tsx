@@ -11,13 +11,15 @@ import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/di
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
+import { AlertRoutingFields, useNotificationChannels } from "@/components/notification-channels"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/components/ui/use-toast"
 import { alertInfo } from "@/lib/alerts"
 import { pb } from "@/lib/api"
 import { $alerts, $systems } from "@/lib/stores"
+import { defaultSeverity } from "@/lib/notification-channels"
 import { cn, debounce } from "@/lib/utils"
-import type { AlertInfo, AlertRecord, SystemRecord } from "@/types"
+import type { AlertInfo, AlertRecord, AlertSeverity, NotificationChannelRecord, SystemRecord } from "@/types"
 
 const Slider = lazy(() => import("@/components/ui/slider"))
 
@@ -38,12 +40,26 @@ const failedUpdateToast = (error: unknown) => {
 
 /** Create or update alerts for a given name and systems */
 const upsertAlerts = debounce(
-	async ({ name, value, min, systems }: { name: string; value: number; min: number; systems: string[] }) => {
+	async ({
+		name,
+		value,
+		min,
+		systems,
+		severity,
+		channels,
+	}: {
+		name: string
+		value: number
+		min: number
+		systems: string[]
+		severity: AlertSeverity | ""
+		channels: string[]
+	}) => {
 		try {
 			await pb.send<{ success: boolean }>(endpoint, {
 				method: "POST",
 				// overwrite is always true because we've done filtering client side
-				body: { name, value, min, systems, overwrite: true },
+				body: { name, value, min, systems, severity, channels, overwrite: true },
 			})
 		} catch (error) {
 			failedUpdateToast(error)
@@ -72,6 +88,7 @@ export const AlertDialogContent = memo(function AlertDialogContent({ system }: {
 	// copyKey is used to force remount AlertContent components with
 	// new alert data after copying alerts from another system
 	const [copyKey, setCopyKey] = useState(0)
+	const { channels } = useNotificationChannels()
 
 	const systemAlerts = alerts[system.id] ?? new Map()
 
@@ -89,10 +106,18 @@ export const AlertDialogContent = memo(function AlertDialogContent({ system }: {
 			// Alert names present on target but absent from source should be deleted
 			const namesToDelete = Array.from(currentTargetAlerts.keys()).filter((name) => !sourceAlerts.has(name))
 			await Promise.all([
-				...Array.from(sourceAlerts.values()).map(({ name, value, min }) =>
+				...Array.from(sourceAlerts.values()).map(({ name, value, min, severity, channels }) =>
 					pb.send<{ success: boolean }>(endpoint, {
 						method: "POST",
-						body: { name, value, min, systems: [system.id], overwrite: true },
+						body: {
+							name,
+							value,
+							min,
+							severity: severity ?? "",
+							channels: channels ?? [],
+							systems: [system.id],
+							overwrite: true,
+						},
 						requestKey: name,
 					})
 				),
@@ -179,6 +204,7 @@ export const AlertDialogContent = memo(function AlertDialogContent({ system }: {
 								data={alertInfo[name as keyof typeof alertInfo]}
 								alert={systemAlerts.get(name)}
 								system={system}
+								channels={channels}
 							/>
 						))}
 					</div>
@@ -205,6 +231,7 @@ export const AlertDialogContent = memo(function AlertDialogContent({ system }: {
 								alert={systemAlerts.get(name)}
 								data={alertInfo[name as keyof typeof alertInfo]}
 								global={true}
+								channels={channels}
 								overwriteExisting={!!overwriteExisting}
 								initialAlertsState={alertsWhenGlobalSelected}
 							/>
@@ -224,6 +251,7 @@ export function AlertContent({
 	global = false,
 	overwriteExisting = false,
 	initialAlertsState = {},
+	channels = [],
 }: {
 	alertKey: string
 	data: AlertInfo
@@ -232,6 +260,7 @@ export function AlertContent({
 	global?: boolean
 	overwriteExisting?: boolean
 	initialAlertsState?: Record<string, Map<string, AlertRecord>>
+	channels?: NotificationChannelRecord[]
 }) {
 	const { name } = alertData
 
@@ -246,6 +275,8 @@ export function AlertContent({
 	const [checked, setChecked] = useState(global ? false : !!alert)
 	const [min, setMin] = useState(alert?.min || (noDuration ? 0 : 10))
 	const [value, setValue] = useState(alert?.value ?? (noThreshold ? 0 : (alertData.start ?? 80)))
+	const [severity, setSeverity] = useState<AlertSeverity | "">(alert?.severity ?? "")
+	const [channelIds, setChannelIds] = useState<string[]>(alert?.channels ?? [])
 
 	const Icon = alertData.icon
 
@@ -267,7 +298,7 @@ export function AlertContent({
 		return systemIds
 	}
 
-	function sendUpsert(min: number, value: number) {
+	function sendUpsert(min: number, value: number, routing = { severity, channels: channelIds }) {
 		const systems = getSystemIds()
 		systems.length &&
 			upsertAlerts({
@@ -275,6 +306,7 @@ export function AlertContent({
 				value,
 				min,
 				systems,
+				...routing,
 			})
 	}
 
@@ -412,6 +444,25 @@ export function AlertContent({
 						)}
 					</Suspense>
           {checked && alertData.note && <span className="block col-span-full text-sm text-muted-foreground -mt-3">{alertData.note()}</span>}
+				</div>
+			)}
+			{checked && (
+				<div className="px-4 pb-4">
+					<AlertRoutingFields
+						idPrefix={`r${name}`}
+						severity={severity}
+						onSeverityChange={(next) => {
+							setSeverity(next)
+							sendUpsert(min, value, { severity: next, channels: channelIds })
+						}}
+						channelIds={channelIds}
+						onChannelsChange={(next) => {
+							setChannelIds(next)
+							sendUpsert(min, value, { severity, channels: next })
+						}}
+						channels={channels}
+						defaultHint={defaultSeverity(alertKey)}
+					/>
 				</div>
 			)}
 		</div>

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -135,7 +136,8 @@ func (am *AlertManager) reminderSuppressed(record *core.Record, now time.Time) b
 			return true
 		}
 	}
-	return am.isNotificationSilencedAt(record.GetString("user"), record.GetString("system"), now)
+	severity, _ := am.historyRouting(record)
+	return am.silencedAt(record.GetString("user"), record.GetString("system"), severity, now)
 }
 
 var errReminderNotDue = errors.New("reminder not due")
@@ -193,6 +195,11 @@ func (am *AlertManager) reminderMessage(record *core.Record, now time.Time) Aler
 	if record.GetString("monitor") == "" && systemID != "" {
 		link, linkText = am.hub.MakeLink("system", systemID), "View "+systemName
 	}
+	severity, channels := am.historyRouting(record)
+	targetName := monitorName
+	if record.GetString("monitor") == "" && systemName != "" {
+		targetName = systemName
+	}
 	return AlertMessageData{
 		UserID:    record.GetString("user"),
 		SystemID:  systemID,
@@ -201,6 +208,13 @@ func (am *AlertManager) reminderMessage(record *core.Record, now time.Time) Aler
 		Link:      link,
 		LinkText:  linkText,
 		HistoryID: record.Id,
+		Severity:  severity,
+		Channels:  channels,
+		Name:      targetName,
+		Value:     strconv.FormatFloat(record.GetFloat("value"), 'f', -1, 64),
+		Status:    "reminder",
+		MonitorID: record.GetString("monitor"),
+		AlertType: record.GetString("name"),
 	}
 }
 
@@ -228,4 +242,44 @@ func reminderTitle(name, systemName, monitorName string) string {
 		return label + " alert"
 	}
 	return fmt.Sprintf("%s %s alert", systemName, label)
+}
+
+// historyRouting returns the severity and explicit channels of an alert
+// history row, so reminders reach the channels of the original alert: the
+// row's recorded severity, else the severity of its alert (the alerts
+// record, or the monitor for monitor alerts).
+func (am *AlertManager) historyRouting(record *core.Record) (Severity, []string) {
+	severity, channels := am.alertRouting(record)
+	if recorded, ok := ParseSeverity(record.GetString("severity")); ok {
+		severity = recorded
+	}
+	return severity, channels
+}
+
+// alertRouting derives the severity and explicit channels of a history row
+// from its alert configuration.
+func (am *AlertManager) alertRouting(record *core.Record) (Severity, []string) {
+	name := record.GetString("name")
+	value := record.GetFloat("value")
+	def := defaultSeverity(name, value)
+	var source *core.Record
+	if monitorID := record.GetString("monitor"); monitorID != "" {
+		source, _ = am.hub.FindRecordById("network_monitors", monitorID)
+	} else if alertID := record.GetString("alert_id"); alertID != "" {
+		source, _ = am.hub.FindRecordById("alerts", alertID)
+	}
+	if source == nil {
+		return def, nil
+	}
+	return Severity(source.GetString("severity")).orDefault(def), source.GetStringSlice("channels")
+}
+
+// setHistorySeverity records the severity of new alert history rows that
+// do not set one.
+func (am *AlertManager) setHistorySeverity(e *core.RecordEvent) error {
+	if _, ok := ParseSeverity(e.Record.GetString("severity")); !ok {
+		severity, _ := am.alertRouting(e.Record)
+		e.Record.Set("severity", string(severity))
+	}
+	return e.Next()
 }

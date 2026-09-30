@@ -1,6 +1,7 @@
 import { openHistoryKey } from "@/lib/alert-ack"
 import { alertInfo, monitorAlertInfo } from "@/lib/alerts"
 import { getMonitorName } from "@/lib/network-monitor-utils"
+import { effectiveSeverity, isSeverity } from "@/lib/notification-channels"
 import { $alerts, $allSystemsById } from "@/lib/stores"
 import { useDownMonitors } from "@/lib/use-network-monitors"
 import type { AlertRecord, AlertsHistoryRecord, NetworkMonitorRecord } from "@/types"
@@ -10,6 +11,7 @@ import { getPagePath } from "@nanostores/router"
 import { useMemo, useState } from "react"
 import { AlertSheetAck, useOpenAlertHistory } from "./alert-ack"
 import { AlertBannerSheet, AlertBannerSheetItem } from "./alert-banner-sheet"
+import { SeverityBadge } from "./notification-channels"
 import { $router } from "./router"
 
 function AlertTriggeredDesc({ alert }: { alert: AlertRecord }) {
@@ -43,7 +45,8 @@ function AlertLabel({ alert, systemName }: { alert: AlertRecord; systemName?: st
 	const info = alertInfo[alert.name as keyof typeof alertInfo]
 	return (
 		<>
-			{systemName} <span className="opacity-60 font-normal">·</span> {info.name()}
+			{systemName} <span className="opacity-60 font-normal">·</span> {info.name()}{" "}
+			<SeverityBadge severity={effectiveSeverity(alert)} className="align-middle" />
 		</>
 	)
 }
@@ -51,7 +54,8 @@ function AlertLabel({ alert, systemName }: { alert: AlertRecord; systemName?: st
 function MonitorDownLabel({ monitor }: { monitor: NetworkMonitorRecord }) {
 	return (
 		<>
-			{getMonitorName(monitor)} <span className="opacity-60 font-normal">·</span> {monitorAlertInfo.MonitorDown.name()}
+			{getMonitorName(monitor)} <span className="opacity-60 font-normal">·</span> {monitorAlertInfo.MonitorDown.name()}{" "}
+			<SeverityBadge severity={isSeverity(monitor.severity) ? monitor.severity : "critical"} className="align-middle" />
 		</>
 	)
 }

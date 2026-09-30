@@ -191,6 +191,9 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	}
 	// send test notification
 	apiAuth.POST("/test-notification", h.SendTestNotification)
+	// notification channels: test one, preview templates
+	apiAuth.POST("/notification-channels/{id}/test", h.TestChannel)
+	apiAuth.POST("/notification-templates/preview", alerts.PreviewTemplate)
 	// heartbeat status and test
 	apiAuth.GET("/heartbeat-status", h.getHeartbeatStatus).BindFunc(requireAdminRole)
 	apiAuth.POST("/test-heartbeat", h.testHeartbeat).BindFunc(requireAdminRole)
@@ -202,6 +205,7 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	apiNoAuth.GET("/status-pages/{slug}", h.handleStatusPage)
 	h.registerStatusSubscriptionRoutes(apiAuth, apiNoAuth)
 	h.registerStatusPageRoutes(se, apiNoAuth)
+	h.registerWebPushRoutes(apiAuth)
 	apiAuth.POST("/monitors/{id}/push-token", h.regeneratePushToken).BindFunc(excludeReadOnlyRole)
 	// import monitors from an Uptime Kuma backup
 	apiAuth.POST("/import/uptime-kuma", h.importUptimeKuma).BindFunc(excludeReadOnlyRole)

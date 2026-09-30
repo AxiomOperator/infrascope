@@ -253,11 +253,15 @@ func (am *AlertManager) monitorThresholdMessage(user string, target monitorTarge
 		}
 		message = fmt.Sprintf("Average response time of %s over the past hour is %.0f ms, which %s the %.0f ms threshold.", target.label(), value, comparison, limit)
 	}
-	return AlertMessageData{
-		UserID: user, SystemID: target.systemID,
-		Title: title, Message: message,
-		Link: am.hub.MakeLink("monitors"), LinkText: "View monitors",
+	data := target.message(user, name, SeverityWarning, triggered)
+	data.Title, data.Message = title, message
+	data.Link, data.LinkText = am.hub.MakeLink("monitors"), "View monitors"
+	if name == alertNameMonitorLoss {
+		data.Value = fmt.Sprintf("%.2f%%", value)
+	} else {
+		data.Value = fmt.Sprintf("%.0f ms", value)
 	}
+	return data
 }
 
 // resolveMonitorThresholdsOnUpdate silently resolves the threshold alerts of

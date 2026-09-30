@@ -185,6 +185,12 @@ func (am *AlertManager) sendStatusAlert(alertStatus string, systemName string, a
 		Link:      am.hub.MakeLink("system", systemID),
 		LinkText:  "View " + systemName,
 		HistoryID: historyID,
+		Severity:  alertData.severity(SeverityCritical),
+		Channels:  alertData.Channels,
+		Name:      systemName,
+		Value:     alertStatus,
+		Status:    alertStatusLabel(triggered),
+		AlertType: alertData.Name,
 	})
 }
 

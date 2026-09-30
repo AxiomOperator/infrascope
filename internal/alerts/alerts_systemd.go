@@ -2,6 +2,7 @@ package alerts
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/henrygd/beszel/internal/entities/system"
@@ -130,6 +131,12 @@ func (am *AlertManager) sendSystemdAlert(triggered bool, systemName string, aler
 		Link:      am.hub.MakeLink("system", systemID),
 		LinkText:  "View " + systemName,
 		HistoryID: historyID,
+		Severity:  alertData.severity(SeverityCritical),
+		Channels:  alertData.Channels,
+		Name:      systemName,
+		Value:     strconv.Itoa(len(failed)),
+		Status:    alertStatusLabel(triggered),
+		AlertType: alertData.Name,
 	})
 }
 

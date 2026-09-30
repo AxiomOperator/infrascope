@@ -19,6 +19,10 @@ type CachedAlertData struct {
 	Triggered    bool
 	Min          uint8
 	PendingSince time.Time
+	// Severity overrides the alert type's default severity when set.
+	Severity Severity
+	// Channels are the alert's explicit channels (empty: default routing).
+	Channels []string
 	// Immutable after publication; decoded only when the alert record changes.
 	MonitorStates      map[string]string
 	MonitorStatesValid bool
@@ -34,6 +38,8 @@ func (a *CachedAlertData) PopulateFromRecord(record *core.Record) {
 	a.Triggered = record.GetBool("triggered")
 	a.Min = uint8(record.GetInt("min"))
 	a.PendingSince = record.GetDateTime("pending_since").Time()
+	a.Severity = Severity(record.GetString("severity"))
+	a.Channels = record.GetStringSlice("channels")
 	if a.Name == alertNameNetworkMonitorLoss {
 		var state networkMonitorAlertState
 		a.MonitorStatesValid = record.UnmarshalJSONField("state", &state) == nil
@@ -204,4 +210,9 @@ func (c *AlertsCache) Refresh(alert CachedAlertData) (CachedAlertData, bool) {
 		return CachedAlertData{}, false
 	}
 	return c.GetAlert(alert.SystemID, alert.Id)
+}
+
+// severity returns the alert's severity: its override, else def.
+func (a CachedAlertData) severity(def Severity) Severity {
+	return a.Severity.orDefault(def)
 }

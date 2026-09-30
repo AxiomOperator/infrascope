@@ -63,7 +63,7 @@ func (am *AlertManager) handleZfsPoolHealthAlert(e *core.RecordEvent, oldHealth 
 	}
 
 	for _, userID := range userIDs {
-		historyID, _ := createZfsPoolHistoryRecord(e.App, userID, systemID, e.Record.Id, poolName)
+		historyID, _ := createZfsPoolHistoryRecord(e.App, userID, systemID, e.Record.Id, poolName, zfsAlertSeverity(newSeverity))
 		if err := am.SendAlert(AlertMessageData{
 			UserID:    userID,
 			SystemID:  systemID,
@@ -72,6 +72,11 @@ func (am *AlertManager) handleZfsPoolHealthAlert(e *core.RecordEvent, oldHealth 
 			Link:      am.hub.MakeLink("system", systemID),
 			LinkText:  "View " + systemName,
 			HistoryID: historyID,
+			Severity:  zfsAlertSeverity(newSeverity),
+			Name:      systemName,
+			Value:     newHealth,
+			Status:    alertStatusLabel(true),
+			AlertType: "StoragePool",
 		}); err != nil {
 			e.App.Logger().Error("Failed to send ZFS alert", "err", err, "userID", userID)
 		}
@@ -112,7 +117,7 @@ func zfsPoolSeverity(health string) int {
 // createZfsPoolHistoryRecord logs a pool health alert in the alerts history so
 // it is visible in the UI without creating an editable alert configuration.
 // It returns the history row id.
-func createZfsPoolHistoryRecord(app core.App, userID, systemID, alertID, poolName string) (string, error) {
+func createZfsPoolHistoryRecord(app core.App, userID, systemID, alertID, poolName string, severity Severity) (string, error) {
 	collection, err := app.FindCachedCollectionByNameOrId("alerts_history")
 	if err != nil {
 		return "", err
@@ -122,6 +127,7 @@ func createZfsPoolHistoryRecord(app core.App, userID, systemID, alertID, poolNam
 	record.Set("system", systemID)
 	record.Set("alert_id", alertID)
 	record.Set("name", "Storage Pool: "+poolName)
+	record.Set("severity", string(severity))
 	if err := app.Save(record); err != nil {
 		return "", err
 	}

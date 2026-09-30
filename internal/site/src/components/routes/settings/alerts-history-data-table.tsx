@@ -83,7 +83,7 @@ export default function AlertsHistoryDataTable() {
 		const pbOptions = {
 			expand: "system,monitor",
 			fields:
-				"id,alert_id,name,system,monitor,monitor_name,value,state,created,resolved,acknowledgedAt,acknowledgedBy,ackNote,reminderCount,expand.system.name,expand.monitor.name,expand.monitor.target",
+				"id,alert_id,name,system,monitor,monitor_name,value,state,created,resolved,acknowledgedAt,acknowledgedBy,ackNote,reminderCount,severity,expand.system.name,expand.monitor.name,expand.monitor.target",
 		}
 		// Initial load
 		pb.collection<AlertsHistoryRecord>("alerts_history")

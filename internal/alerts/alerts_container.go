@@ -3,6 +3,7 @@ package alerts
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -205,12 +206,18 @@ func (am *AlertManager) sendContainerHealthAlert(unhealthy bool, systemName stri
 		}
 		title := fmt.Sprintf("%s containers are healthy ✅", systemName)
 		return am.SendAlert(AlertMessageData{
-			UserID:   alertData.UserID,
-			SystemID: alertData.SystemID,
-			Title:    title,
-			Message:  strings.TrimSuffix(title, " ✅"),
-			Link:     link,
-			LinkText: linkText,
+			UserID:    alertData.UserID,
+			SystemID:  alertData.SystemID,
+			Title:     title,
+			Message:   strings.TrimSuffix(title, " ✅"),
+			Link:      link,
+			LinkText:  linkText,
+			Severity:  alertData.severity(SeverityCritical),
+			Channels:  alertData.Channels,
+			Name:      systemName,
+			Value:     "0",
+			Status:    alertStatusLabel(false),
+			AlertType: alertData.Name,
 		})
 	}
 
@@ -248,6 +255,12 @@ func (am *AlertManager) sendContainerHealthAlert(unhealthy bool, systemName stri
 		Link:      link,
 		LinkText:  linkText,
 		HistoryID: openHistoryID(am.hub, alertData.Id, alertData.UserID),
+		Severity:  alertData.severity(SeverityCritical),
+		Channels:  alertData.Channels,
+		Name:      systemName,
+		Value:     strconv.Itoa(len(names)),
+		Status:    alertStatusLabel(true),
+		AlertType: alertData.Name,
 	})
 }
 

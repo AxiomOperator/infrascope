@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
+import { AlertRoutingFields, useNotificationChannels } from "@/components/notification-channels"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -45,7 +46,7 @@ import {
 	orderLocations,
 	primaryLocationSystem,
 } from "@/lib/monitor-locations"
-import type { NetworkMonitorRecord } from "@/types"
+import type { AlertSeverity, NetworkMonitorRecord } from "@/types"
 import {
 	buildMonitorPayload,
 	type CheckFormState,
@@ -253,6 +254,9 @@ function MonitorDialogContent({
 	const [retries, setRetries] = useState(String(monitor?.retries ?? 1))
 	const [retryInterval, setRetryInterval] = useState(monitor?.retryInterval ? String(monitor.retryInterval) : "")
 	const [notify, setNotify] = useState(monitor?.notify ?? true)
+	const [severity, setSeverity] = useState<AlertSeverity | "">(monitor?.severity ?? "")
+	const [channelIds, setChannelIds] = useState<string[]>(monitor?.channels ?? [])
+	const { channels: notificationChannels } = useNotificationChannels()
 	const [dependsOn, setDependsOn] = useState<string[]>(monitor?.dependsOn ?? [])
 	const [certExpiryDays, setCertExpiryDays] = useState(String(monitor?.certExpiryDays ?? 0))
 	const [lossThreshold, setLossThreshold] = useState(thresholdInput(monitor?.lossThreshold))
@@ -300,6 +304,8 @@ function MonitorDialogContent({
 		setRetries(String(monitor?.retries ?? 1))
 		setRetryInterval(monitor?.retryInterval ? String(monitor.retryInterval) : "")
 		setNotify(monitor?.notify ?? true)
+		setSeverity(monitor?.severity ?? "")
+		setChannelIds(monitor?.channels ?? [])
 		setDependsOn(monitor?.dependsOn ?? [])
 		setCertExpiryDays(String(monitor?.certExpiryDays ?? 0))
 		setLossThreshold(thresholdInput(monitor?.lossThreshold))
@@ -442,6 +448,8 @@ function MonitorDialogContent({
 				retries: Number(retries) || 0,
 				retryInterval: isPush ? 0 : Number(retryInterval) || 0,
 				notify,
+				severity,
+				channels: channelIds,
 				dependsOn,
 				certExpiryDays: monitorReportsCert(protocol, basePayload.target, checkForm) ? Number(certExpiryDays) || 0 : 0,
 				lossThreshold: lossValue,
@@ -883,6 +891,16 @@ function MonitorDialogContent({
 					disabled={locked("notify")}
 					label={<Trans>Notifications</Trans>}
 					description={<Trans>Send notifications when this monitor goes down or recovers.</Trans>}
+				/>
+				<AlertRoutingFields
+					idPrefix="monitor"
+					severity={severity}
+					onSeverityChange={setSeverity}
+					channelIds={channelIds}
+					onChannelsChange={setChannelIds}
+					channels={notificationChannels}
+					disabled={loading}
+					defaultHint="critical"
 				/>
 				<div className="grid gap-2">
 					<Label htmlFor="monitor-depends-on">

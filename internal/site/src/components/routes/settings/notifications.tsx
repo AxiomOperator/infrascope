@@ -1,84 +1,69 @@
 import { t } from "@lingui/core/macro"
 import { Trans } from "@lingui/react/macro"
-import { BellIcon, LoaderCircleIcon, PlusIcon, SaveIcon } from "lucide-react"
+import { BellIcon, LoaderCircleIcon, SaveIcon } from "lucide-react"
+import type { ClientResponseError } from "pocketbase"
 import { useEffect, useState } from "react"
-import * as v from "valibot"
-import { prependBasePath } from "@/components/router"
+import { PushNotifications } from "@/components/push-notifications"
 import { Button } from "@/components/ui/button"
-import { Dialog } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { InputTags } from "@/components/ui/input-tags"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/use-toast"
 import { parseReminderMinutes, REMINDER_MAX_MINUTES, REMINDER_MIN_MINUTES } from "@/lib/alert-ack"
-import { isAdmin } from "@/lib/api"
-import type { UserSettings } from "@/types"
-import { saveSettings } from "./layout"
-import { NotificationCard, NotificationDialog, WebhookUrlSchema } from "./notification-builder"
+import { isReadOnlyUser, saveUserSettings } from "@/lib/api"
+import { normalizeTemplate, templateTooLong } from "@/lib/notification-channels"
+import type { NotificationTemplate, UserSettings } from "@/types"
+import { NotificationChannels } from "./notification-channels"
+import { TemplateEditor } from "./notification-templates"
 import { QuietHours } from "./quiet-hours"
 
-const NotificationSchema = v.object({
-	emails: v.array(v.pipe(v.string(), v.rfcEmail())),
-	webhooks: v.array(WebhookUrlSchema),
-})
-
-const sameList = (a: string[], b: string[]) => a.length === b.length && a.every((x, i) => x === b[i])
+const sameTemplate = (a: NotificationTemplate | null, b: NotificationTemplate | null) =>
+	(a?.title ?? "") === (b?.title ?? "") && (a?.body ?? "") === (b?.body ?? "")
 
 const SettingsNotificationsPage = ({ userSettings }: { userSettings: UserSettings }) => {
-	const [webhooks, setWebhooks] = useState(userSettings.webhooks ?? [])
-	const [emails, setEmails] = useState<string[]>(userSettings.emails ?? [])
 	const [reminder, setReminder] = useState(String(userSettings.reminderMinutes || ""))
 	const reminderMinutes = parseReminderMinutes(reminder)
+	const [templates, setTemplates] = useState<NotificationTemplate>(userSettings.templates ?? {})
+	const [bypass, setBypass] = useState(!!userSettings.criticalBypassQuietHours)
 	const [isLoading, setIsLoading] = useState(false)
-	// index of the entry being edited, "new" when adding, null when the dialog is closed
-	const [editing, setEditing] = useState<number | "new" | null>(null)
-	const [dialogKey, setDialogKey] = useState(0)
+	const readOnly = isReadOnlyUser()
 
 	// update values when userSettings changes
 	useEffect(() => {
-		setWebhooks(userSettings.webhooks ?? [])
-		setEmails(userSettings.emails ?? [])
 		setReminder(String(userSettings.reminderMinutes || ""))
+		setTemplates(userSettings.templates ?? {})
+		setBypass(!!userSettings.criticalBypassQuietHours)
 	}, [userSettings])
 
 	const isDirty =
-		!sameList(webhooks, userSettings.webhooks ?? []) ||
-		!sameList(emails, userSettings.emails ?? []) ||
-		reminderMinutes !== (userSettings.reminderMinutes || 0)
-
-	function openDialog(target: number | "new") {
-		setDialogKey((k) => k + 1)
-		setEditing(target)
-	}
-
-	function submitWebhook(url: string) {
-		if (editing === "new") setWebhooks([...webhooks, url])
-		else if (editing !== null) setWebhooks(webhooks.map((w, i) => (i === editing ? url : w)))
-		setEditing(null)
-	}
-
-	const removeWebhook = (index: number) => setWebhooks(webhooks.filter((_, i) => i !== index))
+		reminderMinutes !== (userSettings.reminderMinutes || 0) ||
+		!sameTemplate(normalizeTemplate(templates), normalizeTemplate(userSettings.templates)) ||
+		bypass !== !!userSettings.criticalBypassQuietHours
 
 	async function updateSettings() {
+		const fail = (description: string) =>
+			toast({ title: t`Failed to save settings`, description, variant: "destructive" })
 		if (reminderMinutes === null) {
-			toast({
-				title: t`Failed to save settings`,
-				description: t`Enter a reminder interval between ${REMINDER_MIN_MINUTES} and ${REMINDER_MAX_MINUTES} minutes, or leave it blank.`,
-				variant: "destructive",
-			})
+			fail(
+				t`Enter a reminder interval between ${REMINDER_MIN_MINUTES} and ${REMINDER_MAX_MINUTES} minutes, or leave it blank.`
+			)
+			return
+		}
+		if (templateTooLong(templates).length) {
+			fail(t`Templates can be at most 2000 characters.`)
 			return
 		}
 		setIsLoading(true)
 		try {
-			const parsedData = v.parse(NotificationSchema, { emails, webhooks })
-			await saveSettings({ ...parsedData, reminderMinutes })
-		} catch (e: unknown) {
-			toast({
-				title: t`Failed to save settings`,
-				description: (e as Error).message,
-				variant: "destructive",
+			await saveUserSettings({
+				reminderMinutes,
+				templates: normalizeTemplate(templates) ?? {},
+				criticalBypassQuietHours: bypass,
 			})
+			toast({ title: t`Settings saved`, description: t`Your user settings have been updated.` })
+		} catch (e: unknown) {
+			fail((e as ClientResponseError).response?.message || (e as Error).message)
 		}
 		setIsLoading(false)
 	}
@@ -101,88 +86,23 @@ const SettingsNotificationsPage = ({ userSettings }: { userSettings: UserSetting
 			</div>
 			<Separator className="my-4" />
 			<div className="space-y-5">
-				<div className="grid gap-2">
-					<div className="mb-2">
-						<h3 className="mb-1 text-lg font-medium">
-							<Trans>Email notifications</Trans>
-						</h3>
-						{isAdmin() && (
-							<p className="text-sm text-muted-foreground leading-relaxed">
-								<Trans>
-									Please{" "}
-									<a href={prependBasePath("/_/#/settings/mail")} className="link" target="_blank">
-										configure an SMTP server
-									</a>{" "}
-									to ensure alerts are delivered.
-								</Trans>
-							</p>
-						)}
-					</div>
-					<Label className="block" htmlFor="email">
-						<Trans>To email(s)</Trans>
-					</Label>
-					<InputTags
-						value={emails}
-						onChange={setEmails}
-						placeholder={t`Enter email address...`}
-						className="w-full"
-						type="email"
-						id="email"
-					/>
-					<p className="text-[0.8rem] text-muted-foreground">
-						<Trans>Save address using enter key or comma. Leave blank to disable email notifications.</Trans>
-					</p>
-				</div>
+				<NotificationChannels userSettings={userSettings} />
 				<Separator />
-				<div className="space-y-3">
-					<div className="grid grid-cols-1 sm:flex items-center justify-between gap-4">
-						<div>
-							<h3 className="mb-1 text-lg font-medium">
-								<Trans>Webhook / Push notifications</Trans>
-							</h3>
-							<p className="text-sm text-muted-foreground leading-relaxed">
-								<Trans>
-									InfraScope uses{" "}
-									<a href="https://beszel.dev/guide/notifications" target="_blank" className="link" rel="noopener">
-										Shoutrrr
-									</a>{" "}
-									to integrate with popular notification services.
-								</Trans>
-							</p>
-						</div>
-						<Button type="button" variant="outline" className="h-10 shrink-0" onClick={() => openDialog("new")}>
-							<PlusIcon className="size-4" />
-							<span className="ms-1">
-								<Trans>Add notification</Trans>
-							</span>
-						</Button>
-					</div>
-					{webhooks.length > 0 ? (
-						<div className="grid gap-2.5" id="webhooks">
-							{webhooks.map((webhook, index) => (
-								<NotificationCard
-									key={`${index}-${webhook}`}
-									url={webhook}
-									onEdit={() => openDialog(index)}
-									onDelete={() => removeWebhook(index)}
-								/>
-							))}
-						</div>
-					) : (
-						<p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
-							<Trans>No webhook or push notifications configured.</Trans>
+				<PushNotifications />
+				<Separator />
+				<div className="grid gap-2">
+					<div className="mb-1">
+						<h3 className="mb-1 text-lg font-medium">
+							<Trans>Message templates</Trans>
+						</h3>
+						<p className="text-sm text-muted-foreground leading-relaxed">
+							<Trans>
+								Default title and body of your notifications. Channels can override them. Invalid templates fall back to
+								the built-in message.
+							</Trans>
 						</p>
-					)}
-					<Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
-						{editing !== null && (
-							<NotificationDialog
-								key={dialogKey}
-								url={editing === "new" ? null : (webhooks[editing] ?? null)}
-								onSubmit={submitWebhook}
-								onCancel={() => setEditing(null)}
-							/>
-						)}
-					</Dialog>
+					</div>
+					<TemplateEditor idPrefix="global-tpl" value={templates} onChange={setTemplates} disabled={readOnly} />
 				</div>
 				<Separator />
 				<div className="grid gap-2">
@@ -226,6 +146,17 @@ const SettingsNotificationsPage = ({ userSettings }: { userSettings: UserSetting
 				<Separator />
 				<div className="space-y-3">
 					<QuietHours />
+					<label htmlFor="critical-bypass" className="flex items-start justify-between gap-4 rounded-md border p-3">
+						<span className="grid gap-1">
+							<span className="text-sm font-medium">
+								<Trans>Critical alerts bypass quiet hours</Trans>
+							</span>
+							<span className="text-[0.8rem] text-muted-foreground">
+								<Trans>Deliver critical alerts, such as a system or monitor going down, even during quiet hours.</Trans>
+							</span>
+						</span>
+						<Switch id="critical-bypass" checked={bypass} onCheckedChange={setBypass} disabled={readOnly} />
+					</label>
 				</div>
 				<Separator />
 				<div className="flex flex-wrap items-center gap-x-4 gap-y-2">

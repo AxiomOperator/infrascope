@@ -352,7 +352,38 @@ export interface AlertRecord extends RecordModel {
 	triggered: boolean
 	value: number
 	min: number
+	/** severity override; empty uses the alert type's default */
+	severity?: AlertSeverity | ""
+	/** notification_channels ids; empty uses default routing */
+	channels?: string[]
 	// user: string
+}
+
+export type AlertSeverity = "info" | "warning" | "critical"
+
+export type NotificationChannelType = "email" | "shoutrrr" | "browser"
+
+export interface NotificationTemplate {
+	title?: string
+	body?: string
+}
+
+/** Named notification destination of a user (notification_channels). */
+export interface NotificationChannelRecord extends RecordModel {
+	id: string
+	user: string
+	name: string
+	type: NotificationChannelType
+	/** email: { addresses }, shoutrrr: { url }, browser: {} */
+	config: { addresses?: string[]; url?: string } | null
+	enabled: boolean
+	/** lowest severity this channel receives */
+	minSeverity: AlertSeverity
+	/** receives alerts without explicit channels */
+	isDefault: boolean
+	template?: NotificationTemplate | null
+	created: string
+	updated: string
 }
 
 export interface AlertsHistoryRecord extends RecordModel {
@@ -375,6 +406,8 @@ export interface AlertsHistoryRecord extends RecordModel {
 	/** server-managed: last reminder of an unacknowledged alert */
 	remindedAt?: string | null
 	reminderCount?: number
+	/** severity the alert was sent with; empty for rows stored before severities */
+	severity?: AlertSeverity | ""
 }
 
 /** Note on an alert history row, visible to the row's user only. */
@@ -452,6 +485,10 @@ export interface UserSettings {
 	displayMode?: "default" | "tabs"
 	/** repeat notifications of unacknowledged alerts every N minutes (5-1440); 0 or missing is off */
 	reminderMinutes?: number
+	/** default notification templates; empty fields use the built-in message */
+	templates?: NotificationTemplate
+	/** critical alerts are delivered during quiet hours */
+	criticalBypassQuietHours?: boolean
 }
 
 type ChartDataContainer = {
@@ -779,6 +816,10 @@ export interface NetworkMonitorRecord {
 	/** Non-secret protocol-specific check options. */
 	check?: MonitorCheckOptions | null
 	notify: boolean
+	/** severity override of this monitor's alerts; empty uses the defaults */
+	severity?: AlertSeverity | ""
+	/** notification_channels ids; empty uses default routing */
+	channels?: string[]
 	certExpiryDays: number
 	/** Alert when loss over the last hour exceeds this percent; 0 disables it. */
 	lossThreshold?: number

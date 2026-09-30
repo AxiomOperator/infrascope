@@ -32,6 +32,9 @@ const (
 	// KeyFileName is the hub's private key file in the data dir.
 	KeyFileName = "id_ed25519"
 	hkdfInfo    = "infrascope/monitor-secrets/v1"
+	// ChannelsInfo is the HKDF info of the box sealing notification channel
+	// secrets, so they use a key separate from monitor secrets.
+	ChannelsInfo = "infrascope/channels/v1"
 )
 
 // Box seals and opens monitor secrets.
@@ -41,10 +44,16 @@ type Box struct {
 
 // NewBox returns a Box whose key is derived from secret.
 func NewBox(secret []byte) (*Box, error) {
+	return NewBoxWithInfo(secret, hkdfInfo)
+}
+
+// NewBoxWithInfo returns a Box whose key is derived from secret with the
+// HKDF info string info, so different uses of one secret get separate keys.
+func NewBoxWithInfo(secret []byte, info string) (*Box, error) {
 	if len(secret) == 0 {
 		return nil, errors.New("empty key material")
 	}
-	key, err := hkdf.Key(sha256.New, secret, nil, hkdfInfo, 32)
+	key, err := hkdf.Key(sha256.New, secret, nil, info, 32)
 	if err != nil {
 		return nil, err
 	}
@@ -62,6 +71,10 @@ func NewBox(secret []byte) (*Box, error) {
 // LoadKeyFile returns a Box keyed by the ed25519 private key in the OpenSSH
 // PEM file at path. It does not create the file.
 func LoadKeyFile(path string) (*Box, error) {
+	return loadKeyFile(path, hkdfInfo)
+}
+
+func loadKeyFile(path, info string) (*Box, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read monitor secrets key: %w", err)
@@ -79,7 +92,7 @@ func LoadKeyFile(path string) (*Box, error) {
 	default:
 		return nil, fmt.Errorf("monitor secrets key: unsupported key type %T", raw)
 	}
-	return NewBox(seed)
+	return NewBoxWithInfo(seed, info)
 }
 
 // boxes caches loaded boxes by key file path.
@@ -88,15 +101,21 @@ var boxes sync.Map
 // ForDataDir returns the Box of the key file in dataDir. Successful loads
 // are cached; a missing key file is an error.
 func ForDataDir(dataDir string) (*Box, error) {
+	return ForDataDirWithInfo(dataDir, hkdfInfo)
+}
+
+// ForDataDirWithInfo is ForDataDir with the key derived for info.
+func ForDataDirWithInfo(dataDir, info string) (*Box, error) {
 	path := filepath.Join(dataDir, KeyFileName)
-	if box, ok := boxes.Load(path); ok {
+	cacheKey := info + "\x00" + path
+	if box, ok := boxes.Load(cacheKey); ok {
 		return box.(*Box), nil
 	}
-	box, err := LoadKeyFile(path)
+	box, err := loadKeyFile(path, info)
 	if err != nil {
 		return nil, err
 	}
-	actual, _ := boxes.LoadOrStore(path, box)
+	actual, _ := boxes.LoadOrStore(cacheKey, box)
 	return actual.(*Box), nil
 }
 

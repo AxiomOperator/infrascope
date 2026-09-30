@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -63,13 +64,29 @@ type monitorCertState struct {
 type monitorTarget struct {
 	id, name, systemID, systemName string
 	users                          []string
+	// severity overrides the default severity of the monitor's alerts;
+	// channels are its explicit channels.
+	severity Severity
+	channels []string
+}
+
+// message returns the alert message of the target to user.
+func (t monitorTarget) message(user, alertType string, severity Severity, triggered bool) AlertMessageData {
+	return AlertMessageData{
+		UserID: user, SystemID: t.systemID, MonitorID: t.id,
+		Severity: t.severity.orDefault(severity), Channels: t.channels,
+		Name: t.name, Status: alertStatusLabel(triggered), AlertType: alertType,
+	}
 }
 
 // loadMonitorTarget reads a monitor's display name and recipients. The
 // system of a target is its primary location; the label names it only for
 // monitors with a single location.
 func loadMonitorTarget(app core.App, record *core.Record) (monitorTarget, error) {
-	target := monitorTarget{id: record.Id, name: record.GetString("name"), systemID: record.GetString("system")}
+	target := monitorTarget{
+		id: record.Id, name: record.GetString("name"), systemID: record.GetString("system"),
+		severity: Severity(record.GetString("severity")), channels: record.GetStringSlice("channels"),
+	}
 	if target.name == "" {
 		target.name = record.GetString("target")
 	}
@@ -199,12 +216,12 @@ func (am *AlertManager) monitorDownMessage(user string, target monitorTarget, tr
 	if transition.StatusCode != 0 {
 		fmt.Fprintf(&body, "\nStatus code: %d", transition.StatusCode)
 	}
-	return AlertMessageData{
-		UserID: user, SystemID: target.systemID,
-		Title:   fmt.Sprintf("%s is down", target.name),
-		Message: body.String(),
-		Link:    am.hub.MakeLink("monitors"), LinkText: "View monitors",
-	}
+	message := target.message(user, alertNameMonitorDown, SeverityCritical, true)
+	message.Title = fmt.Sprintf("%s is down", target.name)
+	message.Message = body.String()
+	message.Link, message.LinkText = am.hub.MakeLink("monitors"), "View monitors"
+	message.Value = "down"
+	return message
 }
 
 func (am *AlertManager) monitorUpMessage(user string, target monitorTarget, transition uptime.Transition) AlertMessageData {
@@ -213,12 +230,12 @@ func (am *AlertManager) monitorUpMessage(user string, target monitorTarget, tran
 		message = fmt.Sprintf("%s is back up after %s (down since %s).", target.label(),
 			formatOutage(transition.At.Sub(transition.DownSince)), formatAlertTime(transition.DownSince))
 	}
-	return AlertMessageData{
-		UserID: user, SystemID: target.systemID,
-		Title:   fmt.Sprintf("%s is up", target.name),
-		Message: message,
-		Link:    am.hub.MakeLink("monitors"), LinkText: "View monitors",
-	}
+	data := target.message(user, alertNameMonitorDown, SeverityCritical, false)
+	data.Title = fmt.Sprintf("%s is up", target.name)
+	data.Message = message
+	data.Link, data.LinkText = am.hub.MakeLink("monitors"), "View monitors"
+	data.Value = "up"
+	return data
 }
 
 func (am *AlertManager) sendMonitorMessages(messages []AlertMessageData) {
@@ -442,9 +459,9 @@ func (am *AlertManager) monitorCertMessage(user string, target monitorTarget, ce
 	if cert.Issuer != "" {
 		message += fmt.Sprintf("\nIssuer: %s", cert.Issuer)
 	}
-	return AlertMessageData{
-		UserID: user, SystemID: target.systemID,
-		Title: title, Message: message,
-		Link: am.hub.MakeLink("monitors"), LinkText: "View monitors",
-	}
+	data := target.message(user, alertNameMonitorCert, certSeverity(daysLeft), true)
+	data.Title, data.Message = title, message
+	data.Link, data.LinkText = am.hub.MakeLink("monitors"), "View monitors"
+	data.Value = strconv.Itoa(daysLeft)
+	return data
 }

@@ -52,12 +52,17 @@ func (am *AlertManager) handleSmartDeviceAlert(e *core.RecordEvent) error {
 	// Send alert to each user
 	for _, userID := range userIDs {
 		if err := am.SendAlert(AlertMessageData{
-			UserID:   userID,
-			SystemID: systemID,
-			Title:    title,
-			Message:  message,
-			Link:     am.hub.MakeLink("system", systemID),
-			LinkText: "View " + systemName,
+			UserID:    userID,
+			SystemID:  systemID,
+			Title:     title,
+			Message:   message,
+			Link:      am.hub.MakeLink("system", systemID),
+			LinkText:  "View " + systemName,
+			Severity:  smartAlertSeverity(newState),
+			Name:      systemName,
+			Value:     newState,
+			Status:    alertStatusLabel(true),
+			AlertType: "SMART",
 		}); err != nil {
 			e.App.Logger().Error("Failed to send SMART alert", "err", err, "userID", userID)
 		}

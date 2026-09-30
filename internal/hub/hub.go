@@ -21,6 +21,7 @@ import (
 	"github.com/henrygd/beszel/internal/hub/systems"
 	"github.com/henrygd/beszel/internal/hub/uptime"
 	"github.com/henrygd/beszel/internal/hub/utils"
+	"github.com/henrygd/beszel/internal/hub/webpush"
 	"github.com/henrygd/beszel/internal/records"
 	"github.com/henrygd/beszel/internal/users"
 
@@ -63,6 +64,8 @@ type Hub struct {
 	systemEvents *systemevents.Recorder
 	// discovery rate limits Docker label discovery reconciles.
 	discovery *dockerDiscovery
+	// webPush sends browser notifications (nil if the VAPID key is unavailable).
+	webPush *webpush.Service
 }
 
 // NewHub creates a new Hub instance with default configuration
@@ -88,6 +91,8 @@ func NewHub(app core.App) *Hub {
 	hub.statusPages = newStatusPages()
 	hub.statusSubscriptions = newStatusSubscriptions(hub)
 	hub.discovery = newDockerDiscovery()
+	hub.webPush = newWebPush(hub)
+	hub.bindNotificationChannels()
 	hub.systemEvents = systemevents.New()
 	hub.systemEvents.Bind(app)
 	hub.hb = heartbeat.New(app, utils.GetEnv)
@@ -188,6 +193,12 @@ func (h *Hub) StartHub() error {
 		return errors.New("not a pocketbase app")
 	}
 	return pb.Start()
+}
+
+// WebPush returns the browser notification sender. It may be nil; its
+// methods treat a nil service as disabled.
+func (h *Hub) WebPush() *webpush.Service {
+	return h.webPush
 }
 
 // Uptime returns the engine that derives monitor status from check results.
