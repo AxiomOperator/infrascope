@@ -740,10 +740,11 @@ func (e *Engine) evaluateNotify(st *monitorState, at int64) *Transition {
 	}
 	prev := st.p.Notified
 	st.p.Notified = confirmed
-	if !st.notify || (prev == "" && confirmed == StatusUp) {
+	if prev == "" && confirmed == StatusUp {
 		return nil
 	}
 	transition := &Transition{
+		Notify:    st.notify,
 		MonitorID: st.id,
 		SystemID:  st.systemID,
 		Name:      st.displayName(),

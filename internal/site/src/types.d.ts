@@ -366,6 +366,23 @@ export interface AlertsHistoryRecord extends RecordModel {
 	val: number
 	created: string
 	resolved?: string | null
+	/** alerts record id, or the monitor id for monitor alerts */
+	alert_id?: string
+	acknowledgedAt?: string | null
+	/** user that acknowledged the alert (the row's user) */
+	acknowledgedBy?: string
+	ackNote?: string
+	/** server-managed: last reminder of an unacknowledged alert */
+	remindedAt?: string | null
+	reminderCount?: number
+}
+
+/** Note on an alert history row, visible to the row's user only. */
+export interface AlertNoteRecord extends RecordModel {
+	alert: string
+	author: string
+	text: string
+	created: string
 }
 
 export interface QuietHoursRecord extends RecordModel {
@@ -433,6 +450,8 @@ export interface UserSettings {
 	monitorSortModeSystem?: Array<{ id: string; desc: boolean }>
 	grid?: boolean
 	displayMode?: "default" | "tabs"
+	/** repeat notifications of unacknowledged alerts every N minutes (5-1440); 0 or missing is off */
+	reminderMinutes?: number
 }
 
 type ChartDataContainer = {
@@ -877,8 +896,42 @@ export interface StatusPageRecord {
 	public: boolean
 	showTargets: boolean
 	showResponseTimes: boolean
+	/** Open and resolve incidents automatically when a component goes down. */
+	autoIncidents?: boolean
 	created: string
 	updated: string
+}
+
+export type IncidentStatus = "investigating" | "identified" | "monitoring" | "resolved"
+export type IncidentImpact = "none" | "minor" | "major" | "critical"
+
+export interface IncidentRecord {
+	id: string
+	user: string
+	title: string
+	status: IncidentStatus
+	impact: IncidentImpact
+	monitors: string[]
+	systems: string[]
+	statusPages: string[]
+	/** Created automatically by a status page with autoIncidents. */
+	auto: boolean
+	startedAt: string
+	/** Empty until resolved. */
+	resolvedAt: string
+	created: string
+	updated: string
+}
+
+export interface IncidentUpdateRecord {
+	id: string
+	incident: string
+	status: IncidentStatus
+	/** Plain text. */
+	message: string
+	/** Empty for automatic updates. */
+	author: string
+	created: string
 }
 
 export interface MaintenanceRecord {
@@ -906,6 +959,20 @@ export interface PublicStatusPage {
 	systems: PublicStatusPageSystem[]
 	monitors: PublicStatusPageMonitor[]
 	maintenance: PublicStatusPageMaintenance[]
+	incidents?: { active: PublicStatusPageIncident[]; recent: PublicStatusPageIncident[] }
+}
+
+/** An incident on a public status page. Title and messages are plain text. */
+export interface PublicStatusPageIncident {
+	title: string
+	status: IncidentStatus
+	impact: IncidentImpact
+	/** ISO date. */
+	startedAt: string
+	/** ISO date, only once resolved. */
+	resolvedAt?: string
+	/** Newest first. */
+	updates: { status: IncidentStatus; message: string; created: string }[]
 }
 
 /** A system on a public status page. Only its name is published. */

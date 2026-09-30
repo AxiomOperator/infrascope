@@ -51,8 +51,12 @@ const (
 	legacyFailureError = "probe failed (agent does not report errors)"
 )
 
-// Transition is a confirmed up/down status change that should be notified.
+// Transition is a confirmed up/down status change. Transitions of monitors
+// without the notify option are reported too (for automatic incidents), with
+// Notify false; they must not be notified.
 type Transition struct {
+	// Notify is the monitor's notify option.
+	Notify    bool
 	MonitorID string
 	// SystemID is empty for hub monitors.
 	SystemID string

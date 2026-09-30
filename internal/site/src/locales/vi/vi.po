@@ -142,6 +142,10 @@ msgstr ""
 msgid "{diskName} I/O"
 msgstr "I/O {diskName}"
 
+#: src/components/incidents/incident-dialog.tsx
+msgid "{missing, plural, one {# selected item is unavailable} other {# selected items are unavailable}}"
+msgstr ""
+
 #: src/components/routes/settings/maintenance.tsx
 msgid "{missing, plural, one {# selected monitor is unavailable} other {# selected monitors are unavailable}}"
 msgstr ""
@@ -149,6 +153,10 @@ msgstr ""
 #: src/components/active-alerts.tsx
 #: src/components/active-alerts.tsx
 msgid "{monitorCount, plural, one {# monitor is down} other {# monitors are down}}"
+msgstr ""
+
+#: src/components/incidents/create-incident-button.tsx
+msgid "{name} is down"
 msgstr ""
 
 #: src/components/systems-table/systems-table-columns.tsx
@@ -317,6 +325,22 @@ msgstr ""
 msgid "Account SID"
 msgstr ""
 
+#: src/components/alert-ack.tsx
+msgid "Acknowledge"
+msgstr ""
+
+#: src/components/alerts-history-columns.tsx
+msgid "Acknowledged"
+msgstr ""
+
+#: src/components/alert-ack.tsx
+msgid "Acknowledged by {by} · {when}"
+msgstr ""
+
+#: src/components/alert-ack.tsx
+msgid "Acknowledgement note"
+msgstr ""
+
 #. Table column
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -331,6 +355,7 @@ msgstr "Hành động"
 #: src/components/alerts-history-columns.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/settings/heartbeat.tsx
+#: src/components/routes/settings/incidents.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Active"
 msgstr "Hoạt động"
@@ -338,6 +363,10 @@ msgstr "Hoạt động"
 #: src/components/active-alerts.tsx
 msgid "Active Alerts"
 msgstr "Cảnh báo hoạt động"
+
+#: src/components/routes/status-page.tsx
+msgid "Active incidents"
+msgstr ""
 
 #: src/components/routes/settings/maintenance.tsx
 msgid "Active now"
@@ -361,6 +390,14 @@ msgstr ""
 msgid "Add {foo}"
 msgstr "Thêm {foo}"
 
+#: src/components/alert-ack.tsx
+msgid "Add a note"
+msgstr ""
+
+#: src/components/alert-ack.tsx
+msgid "Add a note..."
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Add header"
 msgstr ""
@@ -372,6 +409,11 @@ msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
 msgid "Add monitor…"
+msgstr ""
+
+#: src/components/alert-ack.tsx
+#: src/components/alert-ack.tsx
+msgid "Add note"
 msgstr ""
 
 #: src/components/routes/settings/notification-builder.tsx
@@ -418,6 +460,10 @@ msgstr ""
 msgid "Admin"
 msgstr "Quản trị viên"
 
+#: src/components/routes/settings/incidents.tsx
+msgid "Affects"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "After"
 msgstr "Sau"
@@ -434,6 +480,10 @@ msgstr "Tác nhân"
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Agent update required for these options"
+msgstr ""
+
+#: src/components/alert-ack.tsx
+msgid "Alert acknowledged"
 msgstr ""
 
 #: src/components/command-palette.tsx
@@ -516,6 +566,7 @@ msgstr "Bạn có chắc chắn muốn xóa {name} không?"
 
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
+#: src/components/routes/settings/incidents.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/status-pages.tsx
 msgid "Are you sure?"
@@ -525,9 +576,17 @@ msgstr "Bạn có chắc không?"
 msgid "Auth token"
 msgstr ""
 
+#: src/components/routes/settings/incidents.tsx
+msgid "Automatic"
+msgstr ""
+
 #: src/components/copy-to-clipboard.tsx
 msgid "Automatic copy requires a secure context."
 msgstr "Sao chép tự động yêu cầu một ngữ cảnh an toàn."
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Automatically create incidents"
+msgstr ""
 
 #: src/components/routes/system/storage-pools-table.tsx
 msgctxt "Disk space available"
@@ -665,6 +724,10 @@ msgstr "Trước"
 msgid "Below {0}{1} in last {2, plural, one {# minute} other {# minutes}}"
 msgstr "Dưới {0}{1} trong {2, plural, one {# phút} other {# phút}} qua"
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Between {REMINDER_MIN_MINUTES} and {REMINDER_MAX_MINUTES}. Leave blank or 0 to disable reminders."
+msgstr ""
+
 #: src/components/add-system.tsx
 msgid "Binary"
 msgstr "Nhị phân"
@@ -766,9 +829,12 @@ msgstr "Có thể khởi động"
 msgid "Can stop"
 msgstr "Có thể dừng"
 
+#: src/components/incidents/incident-dialog.tsx
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/network-monitors-table/monitor-push-url.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
+#: src/components/routes/settings/incidents.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/notification-builder.tsx
@@ -1198,6 +1264,7 @@ msgid "CPU Usage"
 msgstr "Sử dụng CPU"
 
 #. Import preview: monitor will be created
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -1213,6 +1280,12 @@ msgstr ""
 msgid "Create account"
 msgstr "Tạo tài khoản"
 
+#: src/components/incidents/create-incident-button.tsx
+#: src/components/incidents/incident-dialog.tsx
+#: src/components/routes/settings/incidents.tsx
+msgid "Create incident"
+msgstr ""
+
 #: src/components/docker-discovery-settings.tsx
 msgid "Create monitors from Docker labels"
 msgstr ""
@@ -1222,6 +1295,10 @@ msgstr ""
 msgid "Created"
 msgstr "Đã tạo"
 
+#: src/components/routes/settings/incidents.tsx
+msgid "Created automatically by a status page"
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-check-options.tsx
 msgid "Credentials aren't visible to you and are kept unchanged."
 msgstr ""
@@ -1229,6 +1306,10 @@ msgstr ""
 #: src/components/routes/settings/general.tsx
 msgid "Critical (%)"
 msgstr "Độ nghiêm trọng (%)"
+
+#: src/components/incidents/incident-ui.tsx
+msgid "Critical impact"
+msgstr ""
 
 #: src/components/routes/system/disk-io-sheet.tsx
 msgid "Cumulative data read since boot"
@@ -1319,6 +1400,8 @@ msgstr "Thời gian mặc định"
 
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
+#: src/components/routes/settings/incidents.tsx
+#: src/components/routes/settings/incidents.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/notification-builder.tsx
@@ -1338,6 +1421,10 @@ msgstr ""
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Delete fingerprint"
 msgstr "Xóa vân tay"
+
+#: src/components/alert-ack.tsx
+msgid "Delete note"
+msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Deliver as critical alert"
@@ -1359,6 +1446,7 @@ msgstr "Mô tả"
 msgid "Detail"
 msgstr "Chi tiết"
 
+#: src/components/alerts-history-columns.tsx
 #: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
 msgid "Details"
 msgstr ""
@@ -1498,6 +1586,7 @@ msgid "Each recipient must be a phone number, group.<id> or u:username"
 msgstr ""
 
 #: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/routes/settings/incidents.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/notification-builder.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -1522,6 +1611,10 @@ msgstr ""
 
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Edit as URL"
+msgstr ""
+
+#: src/components/incidents/incident-dialog.tsx
+msgid "Edit incident"
 msgstr ""
 
 #: src/components/routes/settings/maintenance.tsx
@@ -1603,6 +1696,10 @@ msgstr ""
 msgid "Enter a phone number with country code, e.g. +15551234567"
 msgstr ""
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Enter a reminder interval between {REMINDER_MIN_MINUTES} and {REMINDER_MAX_MINUTES} minutes, or leave it blank."
+msgstr ""
+
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Enter a valid URL, e.g. ntfy://ntfy.sh/topic"
 msgstr ""
@@ -1647,6 +1744,7 @@ msgstr "Tạm thời"
 msgid "Equals"
 msgstr ""
 
+#: src/components/alert-ack.tsx
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-push-url.tsx
@@ -1658,6 +1756,7 @@ msgstr ""
 #: src/components/routes/settings/heartbeat.tsx
 #: src/components/routes/settings/heartbeat.tsx
 #: src/components/routes/settings/heartbeat.tsx
+#: src/components/routes/settings/incidents.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
@@ -1781,8 +1880,16 @@ msgstr ""
 msgid "Failed to load status page"
 msgstr ""
 
+#: src/components/incidents/incident-dialog.tsx
+msgid "Failed to post update"
+msgstr ""
+
 #: src/components/system-host-key.tsx
 msgid "Failed to reset host key"
+msgstr ""
+
+#: src/components/incidents/incident-dialog.tsx
+msgid "Failed to save incident"
 msgstr ""
 
 #: src/components/routes/settings/maintenance.tsx
@@ -1790,6 +1897,7 @@ msgid "Failed to save maintenance"
 msgstr ""
 
 #: src/components/routes/settings/layout.tsx
+#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Failed to save settings"
@@ -1852,6 +1960,10 @@ msgstr "Vân tay"
 #: src/components/routes/system/smart-table.tsx
 msgid "Firmware"
 msgstr "Phần sụn"
+
+#: src/components/incidents/incident-dialog.tsx
+msgid "First update"
+msgstr ""
 
 #: src/components/alerts/alerts-sheet.tsx
 msgid "For <0>{min}</0> {min, plural, one {minute} other {minutes}}"
@@ -1964,6 +2076,11 @@ msgstr "Heartbeat đã được gửi thành công"
 msgid "Hide secrets"
 msgstr ""
 
+#: src/components/routes/settings/incidents.tsx
+#: src/components/routes/settings/incidents.tsx
+msgid "Hide updates"
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Hide values"
 msgstr ""
@@ -2059,6 +2176,10 @@ msgstr ""
 msgid "Icon URL"
 msgstr ""
 
+#: src/components/incidents/incident-ui.tsx
+msgid "Identified"
+msgstr ""
+
 #. Context: Battery state
 #: src/lib/i18n.ts
 msgid "Idle"
@@ -2083,6 +2204,10 @@ msgstr "Hình ảnh"
 msgctxt "Docker image"
 msgid "Image update available"
 msgstr "Có bản cập nhật image"
+
+#: src/components/incidents/incident-dialog.tsx
+msgid "Impact"
+msgstr ""
 
 #. placeholder {0}: preview.created
 #: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
@@ -2111,7 +2236,13 @@ msgid "Inactive"
 msgstr "Không hoạt động"
 
 #: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/routes/settings/incidents.tsx
+#: src/components/routes/settings/layout.tsx
 msgid "Incidents"
+msgstr ""
+
+#: src/components/incidents/incident-dialog.tsx
+msgid "Incidents are shown on the selected status pages with their updates."
 msgstr ""
 
 #: src/lib/shoutrrr.ts
@@ -2142,6 +2273,10 @@ msgstr "Địa chỉ email không hợp lệ."
 
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Invert keyword (fail when found)"
+msgstr ""
+
+#: src/components/incidents/incident-ui.tsx
+msgid "Investigating"
 msgstr ""
 
 #: src/lib/shoutrrr.ts
@@ -2329,6 +2464,10 @@ msgctxt "Version change"
 msgid "Major"
 msgstr ""
 
+#: src/components/incidents/incident-ui.tsx
+msgid "Major impact"
+msgstr ""
+
 #: src/components/routes/status-page.tsx
 msgid "Major outage"
 msgstr ""
@@ -2410,6 +2549,10 @@ msgstr ""
 msgid "Mention users"
 msgstr ""
 
+#: src/components/incidents/incident-dialog.tsx
+msgid "Message"
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 msgid "Message type"
 msgstr ""
@@ -2426,6 +2569,10 @@ msgstr "Tối thiểu 1 giờ"
 #: src/components/routes/system/package-updates-table.tsx
 msgctxt "Version change"
 msgid "Minor"
+msgstr ""
+
+#: src/components/incidents/incident-ui.tsx
+msgid "Minor impact"
 msgstr ""
 
 #. Device model
@@ -2461,6 +2608,11 @@ msgstr ""
 msgid "Monitor response time"
 msgstr ""
 
+#: src/components/incidents/incident-ui.tsx
+msgid "Monitoring"
+msgstr ""
+
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/status-pages.tsx
@@ -2576,6 +2728,10 @@ msgstr "Đơn vị mạng"
 msgid "No"
 msgstr "Không"
 
+#: src/components/routes/settings/incidents.tsx
+msgid "No active incidents."
+msgstr ""
+
 #: src/components/network-monitors-table/daily-uptime-bar.tsx
 #: src/components/routes/status-page.tsx
 msgid "No data"
@@ -2589,6 +2745,14 @@ msgstr ""
 msgid "No detail data for this pool."
 msgstr "Không có dữ liệu chi tiết cho pool này."
 
+#: src/components/incidents/incident-ui.tsx
+msgid "No impact"
+msgstr ""
+
+#: src/components/routes/status-page.tsx
+msgid "No incidents in the last 14 days."
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-table.tsx
 msgid "No incidents in the last 30 days."
 msgstr ""
@@ -2601,6 +2765,7 @@ msgstr ""
 msgid "No matching services."
 msgstr ""
 
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/network-monitors-table/monitor-dependency-select.tsx
 #: src/components/routes/settings/maintenance.tsx
 msgid "No monitors found."
@@ -2620,6 +2785,10 @@ msgstr ""
 
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 msgid "No new monitors. All entries already exist."
+msgstr ""
+
+#: src/components/alert-ack.tsx
+msgid "No notes yet."
 msgstr ""
 
 #: src/components/command-palette.tsx
@@ -2642,10 +2811,12 @@ msgstr "Không có kết quả."
 msgid "No S.M.A.R.T. attributes available for this device."
 msgstr "Không có thuộc tính S.M.A.R.T. nào khả dụng cho thiết bị này."
 
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/routes/settings/status-pages.tsx
 msgid "No status pages."
 msgstr ""
 
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/network-monitors-table/system-multi-select.tsx
 #: src/components/systems-table/systems-table.tsx
 #: src/components/systems-table/systems-table.tsx
@@ -2654,6 +2825,10 @@ msgstr "Không tìm thấy hệ thống."
 
 #: src/components/routes/status-page.tsx
 msgid "No systems or monitors on this page."
+msgstr ""
+
+#: src/components/routes/settings/incidents.tsx
+msgid "No updates yet."
 msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
@@ -2667,6 +2842,11 @@ msgstr "Không có"
 
 #: src/lib/shoutrrr.ts
 msgid "Not a valid Slack webhook URL or token"
+msgstr ""
+
+#: src/components/alert-ack.tsx
+#: src/components/alert-ack.tsx
+msgid "Notes"
 msgstr ""
 
 #: src/components/routes/settings/notification-builder.tsx
@@ -2702,6 +2882,7 @@ msgstr "Hỗ trợ OAuth 2 / OIDC"
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/routes/settings/notifications.tsx
 msgid "Off"
 msgstr ""
 
@@ -2761,8 +2942,13 @@ msgstr ""
 msgid "Open"
 msgstr ""
 
+#: src/components/routes/settings/status-pages.tsx
+msgid "Open an incident when a system or monitor on this page goes down, and resolve it when it recovers."
+msgstr ""
+
 #: src/components/navbar.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/routes/settings/incidents.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/status-pages.tsx
@@ -2780,6 +2966,10 @@ msgstr "Mở menu"
 #: src/components/network-monitors-table/monitor-check-options.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Optional"
+msgstr ""
+
+#: src/components/alert-ack.tsx
+msgid "Optional acknowledgement note"
 msgstr ""
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
@@ -2845,6 +3035,10 @@ msgstr "Trang {0} trên {1}"
 msgid "Pages / Settings"
 msgstr "Trang / Cài đặt"
 
+#: src/components/incidents/incident-dialog.tsx
+msgid "Pages that show this incident. Anyone who can view them sees its updates."
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 msgid "Parse mode"
 msgstr ""
@@ -2880,6 +3074,10 @@ msgstr "Yêu cầu đặt lại mật khẩu đã được nhận"
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Past"
 msgstr "Quá khứ"
+
+#: src/components/routes/status-page.tsx
+msgid "Past incidents"
+msgstr ""
 
 #: src/lib/shoutrrr.ts
 #: src/lib/shoutrrr.ts
@@ -2974,6 +3172,10 @@ msgstr "Dung lượng thiết bị vật lý. Dung lượng khả dụng thực 
 msgid "Plain text"
 msgstr ""
 
+#: src/components/incidents/incident-dialog.tsx
+msgid "Plain text; links are clickable."
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 msgid "Platform"
 msgstr ""
@@ -3035,6 +3237,12 @@ msgstr "Cổng"
 msgctxt "Container ports"
 msgid "Ports"
 msgstr "Cổng"
+
+#: src/components/incidents/incident-dialog.tsx
+#: src/components/incidents/incident-dialog.tsx
+#: src/components/routes/settings/incidents.tsx
+msgid "Post update"
+msgstr ""
 
 #. Power On Time
 #: src/components/routes/system/smart-table.tsx
@@ -3229,6 +3437,14 @@ msgstr ""
 msgid "Relationships"
 msgstr "Mối quan hệ"
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Reminder interval (minutes)"
+msgstr ""
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Reminders"
+msgstr ""
+
 #: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/status-pages.tsx
 msgid "Remove"
@@ -3238,8 +3454,16 @@ msgstr ""
 msgid "Remove header"
 msgstr ""
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Repeat notifications for unacknowledged alerts every N minutes until they are acknowledged or resolved (at most 24 times). Quiet hours apply."
+msgstr ""
+
 #: src/components/routes/settings/maintenance.tsx
 msgid "Repeats every day. Windows may span midnight."
+msgstr ""
+
+#: src/components/routes/settings/incidents.tsx
+msgid "Report outages on your status pages and keep visitors informed with a timeline of updates."
 msgstr ""
 
 #: src/components/login/login.tsx
@@ -3280,11 +3504,27 @@ msgstr ""
 msgid "Reset SSH host key for {name}?"
 msgstr ""
 
+#: src/components/routes/settings/incidents.tsx
+#: src/components/routes/settings/incidents.tsx
+msgid "Resolve"
+msgstr ""
+
+#: src/components/incidents/incident-dialog.tsx
+msgid "Resolve incident"
+msgstr ""
+
 #: src/components/alerts-history-columns.tsx
 #: src/components/alerts-history-columns.tsx
+#: src/components/incidents/incident-ui.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
+#: src/components/routes/settings/incidents.tsx
 msgid "Resolved"
 msgstr "Đã giải quyết"
+
+#. placeholder {0}: formatRelativeTime(record.resolvedAt, now)
+#: src/components/routes/settings/incidents.tsx
+msgid "Resolved {0} after {duration}"
+msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Responders"
@@ -3442,6 +3682,8 @@ msgstr "Lên lịch giờ yên tĩnh nơi thông báo sẽ không được gửi
 msgid "Scheduled"
 msgstr ""
 
+#: src/components/incidents/incident-dialog.tsx
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/navbar.tsx
 msgid "Search"
 msgstr "Tìm kiếm"
@@ -3709,8 +3951,17 @@ msgstr ""
 msgid "Show targets"
 msgstr ""
 
+#: src/components/routes/settings/incidents.tsx
+#: src/components/routes/settings/incidents.tsx
+msgid "Show updates"
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Show values"
+msgstr ""
+
+#: src/components/routes/settings/incidents.tsx
+msgid "Shown on"
 msgstr ""
 
 #: src/components/login/auth-form.tsx
@@ -3782,6 +4033,11 @@ msgstr ""
 msgid "Start Time"
 msgstr "Thời gian bắt đầu"
 
+#. placeholder {0}: formatRelativeTime(started, now)
+#: src/components/routes/settings/incidents.tsx
+msgid "Started {0} ({duration})"
+msgstr ""
+
 #. Context: alert state (active or resolved)
 #: src/components/alerts-history-columns.tsx
 #: src/components/routes/settings/maintenance.tsx
@@ -3792,6 +4048,7 @@ msgid "State"
 msgstr "Trạng thái"
 
 #: src/components/containers-table/containers-table-columns.tsx
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -3811,6 +4068,10 @@ msgstr ""
 #: src/components/routes/status-page.tsx
 #: src/components/routes/status-page.tsx
 msgid "Status page not found"
+msgstr ""
+
+#: src/components/incidents/incident-dialog.tsx
+msgid "Status pages"
 msgstr ""
 
 #: src/components/routes/settings/layout.tsx
@@ -3875,6 +4136,7 @@ msgstr "Tải trung bình của hệ thống theo thời gian"
 msgid "Systemd Services"
 msgstr "Dịch vụ Systemd"
 
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/navbar.tsx
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
@@ -4039,6 +4301,10 @@ msgstr "Sau đó đăng nhập vào backend và đặt lại mật khẩu tài k
 msgid "This action cannot be undone. This will permanently delete all current records for {name} from the database."
 msgstr "Hành động này không thể hoàn tác. Điều này sẽ xóa vĩnh viễn tất cả các bản ghi hiện tại cho {name} khỏi cơ sở dữ liệu."
 
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "This monitor is down. Let status page visitors know."
+msgstr ""
+
 #. placeholder {0}: outdatedAgents.map((id) => allSystems[id]?.name).join(", ")
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "This protocol, check options, HTTP options, timeouts and retry intervals need agent version 0.21.0 or newer: {0}"
@@ -4065,6 +4331,11 @@ msgstr ""
 #: src/components/routes/settings/alerts-history-data-table.tsx
 msgid "This will permanently delete all selected records from the database."
 msgstr "Thao tác này sẽ xóa vĩnh viễn tất cả các bản ghi đã chọn khỏi cơ sở dữ liệu."
+
+#. placeholder {0}: deleteRecord?.title
+#: src/components/routes/settings/incidents.tsx
+msgid "This will permanently delete the incident \"{0}\" and its updates. Status pages stop showing it."
+msgstr ""
 
 #. placeholder {0}: deleteRecord?.title
 #: src/components/routes/settings/maintenance.tsx
@@ -4100,6 +4371,7 @@ msgstr "Định dạng thời gian"
 msgid "Timeout (seconds)"
 msgstr ""
 
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/status-pages.tsx
@@ -4281,6 +4553,14 @@ msgstr "Kích hoạt khi sử dụng bất kỳ đĩa nào vượt quá ngưỡn
 msgid "Type"
 msgstr "Loại"
 
+#: src/components/alert-ack.tsx
+msgid "Unacknowledge"
+msgstr ""
+
+#: src/components/routes/settings/alerts-history-data-table.tsx
+msgid "Unacknowledged only"
+msgstr ""
+
 #: src/components/routes/settings/status-pages.tsx
 msgid "Unavailable monitor"
 msgstr ""
@@ -4354,6 +4634,7 @@ msgstr ""
 msgid "Upcoming"
 msgstr ""
 
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/notification-builder.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -4631,6 +4912,10 @@ msgstr ""
 msgid "Webhooks key"
 msgstr ""
 
+#: src/components/incidents/incident-dialog.tsx
+msgid "What is happening? Plain text; links are clickable."
+msgstr ""
+
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "When enabled, this token allows agents to self-register without prior system creation."
 msgstr "Khi được bật, token này cho phép các tác nhân tự đăng ký mà không cần tạo hệ thống trước."
@@ -4694,12 +4979,20 @@ msgstr "Cấu hình YAML"
 msgid "Yes"
 msgstr "Có"
 
+#: src/components/alert-ack.tsx
+msgid "you"
+msgstr ""
+
 #: src/components/routes/settings/notifications.tsx
 msgid "You have unsaved changes."
 msgstr ""
 
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 msgid "You must be logged in to add hub monitors."
+msgstr ""
+
+#: src/components/alert-ack.tsx
+msgid "You will not get reminders for this alert."
 msgstr ""
 
 #: src/components/routes/settings/layout.tsx

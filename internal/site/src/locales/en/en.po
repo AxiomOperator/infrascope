@@ -137,6 +137,10 @@ msgstr "{daysLeft, plural, one {# day} other {# days}}"
 msgid "{diskName} I/O"
 msgstr "{diskName} I/O"
 
+#: src/components/incidents/incident-dialog.tsx
+msgid "{missing, plural, one {# selected item is unavailable} other {# selected items are unavailable}}"
+msgstr "{missing, plural, one {# selected item is unavailable} other {# selected items are unavailable}}"
+
 #: src/components/routes/settings/maintenance.tsx
 msgid "{missing, plural, one {# selected monitor is unavailable} other {# selected monitors are unavailable}}"
 msgstr "{missing, plural, one {# selected monitor is unavailable} other {# selected monitors are unavailable}}"
@@ -145,6 +149,10 @@ msgstr "{missing, plural, one {# selected monitor is unavailable} other {# selec
 #: src/components/active-alerts.tsx
 msgid "{monitorCount, plural, one {# monitor is down} other {# monitors are down}}"
 msgstr "{monitorCount, plural, one {# monitor is down} other {# monitors are down}}"
+
+#: src/components/incidents/create-incident-button.tsx
+msgid "{name} is down"
+msgstr "{name} is down"
 
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "{numFailed, plural, one {# failed service} other {# failed services}}"
@@ -312,6 +320,22 @@ msgstr "Access token"
 msgid "Account SID"
 msgstr "Account SID"
 
+#: src/components/alert-ack.tsx
+msgid "Acknowledge"
+msgstr "Acknowledge"
+
+#: src/components/alerts-history-columns.tsx
+msgid "Acknowledged"
+msgstr "Acknowledged"
+
+#: src/components/alert-ack.tsx
+msgid "Acknowledged by {by} · {when}"
+msgstr "Acknowledged by {by} · {when}"
+
+#: src/components/alert-ack.tsx
+msgid "Acknowledgement note"
+msgstr "Acknowledgement note"
+
 #. Table column
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -326,6 +350,7 @@ msgstr "Actions"
 #: src/components/alerts-history-columns.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/settings/heartbeat.tsx
+#: src/components/routes/settings/incidents.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Active"
 msgstr "Active"
@@ -333,6 +358,10 @@ msgstr "Active"
 #: src/components/active-alerts.tsx
 msgid "Active Alerts"
 msgstr "Active Alerts"
+
+#: src/components/routes/status-page.tsx
+msgid "Active incidents"
+msgstr "Active incidents"
 
 #: src/components/routes/settings/maintenance.tsx
 msgid "Active now"
@@ -356,6 +385,14 @@ msgstr "Add"
 msgid "Add {foo}"
 msgstr "Add {foo}"
 
+#: src/components/alert-ack.tsx
+msgid "Add a note"
+msgstr "Add a note"
+
+#: src/components/alert-ack.tsx
+msgid "Add a note..."
+msgstr "Add a note..."
+
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Add header"
 msgstr "Add header"
@@ -368,6 +405,11 @@ msgstr "Add maintenance"
 #: src/components/routes/settings/status-pages.tsx
 msgid "Add monitor…"
 msgstr "Add monitor…"
+
+#: src/components/alert-ack.tsx
+#: src/components/alert-ack.tsx
+msgid "Add note"
+msgstr "Add note"
 
 #: src/components/routes/settings/notification-builder.tsx
 #: src/components/routes/settings/notifications.tsx
@@ -413,6 +455,10 @@ msgstr "Adjusted"
 msgid "Admin"
 msgstr "Admin"
 
+#: src/components/routes/settings/incidents.tsx
+msgid "Affects"
+msgstr "Affects"
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "After"
 msgstr "After"
@@ -430,6 +476,10 @@ msgstr "Agent"
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Agent update required for these options"
 msgstr "Agent update required for these options"
+
+#: src/components/alert-ack.tsx
+msgid "Alert acknowledged"
+msgstr "Alert acknowledged"
 
 #: src/components/command-palette.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
@@ -511,6 +561,7 @@ msgstr "Are you sure you want to delete {name}?"
 
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
+#: src/components/routes/settings/incidents.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/status-pages.tsx
 msgid "Are you sure?"
@@ -520,9 +571,17 @@ msgstr "Are you sure?"
 msgid "Auth token"
 msgstr "Auth token"
 
+#: src/components/routes/settings/incidents.tsx
+msgid "Automatic"
+msgstr "Automatic"
+
 #: src/components/copy-to-clipboard.tsx
 msgid "Automatic copy requires a secure context."
 msgstr "Automatic copy requires a secure context."
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Automatically create incidents"
+msgstr "Automatically create incidents"
 
 #: src/components/routes/system/storage-pools-table.tsx
 msgctxt "Disk space available"
@@ -660,6 +719,10 @@ msgstr "Before"
 msgid "Below {0}{1} in last {2, plural, one {# minute} other {# minutes}}"
 msgstr "Below {0}{1} in last {2, plural, one {# minute} other {# minutes}}"
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Between {REMINDER_MIN_MINUTES} and {REMINDER_MAX_MINUTES}. Leave blank or 0 to disable reminders."
+msgstr "Between {REMINDER_MIN_MINUTES} and {REMINDER_MAX_MINUTES}. Leave blank or 0 to disable reminders."
+
 #: src/components/add-system.tsx
 msgid "Binary"
 msgstr "Binary"
@@ -761,9 +824,12 @@ msgstr "Can start"
 msgid "Can stop"
 msgstr "Can stop"
 
+#: src/components/incidents/incident-dialog.tsx
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/network-monitors-table/monitor-push-url.tsx
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
+#: src/components/routes/settings/incidents.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/notification-builder.tsx
@@ -1193,6 +1259,7 @@ msgid "CPU Usage"
 msgstr "CPU Usage"
 
 #. Import preview: monitor will be created
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -1208,6 +1275,12 @@ msgstr "Create a \"Post to a channel when a webhook request is received\" workfl
 msgid "Create account"
 msgstr "Create account"
 
+#: src/components/incidents/create-incident-button.tsx
+#: src/components/incidents/incident-dialog.tsx
+#: src/components/routes/settings/incidents.tsx
+msgid "Create incident"
+msgstr "Create incident"
+
 #: src/components/docker-discovery-settings.tsx
 msgid "Create monitors from Docker labels"
 msgstr "Create monitors from Docker labels"
@@ -1217,6 +1290,10 @@ msgstr "Create monitors from Docker labels"
 msgid "Created"
 msgstr "Created"
 
+#: src/components/routes/settings/incidents.tsx
+msgid "Created automatically by a status page"
+msgstr "Created automatically by a status page"
+
 #: src/components/network-monitors-table/monitor-check-options.tsx
 msgid "Credentials aren't visible to you and are kept unchanged."
 msgstr "Credentials aren't visible to you and are kept unchanged."
@@ -1224,6 +1301,10 @@ msgstr "Credentials aren't visible to you and are kept unchanged."
 #: src/components/routes/settings/general.tsx
 msgid "Critical (%)"
 msgstr "Critical (%)"
+
+#: src/components/incidents/incident-ui.tsx
+msgid "Critical impact"
+msgstr "Critical impact"
 
 #: src/components/routes/system/disk-io-sheet.tsx
 msgid "Cumulative data read since boot"
@@ -1314,6 +1395,8 @@ msgstr "Default time period"
 
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
+#: src/components/routes/settings/incidents.tsx
+#: src/components/routes/settings/incidents.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/notification-builder.tsx
@@ -1333,6 +1416,10 @@ msgstr "Delete {0} notification"
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Delete fingerprint"
 msgstr "Delete fingerprint"
+
+#: src/components/alert-ack.tsx
+msgid "Delete note"
+msgstr "Delete note"
 
 #: src/lib/shoutrrr.ts
 msgid "Deliver as critical alert"
@@ -1354,6 +1441,7 @@ msgstr "Description"
 msgid "Detail"
 msgstr "Detail"
 
+#: src/components/alerts-history-columns.tsx
 #: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
 msgid "Details"
 msgstr "Details"
@@ -1493,6 +1581,7 @@ msgid "Each recipient must be a phone number, group.<id> or u:username"
 msgstr "Each recipient must be a phone number, group.<id> or u:username"
 
 #: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/routes/settings/incidents.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/notification-builder.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -1518,6 +1607,10 @@ msgstr "Edit as form"
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Edit as URL"
 msgstr "Edit as URL"
+
+#: src/components/incidents/incident-dialog.tsx
+msgid "Edit incident"
+msgstr "Edit incident"
 
 #: src/components/routes/settings/maintenance.tsx
 msgid "Edit maintenance"
@@ -1598,6 +1691,10 @@ msgstr "Enter a host name, optionally with :port"
 msgid "Enter a phone number with country code, e.g. +15551234567"
 msgstr "Enter a phone number with country code, e.g. +15551234567"
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Enter a reminder interval between {REMINDER_MIN_MINUTES} and {REMINDER_MAX_MINUTES} minutes, or leave it blank."
+msgstr "Enter a reminder interval between {REMINDER_MIN_MINUTES} and {REMINDER_MAX_MINUTES} minutes, or leave it blank."
+
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Enter a valid URL, e.g. ntfy://ntfy.sh/topic"
 msgstr "Enter a valid URL, e.g. ntfy://ntfy.sh/topic"
@@ -1642,6 +1739,7 @@ msgstr "Ephemeral"
 msgid "Equals"
 msgstr "Equals"
 
+#: src/components/alert-ack.tsx
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-push-url.tsx
@@ -1653,6 +1751,7 @@ msgstr "Equals"
 #: src/components/routes/settings/heartbeat.tsx
 #: src/components/routes/settings/heartbeat.tsx
 #: src/components/routes/settings/heartbeat.tsx
+#: src/components/routes/settings/incidents.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
@@ -1776,15 +1875,24 @@ msgstr "Failed to load package updates"
 msgid "Failed to load status page"
 msgstr "Failed to load status page"
 
+#: src/components/incidents/incident-dialog.tsx
+msgid "Failed to post update"
+msgstr "Failed to post update"
+
 #: src/components/system-host-key.tsx
 msgid "Failed to reset host key"
 msgstr "Failed to reset host key"
+
+#: src/components/incidents/incident-dialog.tsx
+msgid "Failed to save incident"
+msgstr "Failed to save incident"
 
 #: src/components/routes/settings/maintenance.tsx
 msgid "Failed to save maintenance"
 msgstr "Failed to save maintenance"
 
 #: src/components/routes/settings/layout.tsx
+#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Failed to save settings"
@@ -1847,6 +1955,10 @@ msgstr "Fingerprint"
 #: src/components/routes/system/smart-table.tsx
 msgid "Firmware"
 msgstr "Firmware"
+
+#: src/components/incidents/incident-dialog.tsx
+msgid "First update"
+msgstr "First update"
 
 #: src/components/alerts/alerts-sheet.tsx
 msgid "For <0>{min}</0> {min, plural, one {minute} other {minutes}}"
@@ -1959,6 +2071,11 @@ msgstr "Heartbeat sent successfully"
 msgid "Hide secrets"
 msgstr "Hide secrets"
 
+#: src/components/routes/settings/incidents.tsx
+#: src/components/routes/settings/incidents.tsx
+msgid "Hide updates"
+msgstr "Hide updates"
+
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Hide values"
 msgstr "Hide values"
@@ -2054,6 +2171,10 @@ msgstr "Icon"
 msgid "Icon URL"
 msgstr "Icon URL"
 
+#: src/components/incidents/incident-ui.tsx
+msgid "Identified"
+msgstr "Identified"
+
 #. Context: Battery state
 #: src/lib/i18n.ts
 msgid "Idle"
@@ -2078,6 +2199,10 @@ msgstr "Image"
 msgctxt "Docker image"
 msgid "Image update available"
 msgstr "Image update available"
+
+#: src/components/incidents/incident-dialog.tsx
+msgid "Impact"
+msgstr "Impact"
 
 #. placeholder {0}: preview.created
 #: src/components/network-monitors-table/uptime-kuma-import-dialog.tsx
@@ -2106,8 +2231,14 @@ msgid "Inactive"
 msgstr "Inactive"
 
 #: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/routes/settings/incidents.tsx
+#: src/components/routes/settings/layout.tsx
 msgid "Incidents"
 msgstr "Incidents"
+
+#: src/components/incidents/incident-dialog.tsx
+msgid "Incidents are shown on the selected status pages with their updates."
+msgstr "Incidents are shown on the selected status pages with their updates."
 
 #: src/lib/shoutrrr.ts
 msgid "Incoming webhook"
@@ -2138,6 +2269,10 @@ msgstr "Invalid email address."
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Invert keyword (fail when found)"
 msgstr "Invert keyword (fail when found)"
+
+#: src/components/incidents/incident-ui.tsx
+msgid "Investigating"
+msgstr "Investigating"
 
 #: src/lib/shoutrrr.ts
 msgid "JSON"
@@ -2324,6 +2459,10 @@ msgctxt "Version change"
 msgid "Major"
 msgstr "Major"
 
+#: src/components/incidents/incident-ui.tsx
+msgid "Major impact"
+msgstr "Major impact"
+
 #: src/components/routes/status-page.tsx
 msgid "Major outage"
 msgstr "Major outage"
@@ -2405,6 +2544,10 @@ msgstr "Mention mobile numbers"
 msgid "Mention users"
 msgstr "Mention users"
 
+#: src/components/incidents/incident-dialog.tsx
+msgid "Message"
+msgstr "Message"
+
 #: src/lib/shoutrrr.ts
 msgid "Message type"
 msgstr "Message type"
@@ -2422,6 +2565,10 @@ msgstr "Min 1h"
 msgctxt "Version change"
 msgid "Minor"
 msgstr "Minor"
+
+#: src/components/incidents/incident-ui.tsx
+msgid "Minor impact"
+msgstr "Minor impact"
 
 #. Device model
 #: src/components/routes/system/smart-table.tsx
@@ -2456,6 +2603,11 @@ msgstr "Monitor packet loss"
 msgid "Monitor response time"
 msgstr "Monitor response time"
 
+#: src/components/incidents/incident-ui.tsx
+msgid "Monitoring"
+msgstr "Monitoring"
+
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/status-pages.tsx
@@ -2571,6 +2723,10 @@ msgstr "Network unit"
 msgid "No"
 msgstr "No"
 
+#: src/components/routes/settings/incidents.tsx
+msgid "No active incidents."
+msgstr "No active incidents."
+
 #: src/components/network-monitors-table/daily-uptime-bar.tsx
 #: src/components/routes/status-page.tsx
 msgid "No data"
@@ -2584,6 +2740,14 @@ msgstr "No dependencies"
 msgid "No detail data for this pool."
 msgstr "No detail data for this pool."
 
+#: src/components/incidents/incident-ui.tsx
+msgid "No impact"
+msgstr "No impact"
+
+#: src/components/routes/status-page.tsx
+msgid "No incidents in the last 14 days."
+msgstr "No incidents in the last 14 days."
+
 #: src/components/network-monitors-table/network-monitors-table.tsx
 msgid "No incidents in the last 30 days."
 msgstr "No incidents in the last 30 days."
@@ -2596,6 +2760,7 @@ msgstr "No maintenance windows."
 msgid "No matching services."
 msgstr "No matching services."
 
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/network-monitors-table/monitor-dependency-select.tsx
 #: src/components/routes/settings/maintenance.tsx
 msgid "No monitors found."
@@ -2617,6 +2782,10 @@ msgstr "No more systems to add"
 msgid "No new monitors. All entries already exist."
 msgstr "No new monitors. All entries already exist."
 
+#: src/components/alert-ack.tsx
+msgid "No notes yet."
+msgstr "No notes yet."
+
 #: src/components/command-palette.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "No results found."
@@ -2637,10 +2806,12 @@ msgstr "No results."
 msgid "No S.M.A.R.T. attributes available for this device."
 msgstr "No S.M.A.R.T. attributes available for this device."
 
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/routes/settings/status-pages.tsx
 msgid "No status pages."
 msgstr "No status pages."
 
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/network-monitors-table/system-multi-select.tsx
 #: src/components/systems-table/systems-table.tsx
 #: src/components/systems-table/systems-table.tsx
@@ -2650,6 +2821,10 @@ msgstr "No systems found."
 #: src/components/routes/status-page.tsx
 msgid "No systems or monitors on this page."
 msgstr "No systems or monitors on this page."
+
+#: src/components/routes/settings/incidents.tsx
+msgid "No updates yet."
+msgstr "No updates yet."
 
 #: src/components/routes/settings/notifications.tsx
 msgid "No webhook or push notifications configured."
@@ -2663,6 +2838,11 @@ msgstr "None"
 #: src/lib/shoutrrr.ts
 msgid "Not a valid Slack webhook URL or token"
 msgstr "Not a valid Slack webhook URL or token"
+
+#: src/components/alert-ack.tsx
+#: src/components/alert-ack.tsx
+msgid "Notes"
+msgstr "Notes"
 
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Notification services"
@@ -2697,6 +2877,7 @@ msgstr "OAuth 2 / OIDC support"
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/routes/settings/notifications.tsx
 msgid "Off"
 msgstr "Off"
 
@@ -2756,8 +2937,13 @@ msgstr "Only the system name and status history are shown."
 msgid "Open"
 msgstr "Open"
 
+#: src/components/routes/settings/status-pages.tsx
+msgid "Open an incident when a system or monitor on this page goes down, and resolve it when it recovers."
+msgstr "Open an incident when a system or monitor on this page goes down, and resolve it when it recovers."
+
 #: src/components/navbar.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
+#: src/components/routes/settings/incidents.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/status-pages.tsx
@@ -2776,6 +2962,10 @@ msgstr "Open menu"
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Optional"
 msgstr "Optional"
+
+#: src/components/alert-ack.tsx
+msgid "Optional acknowledgement note"
+msgstr "Optional acknowledgement note"
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Optional. Defaults to the system resolver."
@@ -2840,6 +3030,10 @@ msgstr "Page {0} of {1}"
 msgid "Pages / Settings"
 msgstr "Pages / Settings"
 
+#: src/components/incidents/incident-dialog.tsx
+msgid "Pages that show this incident. Anyone who can view them sees its updates."
+msgstr "Pages that show this incident. Anyone who can view them sees its updates."
+
 #: src/lib/shoutrrr.ts
 msgid "Parse mode"
 msgstr "Parse mode"
@@ -2875,6 +3069,10 @@ msgstr "Password reset request received"
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Past"
 msgstr "Past"
+
+#: src/components/routes/status-page.tsx
+msgid "Past incidents"
+msgstr "Past incidents"
 
 #: src/lib/shoutrrr.ts
 #: src/lib/shoutrrr.ts
@@ -2969,6 +3167,10 @@ msgstr "Physical device space. True usable capacity is unknown. Pool disk usage 
 msgid "Plain text"
 msgstr "Plain text"
 
+#: src/components/incidents/incident-dialog.tsx
+msgid "Plain text; links are clickable."
+msgstr "Plain text; links are clickable."
+
 #: src/lib/shoutrrr.ts
 msgid "Platform"
 msgstr "Platform"
@@ -3030,6 +3232,12 @@ msgstr "Port"
 msgctxt "Container ports"
 msgid "Ports"
 msgstr "Ports"
+
+#: src/components/incidents/incident-dialog.tsx
+#: src/components/incidents/incident-dialog.tsx
+#: src/components/routes/settings/incidents.tsx
+msgid "Post update"
+msgstr "Post update"
 
 #. Power On Time
 #: src/components/routes/system/smart-table.tsx
@@ -3224,6 +3432,14 @@ msgstr "Region"
 msgid "Relationships"
 msgstr "Relationships"
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Reminder interval (minutes)"
+msgstr "Reminder interval (minutes)"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Reminders"
+msgstr "Reminders"
+
 #: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/status-pages.tsx
 msgid "Remove"
@@ -3233,9 +3449,17 @@ msgstr "Remove"
 msgid "Remove header"
 msgstr "Remove header"
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Repeat notifications for unacknowledged alerts every N minutes until they are acknowledged or resolved (at most 24 times). Quiet hours apply."
+msgstr "Repeat notifications for unacknowledged alerts every N minutes until they are acknowledged or resolved (at most 24 times). Quiet hours apply."
+
 #: src/components/routes/settings/maintenance.tsx
 msgid "Repeats every day. Windows may span midnight."
 msgstr "Repeats every day. Windows may span midnight."
+
+#: src/components/routes/settings/incidents.tsx
+msgid "Report outages on your status pages and keep visitors informed with a timeline of updates."
+msgstr "Report outages on your status pages and keep visitors informed with a timeline of updates."
 
 #: src/components/login/login.tsx
 msgid "Request a one-time password"
@@ -3275,11 +3499,27 @@ msgstr "Reset SSH host key"
 msgid "Reset SSH host key for {name}?"
 msgstr "Reset SSH host key for {name}?"
 
+#: src/components/routes/settings/incidents.tsx
+#: src/components/routes/settings/incidents.tsx
+msgid "Resolve"
+msgstr "Resolve"
+
+#: src/components/incidents/incident-dialog.tsx
+msgid "Resolve incident"
+msgstr "Resolve incident"
+
 #: src/components/alerts-history-columns.tsx
 #: src/components/alerts-history-columns.tsx
+#: src/components/incidents/incident-ui.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
+#: src/components/routes/settings/incidents.tsx
 msgid "Resolved"
 msgstr "Resolved"
+
+#. placeholder {0}: formatRelativeTime(record.resolvedAt, now)
+#: src/components/routes/settings/incidents.tsx
+msgid "Resolved {0} after {duration}"
+msgstr "Resolved {0} after {duration}"
 
 #: src/lib/shoutrrr.ts
 msgid "Responders"
@@ -3437,6 +3677,8 @@ msgstr "Schedule quiet hours where notifications will not be sent."
 msgid "Scheduled"
 msgstr "Scheduled"
 
+#: src/components/incidents/incident-dialog.tsx
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/navbar.tsx
 msgid "Search"
 msgstr "Search"
@@ -3704,9 +3946,18 @@ msgstr "Show secrets"
 msgid "Show targets"
 msgstr "Show targets"
 
+#: src/components/routes/settings/incidents.tsx
+#: src/components/routes/settings/incidents.tsx
+msgid "Show updates"
+msgstr "Show updates"
+
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Show values"
 msgstr "Show values"
+
+#: src/components/routes/settings/incidents.tsx
+msgid "Shown on"
+msgstr "Shown on"
 
 #: src/components/login/auth-form.tsx
 msgid "Sign in"
@@ -3777,6 +4028,11 @@ msgstr "Start and end time must differ."
 msgid "Start Time"
 msgstr "Start Time"
 
+#. placeholder {0}: formatRelativeTime(started, now)
+#: src/components/routes/settings/incidents.tsx
+msgid "Started {0} ({duration})"
+msgstr "Started {0} ({duration})"
+
 #. Context: alert state (active or resolved)
 #: src/components/alerts-history-columns.tsx
 #: src/components/routes/settings/maintenance.tsx
@@ -3787,6 +4043,7 @@ msgid "State"
 msgstr "State"
 
 #: src/components/containers-table/containers-table-columns.tsx
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -3807,6 +4064,10 @@ msgstr "Status code {0}"
 #: src/components/routes/status-page.tsx
 msgid "Status page not found"
 msgstr "Status page not found"
+
+#: src/components/incidents/incident-dialog.tsx
+msgid "Status pages"
+msgstr "Status pages"
 
 #: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/status-pages.tsx
@@ -3870,6 +4131,7 @@ msgstr "System load averages over time"
 msgid "Systemd Services"
 msgstr "Systemd Services"
 
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/navbar.tsx
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
@@ -4034,6 +4296,10 @@ msgstr "Then log into the backend and reset your user account password in the us
 msgid "This action cannot be undone. This will permanently delete all current records for {name} from the database."
 msgstr "This action cannot be undone. This will permanently delete all current records for {name} from the database."
 
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "This monitor is down. Let status page visitors know."
+msgstr "This monitor is down. Let status page visitors know."
+
 #. placeholder {0}: outdatedAgents.map((id) => allSystems[id]?.name).join(", ")
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "This protocol, check options, HTTP options, timeouts and retry intervals need agent version 0.21.0 or newer: {0}"
@@ -4060,6 +4326,11 @@ msgstr "This URL can't be edited with the form. It will be saved exactly as ente
 #: src/components/routes/settings/alerts-history-data-table.tsx
 msgid "This will permanently delete all selected records from the database."
 msgstr "This will permanently delete all selected records from the database."
+
+#. placeholder {0}: deleteRecord?.title
+#: src/components/routes/settings/incidents.tsx
+msgid "This will permanently delete the incident \"{0}\" and its updates. Status pages stop showing it."
+msgstr "This will permanently delete the incident \"{0}\" and its updates. Status pages stop showing it."
 
 #. placeholder {0}: deleteRecord?.title
 #: src/components/routes/settings/maintenance.tsx
@@ -4095,6 +4366,7 @@ msgstr "Time format"
 msgid "Timeout (seconds)"
 msgstr "Timeout (seconds)"
 
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/status-pages.tsx
@@ -4276,6 +4548,14 @@ msgstr "Triggers when usage of any disk exceeds a threshold"
 msgid "Type"
 msgstr "Type"
 
+#: src/components/alert-ack.tsx
+msgid "Unacknowledge"
+msgstr "Unacknowledge"
+
+#: src/components/routes/settings/alerts-history-data-table.tsx
+msgid "Unacknowledged only"
+msgstr "Unacknowledged only"
+
 #: src/components/routes/settings/status-pages.tsx
 msgid "Unavailable monitor"
 msgstr "Unavailable monitor"
@@ -4349,6 +4629,7 @@ msgstr "Up to date"
 msgid "Upcoming"
 msgstr "Upcoming"
 
+#: src/components/incidents/incident-dialog.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/notification-builder.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -4626,6 +4907,10 @@ msgstr "Webhook URL or token"
 msgid "Webhooks key"
 msgstr "Webhooks key"
 
+#: src/components/incidents/incident-dialog.tsx
+msgid "What is happening? Plain text; links are clickable."
+msgstr "What is happening? Plain text; links are clickable."
+
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "When enabled, this token allows agents to self-register without prior system creation."
 msgstr "When enabled, this token allows agents to self-register without prior system creation."
@@ -4689,6 +4974,10 @@ msgstr "YAML Configuration"
 msgid "Yes"
 msgstr "Yes"
 
+#: src/components/alert-ack.tsx
+msgid "you"
+msgstr "you"
+
 #: src/components/routes/settings/notifications.tsx
 msgid "You have unsaved changes."
 msgstr "You have unsaved changes."
@@ -4696,6 +4985,10 @@ msgstr "You have unsaved changes."
 #: src/components/network-monitors-table/monitor-bulk-add-sheet.tsx
 msgid "You must be logged in to add hub monitors."
 msgstr "You must be logged in to add hub monitors."
+
+#: src/components/alert-ack.tsx
+msgid "You will not get reminders for this alert."
+msgstr "You will not get reminders for this alert."
 
 #: src/components/routes/settings/layout.tsx
 msgid "Your user settings have been updated."

@@ -92,6 +92,7 @@ func (h *Hub) refreshSystemDependencies(monitorIDs []string) {
 			continue
 		}
 		suppressedBy := h.systemSuppressedBy(record.GetStringSlice("dependsOn"))
+		wasSuppressed := record.GetString("suppressedBy") != ""
 		if suppressedBy != record.GetString("suppressedBy") {
 			record.Set("suppressedBy", suppressedBy)
 			if err := h.SaveNoValidate(record); err != nil {
@@ -100,6 +101,14 @@ func (h *Hub) refreshSystemDependencies(monitorIDs []string) {
 		}
 		if suppressedBy == "" && h.AlertManager != nil {
 			h.HandleSystemDependencyRecovered(record)
+		}
+		// A system still down once its parents recover opens the automatic
+		// incident held back while they were down.
+		if suppressedBy == "" && wasSuppressed && record.GetString("status") == uptime.StatusDown {
+			component := incidentComponent{field: "systems", id: record.Id}
+			if err := openAutoIncidents(h, component, time.Now()); err != nil {
+				h.Logger().Error("Failed to update automatic incidents", "system", record.Id, "err", err)
+			}
 		}
 	}
 }

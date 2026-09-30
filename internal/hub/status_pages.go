@@ -67,6 +67,7 @@ type publicStatusPage struct {
 	Systems           []publicStatusSystem      `json:"systems"`
 	Monitors          []publicStatusMonitor     `json:"monitors"`
 	Maintenance       []publicStatusMaintenance `json:"maintenance"`
+	Incidents         publicStatusIncidents     `json:"incidents"`
 }
 
 type publicStatusMonitor struct {
@@ -190,6 +191,10 @@ func buildStatusPage(app core.App, page *core.Record, now time.Time) (*publicSta
 	if err != nil {
 		return nil, err
 	}
+	incidents, err := statusPageIncidents(app, page, now)
+	if err != nil {
+		return nil, err
+	}
 
 	showTargets := page.GetBool("showTargets")
 	showResponseTimes := page.GetBool("showResponseTimes")
@@ -201,6 +206,7 @@ func buildStatusPage(app core.App, page *core.Record, now time.Time) (*publicSta
 		Systems:           systems,
 		Monitors:          make([]publicStatusMonitor, 0, len(monitors)),
 		Maintenance:       maintenance,
+		Incidents:         incidents,
 	}
 	for i, record := range monitors {
 		status := record.GetString("status")
@@ -244,7 +250,9 @@ func buildStatusPage(app core.App, page *core.Record, now time.Time) (*publicSta
 	for _, monitor := range result.Monitors {
 		statuses = append(statuses, monitor.Status)
 	}
-	result.Overall = overallStatus(statuses)
+	// Active incidents with major or critical impact make the page at least
+	// degraded, even while its components are up (see overallWithIncidents).
+	result.Overall = overallWithIncidents(overallStatus(statuses), incidents.Active)
 	return result, nil
 }
 

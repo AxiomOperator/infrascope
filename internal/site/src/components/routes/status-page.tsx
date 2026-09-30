@@ -9,17 +9,25 @@ import {
 	XCircleIcon,
 } from "lucide-react"
 import { type ReactNode, useEffect, useState } from "react"
+import {
+	IncidentImpactBadge,
+	IncidentStatusBadge,
+	IncidentTimeline,
+	incidentImpactCardColors,
+} from "@/components/incidents/incident-ui"
 import { ModeToggle } from "@/components/mode-toggle"
 import { monitorStatusLabel } from "@/components/network-monitors-table/monitor-status-badge"
 import { prependBasePath } from "@/components/router"
 import { Badge } from "@/components/ui/badge"
 import { HoverBars } from "@/components/ui/hover-bars"
 import { pb } from "@/lib/api"
+import { formatIncidentDuration } from "@/lib/incidents"
 import { formatRelativeTime, formatUptime, monitorStatusBadgeColors } from "@/lib/network-monitor-utils"
 import { cn, formatShortDate } from "@/lib/utils"
 import type {
 	PublicStatusPage,
 	PublicStatusPageDay,
+	PublicStatusPageIncident,
 	PublicStatusPageMaintenance,
 	PublicStatusPageMonitor,
 	PublicStatusPageSystem,
@@ -266,6 +274,8 @@ function StatusPageContent({ data, rateLimited }: { data: PublicStatusPage; rate
 	const maintenance = data.maintenance ?? []
 	const monitors = data.monitors ?? []
 	const systems = data.systems ?? []
+	const activeIncidents = data.incidents?.active ?? []
+	const pastIncidents = data.incidents?.recent ?? []
 
 	return (
 		<div className="grid gap-6">
@@ -298,6 +308,14 @@ function StatusPageContent({ data, rateLimited }: { data: PublicStatusPage; rate
 				</span>
 			</section>
 
+			{activeIncidents.length > 0 && (
+				<section className="grid gap-3" aria-label={t`Active incidents`}>
+					{activeIncidents.map((incident, i) => (
+						<IncidentCard key={`${incident.startedAt}-${i}`} incident={incident} now={now} />
+					))}
+				</section>
+			)}
+
 			{maintenance.length > 0 && (
 				<section className="grid gap-3" aria-label={t`Maintenance`}>
 					{maintenance.map((item, i) => (
@@ -327,7 +345,57 @@ function StatusPageContent({ data, rateLimited }: { data: PublicStatusPage; rate
 					<Trans>No systems or monitors on this page.</Trans>
 				</p>
 			)}
+
+			{data.incidents && (
+				<section className="grid gap-2" aria-labelledby="past-incidents">
+					<h2 id="past-incidents" className="text-sm font-semibold text-muted-foreground px-1">
+						<Trans>Past incidents</Trans>
+					</h2>
+					{pastIncidents.length === 0 ? (
+						<p className="rounded-lg border border-dashed px-4 py-5 text-center text-sm text-muted-foreground">
+							<Trans>No incidents in the last 14 days.</Trans>
+						</p>
+					) : (
+						<div className="grid gap-3">
+							{pastIncidents.map((incident, i) => (
+								<IncidentCard key={`${incident.startedAt}-${i}`} incident={incident} now={now} />
+							))}
+						</div>
+					)}
+				</section>
+			)}
 		</div>
+	)
+}
+
+/** An incident with its updates. Title and messages are plain text. */
+function IncidentCard({ incident, now }: { incident: PublicStatusPageIncident; now: number }) {
+	const resolved = incident.status === "resolved"
+	const started = new Date(incident.startedAt).getTime()
+	const end = resolved && incident.resolvedAt ? new Date(incident.resolvedAt).getTime() : now
+	const duration = Number.isNaN(started) ? "" : formatIncidentDuration(end - started)
+	return (
+		<article
+			className={cn(
+				"rounded-lg border px-4 py-3 grid gap-3",
+				resolved ? "border-border/60 bg-card" : incidentImpactCardColors[incident.impact]
+			)}
+		>
+			<div className="grid gap-1">
+				<div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+					{!resolved && <AlertTriangleIcon className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />}
+					<h3 className="font-semibold break-words min-w-0 me-auto">{incident.title}</h3>
+					{!resolved && incident.impact !== "none" && <IncidentImpactBadge impact={incident.impact} />}
+					<IncidentStatusBadge status={incident.status} />
+				</div>
+				<p className="text-xs text-muted-foreground tabular-nums">
+					{formatShortDate(incident.startedAt)}
+					{resolved && incident.resolvedAt ? ` – ${formatShortDate(incident.resolvedAt)}` : ""}
+					{duration && ` · ${duration}`}
+				</p>
+			</div>
+			<IncidentTimeline updates={incident.updates ?? []} />
+		</article>
 	)
 }
 

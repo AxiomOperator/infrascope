@@ -104,6 +104,7 @@ import { formatMicroseconds } from "@/lib/utils"
 import { getDailyUptime, useMonitorEvents, useMonitorIncidents } from "@/lib/use-monitor-events"
 import { MonitorStatusBadge, monitorStatusLabel } from "./monitor-status-badge"
 import { MonitorDependenciesCard } from "./monitor-dependencies-card"
+import { CreateIncidentButton } from "@/components/incidents/create-incident-button"
 import { MonitorPushUrl } from "./monitor-push-url"
 import { DailyUptimeBar } from "./daily-uptime-bar"
 import { useStore } from "@nanostores/react"
@@ -831,6 +832,7 @@ function NetworkMonitorSheetContent({
 		: monitorStats.some((record) => record.stats?.[monitor.id] != null)
 	const monitorName = getMonitorName(monitor)
 	const target = monitor.name ? getMonitorTarget(monitor) : ""
+	const canCreateIncident = getMonitorStatus(monitor) === "down" && !isReadOnlyUser()
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
@@ -886,6 +888,14 @@ function NetworkMonitorSheetContent({
 					</SheetDescription>
 				</SheetHeader>
 				<div className="grid gap-4">
+					{canCreateIncident && (
+						<div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2">
+							<span className="text-sm">
+								<Trans>This monitor is down. Let status page visitors know.</Trans>
+							</span>
+							<CreateIncidentButton monitor={monitor} />
+						</div>
+					)}
 					<MonitorOverview monitor={monitor} />
 					{multi && <MonitorLocations monitor={monitor} />}
 					<MonitorDependenciesCard monitor={monitor} enabled={open} />

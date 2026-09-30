@@ -72,7 +72,7 @@ func NewHub(app core.App) *Hub {
 	hub.sm = systems.NewSystemManager(hub)
 	hub.maintenance = newMaintenanceWindows(app)
 	hub.AlertManager.SetMaintenanceCheck(hub.maintenance.Active)
-	hub.monitorNotices = newTransitionQueue(hub.AlertManager.HandleMonitorTransitions)
+	hub.monitorNotices = newTransitionQueue(hub.handleMonitorTransitions)
 	hub.uptime = uptime.New(app,
 		uptime.WithNotifier(hub.monitorNotices.push),
 		uptime.WithMaintenanceCheck(hub.maintenance.Active),
@@ -176,6 +176,8 @@ func (h *Hub) StartHub() error {
 	bindDependencyEvents(h)
 	bindDockerDiscoveryEvents(h)
 	bindStatusPageHooks(h)
+	bindIncidentHooks(h)
+	bindSystemIncidentEvents(h)
 
 	pb, ok := h.App.(*pocketbase.PocketBase)
 	if !ok {
@@ -236,6 +238,8 @@ func (h *Hub) registerCronJobs(_ *core.ServeEvent) error {
 	h.Cron().MustAdd("delete old records", "8 * * * *", h.rm.DeleteOldRecords)
 	// create longer records every 10 minutes
 	h.Cron().MustAdd("create longer records", "*/10 * * * *", h.rm.CreateLongerRecords)
+	// repeat notifications of unacknowledged alerts for users with reminders on
+	h.Cron().MustAdd("alert reminders", "* * * * *", h.SendAlertReminders)
 	// notify expiring monitor certificates; new certificate info is picked up within the hour
 	h.Cron().MustAdd("monitor certificates", "17 * * * *", h.CheckMonitorCerts)
 	return nil

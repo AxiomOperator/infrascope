@@ -90,7 +90,11 @@ func (env *testEnv) takeNotices() []string {
 	defer env.mu.Unlock()
 	statuses := []string{}
 	for _, n := range env.notices {
-		statuses = append(statuses, n.Status)
+		if n.Notify {
+			statuses = append(statuses, n.Status)
+		} else {
+			statuses = append(statuses, n.Status+" (silent)")
+		}
 	}
 	env.notices = nil
 	return statuses
@@ -196,8 +200,8 @@ func TestStateMachine(t *testing.T) {
 		{"unknown resets the failure streak", 1, true, []step{
 			{"ok", "up", nil}, {"fail", "pending", nil}, {"unknown", "unknown", nil}, {"fail", "pending", nil}, {"fail", "down", []string{"down"}},
 		}},
-		{"notify off updates notified silently", 0, false, []step{
-			{"ok", "up", nil}, {"fail", "down", nil}, {"notify", "down", nil}, {"fail", "down", nil}, {"ok", "up", []string{"up"}},
+		{"notify off reports silent transitions", 0, false, []step{
+			{"ok", "up", nil}, {"fail", "down", []string{"down (silent)"}}, {"notify", "down", nil}, {"fail", "down", nil}, {"ok", "up", []string{"up"}},
 		}},
 		{"new monitor first down notifies", 0, true, []step{
 			{"fail", "down", []string{"down"}}, {"ok", "up", []string{"up"}},

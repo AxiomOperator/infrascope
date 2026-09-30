@@ -8,6 +8,7 @@ import {
 	FileSlidersIcon,
 	FingerprintIcon,
 	GlobeIcon,
+	SirenIcon,
 	HeartPulseIcon,
 	SettingsIcon,
 	WrenchIcon,
@@ -30,6 +31,7 @@ const alertsHistoryDataTableSettingsImport = () => import("./alerts-history-data
 const heartbeatSettingsImport = () => import("./heartbeat.tsx")
 const maintenanceSettingsImport = () => import("./maintenance.tsx")
 const statusPagesSettingsImport = () => import("./status-pages.tsx")
+const incidentsSettingsImport = () => import("./incidents.tsx")
 
 const GeneralSettings = lazy(generalSettingsImport)
 const NotificationsSettings = lazy(notificationsSettingsImport)
@@ -39,6 +41,7 @@ const AlertsHistoryDataTableSettings = lazy(alertsHistoryDataTableSettingsImport
 const HeartbeatSettings = lazy(heartbeatSettingsImport)
 const MaintenanceSettings = lazy(maintenanceSettingsImport)
 const StatusPagesSettings = lazy(statusPagesSettingsImport)
+const IncidentsSettings = lazy(incidentsSettingsImport)
 
 export async function saveSettings(newSettings: Partial<UserSettings>) {
 	try {
@@ -96,6 +99,12 @@ export default function SettingsLayout() {
 			href: getPagePath($router, "settings", { name: "status-pages" }),
 			icon: GlobeIcon,
 			preload: statusPagesSettingsImport,
+		},
+		{
+			title: t`Incidents`,
+			href: getPagePath($router, "settings", { name: "incidents" }),
+			icon: SirenIcon,
+			preload: incidentsSettingsImport,
 		},
 		{
 			title: t`Heartbeat`,
@@ -170,5 +179,7 @@ function SettingsContent({ name }: { name: string }) {
 			return <MaintenanceSettings />
 		case "status-pages":
 			return <StatusPagesSettings />
+		case "incidents":
+			return <IncidentsSettings />
 	}
 }

@@ -332,6 +332,7 @@ function StatusPageDialog({
 	const [isPublic, setIsPublic] = useState(record?.public ?? true)
 	const [showTargets, setShowTargets] = useState(record?.showTargets ?? false)
 	const [showResponseTimes, setShowResponseTimes] = useState(record?.showResponseTimes ?? false)
+	const [autoIncidents, setAutoIncidents] = useState(record?.autoIncidents ?? false)
 	const [selected, setSelected] = useState<string[]>(record?.monitors ?? [])
 	const [selectedSystems, setSelectedSystems] = useState<string[]>(record?.systems ?? [])
 	const [saving, setSaving] = useState(false)
@@ -363,6 +364,7 @@ function StatusPageDialog({
 			public: isPublic,
 			showTargets,
 			showResponseTimes,
+			autoIncidents,
 			monitors: selected,
 			systems: selectedSystems,
 		}
@@ -478,6 +480,17 @@ function StatusPageDialog({
 					label={<Trans>Show response times</Trans>}
 					checked={showResponseTimes}
 					onCheckedChange={setShowResponseTimes}
+				/>
+				<SwitchRow
+					id="sp-auto-incidents"
+					label={<Trans>Automatically create incidents</Trans>}
+					description={
+						<Trans>
+							Open an incident when a system or monitor on this page goes down, and resolve it when it recovers.
+						</Trans>
+					}
+					checked={autoIncidents}
+					onCheckedChange={setAutoIncidents}
 				/>
 				<OrderedPicker
 					id="sp-add-system"

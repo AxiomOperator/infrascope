@@ -163,16 +163,27 @@ func setCollectionAuthSettings(app core.App) error {
 		return err
 	}
 
-	// Status pages and maintenance windows belong to a user.
+	// Status pages, maintenance windows and incidents belong to a user.
 	ownerRule := authenticatedRule + " && user = @request.auth.id"
 	ownerWriteRule := ownerRule + notReadonlyRule
 	ownerUpdateRule := ownerWriteRule + " && (@request.body.user:changed = false || @request.body.user = @request.auth.id)"
-	if err := applyCollectionRules(app, []string{"status_pages", "monitor_maintenance"}, collectionRules{
+	if err := applyCollectionRules(app, []string{"status_pages", "monitor_maintenance", "incidents"}, collectionRules{
 		list:   &ownerRule,
 		view:   &ownerRule,
 		create: &ownerWriteRule,
 		update: &ownerUpdateRule,
 		delete: &ownerWriteRule,
+	}); err != nil {
+		return err
+	}
+	// Incident updates follow their incident's owner and cannot be edited.
+	incidentOwnerRule := authenticatedRule + " && incident.user = @request.auth.id"
+	incidentOwnerWriteRule := incidentOwnerRule + notReadonlyRule
+	if err := applyCollectionRules(app, []string{"incident_updates"}, collectionRules{
+		list:   &incidentOwnerRule,
+		view:   &incidentOwnerRule,
+		create: &incidentOwnerWriteRule,
+		delete: &incidentOwnerWriteRule,
 	}); err != nil {
 		return err
 	}
