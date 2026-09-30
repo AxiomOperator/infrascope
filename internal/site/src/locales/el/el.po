@@ -41,6 +41,11 @@ msgstr ""
 msgid "{0, plural, one {# monitor} other {# monitors}}"
 msgstr ""
 
+#. placeholder {0}: data.confirmed
+#: src/components/status-subscribe.tsx
+msgid "{0, plural, one {# subscriber} other {# subscribers}}"
+msgstr ""
+
 #. placeholder {0}: record.systems.length
 #: src/components/routes/settings/status-pages.tsx
 msgid "{0, plural, one {# system} other {# systems}}"
@@ -163,6 +168,10 @@ msgstr ""
 msgid "{numFailed, plural, one {# failed service} other {# failed services}}"
 msgstr ""
 
+#: src/components/status-subscribe.tsx
+msgid "{pending} unconfirmed"
+msgstr ""
+
 #: src/components/active-alerts.tsx
 #: src/components/active-alerts.tsx
 msgid "{systemCount, plural, one {Across # system} other {Across # systems}}"
@@ -252,6 +261,7 @@ msgid "24 hours"
 msgstr "24 ώρες"
 
 #: src/components/routes/status-page.tsx
+#: src/components/status-page-settings.tsx
 msgid "24h"
 msgstr ""
 
@@ -268,6 +278,7 @@ msgid "30 days ago"
 msgstr ""
 
 #: src/components/routes/status-page.tsx
+#: src/components/status-page-settings.tsx
 msgid "30d"
 msgstr ""
 
@@ -285,6 +296,7 @@ msgid "5 min"
 msgstr "5 λ"
 
 #: src/components/routes/status-page.tsx
+#: src/components/status-page-settings.tsx
 msgid "7d"
 msgstr ""
 
@@ -311,6 +323,10 @@ msgstr ""
 
 #: src/components/routes/system/raw-capacity-label.tsx
 msgid "About raw capacity"
+msgstr ""
+
+#: src/components/status-page-settings.tsx
+msgid "Accent color"
 msgstr ""
 
 #: src/components/network-monitors-table/monitor-http-options.tsx
@@ -398,6 +414,10 @@ msgstr ""
 msgid "Add a note..."
 msgstr ""
 
+#: src/components/status-page-settings.tsx
+msgid "Add group"
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Add header"
 msgstr ""
@@ -435,6 +455,11 @@ msgstr "Προσθήκη Σύστημα"
 
 #: src/components/routes/settings/status-pages.tsx
 msgid "Add system…"
+msgstr ""
+
+#: src/components/status-page-settings.tsx
+#: src/components/status-page-settings.tsx
+msgid "Add to group…"
 msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
@@ -505,6 +530,10 @@ msgstr ""
 msgid "Alerts"
 msgstr "Ειδοποιήσεις"
 
+#: src/components/status-page-settings.tsx
+msgid "All components are grouped"
+msgstr ""
+
 #: src/components/command-palette.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/navbar.tsx
@@ -532,6 +561,10 @@ msgstr "Όλα τα συστήματα"
 
 #: src/components/routes/status-page.tsx
 msgid "All systems operational"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Allow email subscriptions"
 msgstr ""
 
 #: src/components/docker-discovery-settings.tsx
@@ -572,6 +605,10 @@ msgstr "Είστε βέβαιοι ότι θέλετε να διαγράψετε 
 msgid "Are you sure?"
 msgstr "Είστε βέβαιοι;"
 
+#: src/components/status-page-branding.tsx
+msgid "Atom feed"
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 msgid "Auth token"
 msgstr ""
@@ -588,15 +625,15 @@ msgstr "Η αυτόματη αντιγραφή απαιτεί ασφαλές π�
 msgid "Automatically create incidents"
 msgstr ""
 
-#: src/components/routes/system/storage-pools-table.tsx
-msgctxt "Disk space available"
-msgid "Available"
-msgstr "Διαθέσιμο"
-
 #: src/components/routes/system/package-updates-table.tsx
 msgctxt "Package version available to install"
 msgid "Available"
 msgstr ""
+
+#: src/components/routes/system/storage-pools-table.tsx
+msgctxt "Disk space available"
+msgid "Available"
+msgstr "Διαθέσιμο"
 
 #: src/lib/shoutrrr.ts
 msgid "Avatar URL"
@@ -675,6 +712,18 @@ msgstr ""
 #: src/components/navbar.tsx
 msgid "Backups"
 msgstr "Αντίγραφα ασφαλείας"
+
+#: src/components/status-page-settings.tsx
+msgid "Badge type"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Badges"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Badges and the incident feed reflect the saved page."
+msgstr ""
 
 #: src/components/routes/system/charts/network-charts.tsx
 #: src/lib/alerts.ts
@@ -777,6 +826,10 @@ msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Bot webhook key"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Branding and domain"
 msgstr ""
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
@@ -962,6 +1015,10 @@ msgstr ""
 msgid "Check the availability and response time of a service from the hub or an agent."
 msgstr ""
 
+#: src/components/status-subscribe.tsx
+msgid "Check your inbox and confirm the subscription with the link we sent you."
+msgstr ""
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Check your monitoring service"
 msgstr "Ελέγξτε την υπηρεσία παρακολούθησής σας"
@@ -1066,6 +1123,10 @@ msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Client key"
+msgstr ""
+
+#: src/components/status-page-settings.tsx
+msgid "Collapsed"
 msgstr ""
 
 #: src/components/network-monitors-table/monitor-http-options.tsx
@@ -1346,6 +1407,10 @@ msgstr ""
 #: src/components/routes/system/charts/sensor-charts.tsx
 msgid "Current state"
 msgstr "Τρέχουσα κατάσταση"
+
+#: src/components/status-page-settings.tsx
+msgid "Custom domain"
+msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Custom headers"
@@ -1632,12 +1697,17 @@ msgstr "Επεξεργασία Σύστημα"
 #: src/components/login/auth-form.tsx
 #: src/components/login/forgot-pass-form.tsx
 #: src/components/login/otp-forms.tsx
+#: src/components/status-subscribe.tsx
 msgid "Email"
 msgstr "Email"
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Email notifications"
 msgstr "Ειδοποιήσεις μέσω email"
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Embed the status or uptime of this page in a README or website."
+msgstr ""
 
 #: src/lib/shoutrrr.ts
 #: src/lib/shoutrrr.ts
@@ -1692,12 +1762,20 @@ msgstr ""
 msgid "Enter a host name, optionally with :port"
 msgstr ""
 
+#: src/components/status-page-settings.tsx
+msgid "Enter a hostname like status.example.com, without https://, port or path."
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 msgid "Enter a phone number with country code, e.g. +15551234567"
 msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Enter a reminder interval between {REMINDER_MIN_MINUTES} and {REMINDER_MAX_MINUTES} minutes, or leave it blank."
+msgstr ""
+
+#: src/components/status-subscribe.tsx
+msgid "Enter a valid email address."
 msgstr ""
 
 #: src/components/routes/settings/notification-builder.tsx
@@ -1766,6 +1844,8 @@ msgstr ""
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/status-subscribe.tsx
+#: src/components/status-subscribe.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Error"
 msgstr "Σφάλμα"
@@ -1776,6 +1856,14 @@ msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Event names"
+msgstr ""
+
+#: src/components/status-subscribe.tsx
+msgid "Every email has a link to unsubscribe."
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Every group needs a name."
 msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
@@ -1965,6 +2053,10 @@ msgstr "Υλικολογισμικό"
 msgid "First update"
 msgstr ""
 
+#: src/components/status-page-settings.tsx
+msgid "Footer text"
+msgstr ""
+
 #: src/components/alerts/alerts-sheet.tsx
 msgid "For <0>{min}</0> {min, plural, one {minute} other {minutes}}"
 msgstr "Για <0>{min}</0> {min, plural, one {λεπτό} other {λεπτά}}"
@@ -2005,6 +2097,10 @@ msgstr ""
 msgid "General"
 msgstr "Γενικά"
 
+#: src/components/status-subscribe.tsx
+msgid "Get an email when {title} reports an incident or an outage."
+msgstr ""
+
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Global"
 msgstr "Καθολικό"
@@ -2032,6 +2128,15 @@ msgstr "Πλέγμα"
 
 #: src/lib/shoutrrr.ts
 msgid "Group"
+msgstr ""
+
+#: src/components/status-page-settings.tsx
+#: src/components/status-page-settings.tsx
+msgid "Group name"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Groups"
 msgstr ""
 
 #: src/components/network-monitors-table/monitor-http-options.tsx
@@ -2071,6 +2176,14 @@ msgstr "Παρακολούθηση heartbeat"
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Heartbeat sent successfully"
 msgstr "Το heartbeat στάλθηκε με επιτυχία"
+
+#: src/components/status-subscribe.tsx
+msgid "Hide"
+msgstr ""
+
+#: src/components/status-page-settings.tsx
+msgid "Hide \"Powered by InfraScope\""
+msgstr ""
 
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Hide secrets"
@@ -2419,6 +2532,14 @@ msgstr "Σύνδεση"
 msgid "Login attempt failed"
 msgstr "Η προσπάθεια σύνδεσης απέτυχε"
 
+#: src/components/status-page-settings.tsx
+msgid "Logo"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Logo, accent color, footer and custom domain."
+msgstr ""
+
 #: src/components/command-palette.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/navbar.tsx
@@ -2585,6 +2706,7 @@ msgstr "Μοντέλο"
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/status-page-settings.tsx
 msgid "Monitor"
 msgstr "Monitor"
 
@@ -2642,11 +2764,15 @@ msgstr "Σημείο προσάρτησης"
 
 #: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/status-pages.tsx
+#: src/components/status-page-settings.tsx
+#: src/components/status-page-settings.tsx
 msgid "Move down"
 msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/status-pages.tsx
+#: src/components/status-page-settings.tsx
+#: src/components/status-page-settings.tsx
 msgid "Move up"
 msgstr ""
 
@@ -2998,6 +3124,10 @@ msgstr ""
 msgid "Outage"
 msgstr ""
 
+#: src/components/status-page-settings.tsx
+msgid "Overall"
+msgstr ""
+
 #: src/components/alerts/alerts-sheet.tsx
 msgid "Overwrite existing alerts"
 msgstr "Αντικατάσταση υπαρχουσών ειδοποιήσεων"
@@ -3148,6 +3278,10 @@ msgstr "Ποσοστό χρόνου που ο δίσκος είναι απασχ
 msgid "Percentage of time spent in each state"
 msgstr "Ποσοστό χρόνου σε κάθε κατάσταση"
 
+#: src/components/status-page-settings.tsx
+msgid "Period"
+msgstr ""
+
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Permanent"
 msgstr "Μόνιμο"
@@ -3167,6 +3301,10 @@ msgstr ""
 #: src/components/routes/system/raw-capacity-label.tsx
 msgid "Physical device space. True usable capacity is unknown. Pool disk usage alerts are disabled."
 msgstr "Φυσικός χώρος συσκευής. Η πραγματική ωφέλιμη χωρητικότητα είναι άγνωστη. Οι ειδοποιήσεις χρήσης δίσκων του pool είναι απενεργοποιημένες."
+
+#: src/components/status-page-settings.tsx
+msgid "Pick accent color"
+msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Plain text"
@@ -3218,6 +3356,10 @@ msgstr "Ανατρέξτε στην <0>τεκμηρίωση</0> για οδηγ�
 msgid "Please sign in to your account"
 msgstr "Συνδεθείτε στον λογαριασμό σας"
 
+#: src/components/status-page-settings.tsx
+msgid "PNG, JPEG, WebP or SVG, up to 512 KB. Shown above the title of public pages."
+msgstr ""
+
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "Pool Health"
 msgstr "Κατάσταση pool"
@@ -3249,7 +3391,7 @@ msgstr ""
 msgid "Power On"
 msgstr "Χρόνος λειτουργίας"
 
-#: src/components/routes/status-page.tsx
+#: src/components/status-page-branding.tsx
 msgid "Powered by <0>InfraScope</0>"
 msgstr ""
 
@@ -3447,7 +3589,15 @@ msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/status-pages.tsx
+#: src/components/status-page-settings.tsx
+#: src/components/status-page-settings.tsx
+#: src/components/status-subscribe.tsx
+#: src/components/status-subscribe.tsx
 msgid "Remove"
+msgstr ""
+
+#: src/components/status-page-settings.tsx
+msgid "Remove group"
 msgstr ""
 
 #: src/components/network-monitors-table/monitor-http-options.tsx
@@ -3485,6 +3635,10 @@ msgstr "Απαιτείται από"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Requires"
 msgstr "Απαιτεί"
+
+#: src/components/status-page-settings.tsx
+msgid "Reset"
+msgstr ""
 
 #: src/components/system-host-key.tsx
 #: src/components/system-host-key.tsx
@@ -3859,6 +4013,10 @@ msgstr ""
 msgid "Serial Number"
 msgstr "Σειριακός αριθμός"
 
+#: src/components/status-page-settings.tsx
+msgid "Serve the page at the root of this hostname. Point its DNS to your reverse proxy, which must terminate TLS and forward the original Host header to the hub. Only the public page is served there."
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 msgid "Server path"
 msgstr ""
@@ -3923,6 +4081,10 @@ msgstr ""
 msgid "Shoutrrr URL"
 msgstr ""
 
+#: src/components/status-subscribe.tsx
+msgid "Show"
+msgstr ""
+
 #: src/components/routes/settings/status-pages.tsx
 msgid "Show each monitor's URL, hostname or IP."
 msgstr ""
@@ -3932,6 +4094,7 @@ msgid "Show link previews"
 msgstr ""
 
 #: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/status-subscribe.tsx
 msgid "Show more"
 msgstr ""
 
@@ -3945,6 +4108,10 @@ msgstr ""
 
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Show secrets"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Show systems and monitors in named, collapsible sections."
 msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
@@ -4001,6 +4168,11 @@ msgstr ""
 msgid "SMTP settings"
 msgstr "Ρυθμίσεις SMTP"
 
+#: src/components/status-subscribe.tsx
+#: src/components/status-subscribe.tsx
+msgid "Something went wrong. Please try again later."
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/systems-table/systems-table.tsx
 msgid "Sort By"
@@ -4052,6 +4224,7 @@ msgstr "Κατάσταση"
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/routes/system/smart-table.tsx
+#: src/components/status-page-settings.tsx
 #: src/components/systemd-table/systemd-table.tsx
 #: src/components/systems-table/systems-table.tsx
 #: src/lib/alerts.ts
@@ -4095,6 +4268,19 @@ msgstr ""
 msgid "Sub State"
 msgstr "Υποκατάσταση"
 
+#: src/components/status-subscribe.tsx
+msgid "Subscribe"
+msgstr ""
+
+#: src/components/status-page-branding.tsx
+msgid "Subscribe to incident updates with a feed reader"
+msgstr ""
+
+#: src/components/status-subscribe.tsx
+#: src/components/status-subscribe.tsx
+msgid "Subscribe to updates"
+msgstr ""
+
 #: src/components/routes/system/charts/memory-charts.tsx
 msgid "Swap space used by the system"
 msgstr "Swap που χρησιμοποιείται από το σύστημα"
@@ -4119,6 +4305,7 @@ msgstr "Αλλαγή θέματος"
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/system/smart-table.tsx
+#: src/components/status-page-settings.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 #: src/lib/alerts.ts
 msgid "System"
@@ -4223,6 +4410,10 @@ msgstr "Δοκιμή heartbeat"
 msgid "Test notification sent"
 msgstr "Η δοκιμαστική ειδοποίηση στάλθηκε"
 
+#: src/components/status-page-settings.tsx
+msgid "Text in this color is adjusted where needed to stay readable in light and dark mode."
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Text the response body must contain"
 msgstr ""
@@ -4272,6 +4463,10 @@ msgstr ""
 msgid "The hub pins the SSH host key of each agent and refuses to connect if it changes. Reset it only if you reinstalled the agent or otherwise changed its host key. The next key the agent presents will be trusted."
 msgstr ""
 
+#: src/components/status-page-settings.tsx
+msgid "The logo can be at most 512 KB."
+msgstr ""
+
 #. placeholder {0}: system.name
 #: src/components/system-host-key.tsx
 msgid "The next SSH host key presented by {0} will be trusted."
@@ -4300,6 +4495,10 @@ msgstr "Στη συνέχεια, συνδεθείτε στο backend και επ
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "This action cannot be undone. This will permanently delete all current records for {name} from the database."
 msgstr "Αυτή η ενέργεια δεν μπορεί να αναιρεθεί. Θα διαγράψει οριστικά όλες τις τρέχουσες εγγραφές για το {name} από τη βάση δεδομένων."
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "This custom domain is already used by another status page."
+msgstr ""
 
 #: src/components/network-monitors-table/network-monitors-table.tsx
 msgid "This monitor is down. Let status page visitors know."
@@ -4423,6 +4622,10 @@ msgstr "Τα διακριτικά και τα αποτυπώματα χρησι�
 #: src/components/routes/status-page.tsx
 #: src/components/routes/status-page.tsx
 msgid "Too many requests, retrying…"
+msgstr ""
+
+#: src/components/status-subscribe.tsx
+msgid "Too many requests. Please try again later."
 msgstr ""
 
 #: src/lib/shoutrrr.ts
@@ -4561,12 +4764,22 @@ msgstr ""
 msgid "Unacknowledged only"
 msgstr ""
 
+#: src/components/status-page-settings.tsx
+msgid "Unavailable"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/status-pages.tsx
 msgid "Unavailable monitor"
 msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
 msgid "Unavailable system"
+msgstr ""
+
+#: src/components/status-subscribe.tsx
+msgid "Unconfirmed"
 msgstr ""
 
 #: src/components/routes/status-page.tsx
@@ -4674,6 +4887,7 @@ msgid "Upload an Uptime Kuma backup (Settings → Backup → Export in Uptime Ku
 msgstr ""
 
 #: src/components/routes/system/info-bar.tsx
+#: src/components/status-page-settings.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Uptime"
 msgstr "Χρόνος λειτουργίας"
@@ -4730,6 +4944,14 @@ msgstr "Χρήση του pool αποθήκευσης {displayName}"
 
 #: src/components/routes/settings/status-pages.tsx
 msgid "Use 2-63 lowercase letters, numbers and hyphens, starting with a letter or number."
+msgstr ""
+
+#: src/components/status-page-settings.tsx
+msgid "Use a hex color like #3b82f6."
+msgstr ""
+
+#: src/components/status-page-settings.tsx
+msgid "Use a PNG, JPEG, WebP or SVG image."
 msgstr ""
 
 #: src/lib/shoutrrr.ts
@@ -4846,6 +5068,10 @@ msgstr "Ορατά πεδία"
 msgid "Visible to"
 msgstr ""
 
+#: src/components/routes/settings/status-pages.tsx
+msgid "Visitors of a public page can subscribe to emails about incidents and outages. Requires SMTP and the application URL to be configured."
+msgstr ""
+
 #: src/components/routes/system/chart-card.tsx
 msgid "Waiting for enough records to display"
 msgstr "Αναμονή για αρκετές εγγραφές ώστε να εμφανιστούν"
@@ -4945,6 +5171,10 @@ msgstr ""
 #~ msgctxt "Button to copy install command"
 #~ msgid "Windows command"
 #~ msgstr "Εντολή Windows"
+
+#: src/components/status-page-settings.tsx
+msgid "Without groups, systems and monitors are listed in page order."
+msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Workflow webhook URL"

@@ -37,6 +37,9 @@ func (rm *responseModifier) RoundTrip(req *http.Request) (*http.Response, error)
 	resp.Body.Close()
 	// Create a new response with the modified body
 	modifiedBody := modifyIndexHTML(rm.hub, body)
+	if slug, ok := rm.hub.statusPages.domains.lookup(rm.hub, resp.Request.Host); ok {
+		modifiedBody = statusPageDomainHTML(rm.hub, body, slug)
+	}
 	resp.Body = io.NopCloser(strings.NewReader(modifiedBody))
 	resp.ContentLength = int64(len(modifiedBody))
 	resp.Header.Set("Content-Length", fmt.Sprintf("%d", len(modifiedBody)))

@@ -17,6 +17,14 @@ import { type ReactNode, useMemo, useState } from "react"
 import { getErrorMessage } from "@/components/network-monitors-table/monitor-form-utils"
 import { prependBasePath } from "@/components/router"
 import {
+	type BrandingValues,
+	DialogSection,
+	StatusPageBadges,
+	StatusPageBrandingFields,
+	StatusPageGroupEditor,
+} from "@/components/status-page-settings"
+import { StatusPageSubscribers } from "@/components/status-subscribe"
+import {
 	AlertDialog,
 	AlertDialogAction,
 	AlertDialogCancel,
@@ -53,10 +61,17 @@ import { toast } from "@/components/ui/use-toast"
 import { isReadOnlyUser, pb } from "@/lib/api"
 import { $systems } from "@/lib/stores"
 import { getMonitorName, getMonitorTarget } from "@/lib/network-monitor-utils"
+import {
+	ACCENT_COLOR_PATTERN,
+	groupsProblem,
+	isValidCustomDomain,
+	normalizeCustomDomain,
+	pruneGroups,
+} from "@/lib/status-page-branding"
 import { useNetworkMonitors } from "@/lib/use-network-monitors"
 import { useOwnedRecords } from "@/lib/use-owned-records"
 import { cn, copyToClipboard } from "@/lib/utils"
-import type { NetworkMonitorRecord, StatusPageRecord, SystemRecord } from "@/types"
+import type { NetworkMonitorRecord, StatusPageGroup, StatusPageRecord, SystemRecord } from "@/types"
 
 /** Same pattern as the status_pages.slug field. */
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,62}$/
@@ -333,8 +348,17 @@ function StatusPageDialog({
 	const [showTargets, setShowTargets] = useState(record?.showTargets ?? false)
 	const [showResponseTimes, setShowResponseTimes] = useState(record?.showResponseTimes ?? false)
 	const [autoIncidents, setAutoIncidents] = useState(record?.autoIncidents ?? false)
+	const [allowSubscriptions, setAllowSubscriptions] = useState(record?.allowSubscriptions ?? false)
 	const [selected, setSelected] = useState<string[]>(record?.monitors ?? [])
 	const [selectedSystems, setSelectedSystems] = useState<string[]>(record?.systems ?? [])
+	const [groups, setGroups] = useState<StatusPageGroup[]>(record?.groups ?? [])
+	const [branding, setBranding] = useState<BrandingValues>({
+		logoFile: undefined,
+		accentColor: record?.accentColor ?? "",
+		footerText: record?.footerText ?? "",
+		hidePoweredBy: record?.hidePoweredBy ?? false,
+		customDomain: record?.customDomain ?? "",
+	})
 	const [saving, setSaving] = useState(false)
 
 	const monitorItems = useMemo(
@@ -352,11 +376,28 @@ function StatusPageDialog({
 		[systems]
 	)
 	const slugValid = SLUG_PATTERN.test(slug)
+	// groups only keep components that are still on the page
+	const pageGroups = useMemo(() => pruneGroups(groups, selected, selectedSystems), [groups, selected, selectedSystems])
+	const componentOptions = useMemo(() => {
+		const monitorNames = new Map(monitorItems.map((item) => [item.id, item.name]))
+		const systemNames = new Map(systemItems.map((item) => [item.id, item.name]))
+		return [
+			...selectedSystems.map((id) => ({
+				type: "system" as const,
+				id,
+				name: systemNames.get(id) ?? t`Unavailable system`,
+			})),
+			...selected.map((id) => ({ type: "monitor" as const, id, name: monitorNames.get(id) ?? t`Unavailable monitor` })),
+		]
+	}, [monitorItems, systemItems, selected, selectedSystems])
+	const groupProblem = groupsProblem(pageGroups)
+	const brandingValid = ACCENT_COLOR_PATTERN.test(branding.accentColor) || branding.accentColor === ""
+	const domainValid = isValidCustomDomain(branding.customDomain)
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
-		if (!slugValid) return
-		const data = {
+		if (!slugValid || groupProblem || !brandingValid || !domainValid) return
+		const data: Record<string, unknown> = {
 			user: pb.authStore.record?.id,
 			title: title.trim(),
 			slug,
@@ -365,9 +406,17 @@ function StatusPageDialog({
 			showTargets,
 			showResponseTimes,
 			autoIncidents,
+			allowSubscriptions,
 			monitors: selected,
 			systems: selectedSystems,
+			groups: pageGroups.map((group) => ({ ...group, name: group.name.trim() })),
+			accentColor: branding.accentColor.toLowerCase(),
+			footerText: branding.footerText.trim(),
+			hidePoweredBy: branding.hidePoweredBy,
+			customDomain: normalizeCustomDomain(branding.customDomain),
 		}
+		// a File makes the SDK send multipart data; null removes the logo
+		if (branding.logoFile !== undefined) data.logo = branding.logoFile
 		setSaving(true)
 		try {
 			if (record) {
@@ -377,12 +426,16 @@ function StatusPageDialog({
 			}
 			onClose()
 		} catch (err) {
-			const slugError = (err as { response?: { data?: { slug?: { code?: string } } } })?.response?.data?.slug
+			const fieldErrors = (err as { response?: { data?: Record<string, { code?: string }> } })?.response?.data
 			toast({
 				variant: "destructive",
 				title: t`Failed to save status page`,
 				description:
-					slugError?.code === "validation_not_unique" ? t`This slug is already in use.` : getErrorMessage(err),
+					fieldErrors?.slug?.code === "validation_not_unique"
+						? t`This slug is already in use.`
+						: fieldErrors?.customDomain?.code === "validation_not_unique"
+							? t`This custom domain is already used by another status page.`
+							: getErrorMessage(err),
 			})
 		} finally {
 			setSaving(false)
@@ -492,6 +545,19 @@ function StatusPageDialog({
 					checked={autoIncidents}
 					onCheckedChange={setAutoIncidents}
 				/>
+				<SwitchRow
+					id="sp-subscriptions"
+					label={<Trans>Allow email subscriptions</Trans>}
+					description={
+						<Trans>
+							Visitors of a public page can subscribe to emails about incidents and outages. Requires SMTP and the
+							application URL to be configured.
+						</Trans>
+					}
+					checked={allowSubscriptions}
+					onCheckedChange={setAllowSubscriptions}
+				/>
+				{record && (allowSubscriptions || record.allowSubscriptions) && <StatusPageSubscribers pageId={record.id} />}
 				<OrderedPicker
 					id="sp-add-system"
 					label={<Trans>Systems</Trans>}
@@ -517,11 +583,49 @@ function StatusPageDialog({
 					unavailableLabel={<Trans>Unavailable monitor</Trans>}
 					maxMessage={<Trans>A status page can show up to {MAX_MONITORS} monitors.</Trans>}
 				/>
+				<DialogSection
+					title={<Trans>Groups</Trans>}
+					description={<Trans>Show systems and monitors in named, collapsible sections.</Trans>}
+					defaultOpen={pageGroups.length > 0}
+				>
+					<StatusPageGroupEditor groups={pageGroups} onChange={setGroups} components={componentOptions} />
+					{groupProblem === "name" && (
+						<p className="text-xs text-destructive">
+							<Trans>Every group needs a name.</Trans>
+						</p>
+					)}
+				</DialogSection>
+				<DialogSection
+					title={<Trans>Branding and domain</Trans>}
+					description={<Trans>Logo, accent color, footer and custom domain.</Trans>}
+				>
+					<StatusPageBrandingFields
+						values={branding}
+						onChange={setBranding}
+						currentLogoUrl={record?.logo ? pb.files.getURL(record, record.logo) : undefined}
+					/>
+				</DialogSection>
+				{record?.public && (
+					<DialogSection
+						title={<Trans>Badges</Trans>}
+						description={<Trans>Embed the status or uptime of this page in a README or website.</Trans>}
+					>
+						<StatusPageBadges
+							slug={record.slug}
+							pageUrl={getStatusPageUrl(record.slug)}
+							systems={componentOptions.filter((c) => c.type === "system").map((c) => c.name)}
+							monitors={componentOptions.filter((c) => c.type === "monitor").map((c) => c.name)}
+						/>
+						<p className="text-xs text-muted-foreground">
+							<Trans>Badges and the incident feed reflect the saved page.</Trans>
+						</p>
+					</DialogSection>
+				)}
 				<DialogFooter>
 					<Button type="button" variant="outline" onClick={onClose}>
 						<Trans>Cancel</Trans>
 					</Button>
-					<Button type="submit" disabled={saving || !slugValid}>
+					<Button type="submit" disabled={saving || !slugValid || !!groupProblem || !brandingValid || !domainValid}>
 						{record ? <Trans>Update</Trans> : <Trans>Create</Trans>}
 					</Button>
 				</DialogFooter>

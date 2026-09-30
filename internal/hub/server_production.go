@@ -33,6 +33,10 @@ func (h *Hub) startServer(se *core.ServeEvent) error {
 				return serveStatic(e)
 			}
 		}
+		// custom domains of status pages serve only that page (see statusPageDomainGuard)
+		if slug := statusPageHostSlug(e); slug != "" {
+			return e.HTML(http.StatusOK, statusPageDomainHTML(h, indexFile, slug))
+		}
 		if cspExists {
 			e.Response.Header().Del("X-Frame-Options")
 			e.Response.Header().Set("Content-Security-Policy", csp)

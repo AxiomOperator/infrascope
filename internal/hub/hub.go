@@ -57,6 +57,8 @@ type Hub struct {
 	dependencies *idQueue
 	// statusPages caches and rate limits public status page requests.
 	statusPages *statusPages
+	// statusSubscriptions emails the subscribers of status pages.
+	statusSubscriptions *statusSubscriptions
 	// systemEvents records the status history of systems.
 	systemEvents *systemevents.Recorder
 	// discovery rate limits Docker label discovery reconciles.
@@ -84,6 +86,7 @@ func NewHub(app core.App) *Hub {
 		hub.HandleMonitorResults("", results)
 	})
 	hub.statusPages = newStatusPages()
+	hub.statusSubscriptions = newStatusSubscriptions(hub)
 	hub.discovery = newDockerDiscovery()
 	hub.systemEvents = systemevents.New()
 	hub.systemEvents.Bind(app)
@@ -178,6 +181,7 @@ func (h *Hub) StartHub() error {
 	bindStatusPageHooks(h)
 	bindIncidentHooks(h)
 	bindSystemIncidentEvents(h)
+	bindStatusSubscriptions(h)
 
 	pb, ok := h.App.(*pocketbase.PocketBase)
 	if !ok {

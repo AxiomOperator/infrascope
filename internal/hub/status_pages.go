@@ -46,6 +46,8 @@ type statusPages struct {
 	cache  *expirymap.ExpiryMap[string]
 	limits *windowLimiter
 	now    func() time.Time
+	// domains maps custom domains to page slugs.
+	domains statusPageDomains
 }
 
 func newStatusPages() *statusPages {
@@ -68,6 +70,11 @@ type publicStatusPage struct {
 	Monitors          []publicStatusMonitor     `json:"monitors"`
 	Maintenance       []publicStatusMaintenance `json:"maintenance"`
 	Incidents         publicStatusIncidents     `json:"incidents"`
+	// Subscriptions is whether visitors can subscribe to email updates.
+	Subscriptions bool `json:"subscriptions"`
+	// Groups group entries of Systems and Monitors; see buildPublicGroups.
+	Groups   []publicStatusGroup  `json:"groups"`
+	Branding publicStatusBranding `json:"branding"`
 }
 
 type publicStatusMonitor struct {
@@ -112,10 +119,8 @@ type publicStatusMaintenance struct {
 // Requests are limited per client IP as reported by e.RealIP (see handlePush
 // for the reverse proxy settings).
 func (h *Hub) handleStatusPage(e *core.RequestEvent) error {
-	if ok, retryAfter := h.statusPages.limits.allow(e.RealIP()); !ok {
-		seconds := max(1, int(math.Ceil(retryAfter.Seconds())))
-		e.Response.Header().Set("Retry-After", strconv.Itoa(seconds))
-		return e.TooManyRequestsError("Too many requests.", nil)
+	if err := h.limitStatusPage(e); err != nil {
+		return err
 	}
 	slug := e.Request.PathValue("slug")
 	if body, ok := h.statusPages.cache.GetOk(slug); ok {
@@ -163,7 +168,8 @@ func writeStatusPage(e *core.RequestEvent, body string, public bool) error {
 
 // canPreviewStatusPage reports whether the requester owns the page or is a superuser.
 func canPreviewStatusPage(e *core.RequestEvent, page *core.Record) bool {
-	if e.Auth == nil {
+	// custom domains only serve public pages (see statusPageDomainGuard)
+	if e.Auth == nil || statusPageHostSlug(e) != "" {
 		return false
 	}
 	return e.HasSuperuserAuth() || (e.Auth.Collection().Name == "users" && e.Auth.Id == page.GetString("user"))
@@ -183,7 +189,7 @@ func buildStatusPage(app core.App, page *core.Record, now time.Time) (*publicSta
 	if err != nil {
 		return nil, err
 	}
-	systems, err := statusPageSystems(app, page, now)
+	systems, systemIDs, err := statusPageSystems(app, page, now)
 	if err != nil {
 		return nil, err
 	}
@@ -207,6 +213,8 @@ func buildStatusPage(app core.App, page *core.Record, now time.Time) (*publicSta
 		Monitors:          make([]publicStatusMonitor, 0, len(monitors)),
 		Maintenance:       maintenance,
 		Incidents:         incidents,
+		Subscriptions:     page.GetBool("allowSubscriptions") && subscriptionMailReady(app),
+		Branding:          buildPublicBranding(page),
 	}
 	for i, record := range monitors {
 		status := record.GetString("status")
@@ -253,23 +261,25 @@ func buildStatusPage(app core.App, page *core.Record, now time.Time) (*publicSta
 	// Active incidents with major or critical impact make the page at least
 	// degraded, even while its components are up (see overallWithIncidents).
 	result.Overall = overallWithIncidents(overallStatus(statuses), incidents.Active)
+	result.Groups = buildPublicGroups(statusPageGroups(page), result, ids, systemIDs)
 	return result, nil
 }
 
 // statusPageSystems returns the public data of the systems of a page, in
-// page order, that still exist and that the page owner can still view.
+// page order, that still exist and that the page owner can still view, and
+// their ids.
 //
 // Uptime and daily buckets come from system_events: up and down time form
 // the denominator, while paused and pending time (a system waiting on its
 // first connection result after it was added, resumed or edited) do not.
-func statusPageSystems(app core.App, page *core.Record, now time.Time) ([]publicStatusSystem, error) {
+func statusPageSystems(app core.App, page *core.Record, now time.Time) ([]publicStatusSystem, []string, error) {
 	records, err := viewableByOwner(app, page, "systems", "systems")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	result := make([]publicStatusSystem, 0, len(records))
 	if len(records) == 0 {
-		return result, nil
+		return result, nil, nil
 	}
 	ids := make([]string, len(records))
 	for i, record := range records {
@@ -278,7 +288,7 @@ func statusPageSystems(app core.App, page *core.Record, now time.Time) ([]public
 	first, since, nowMs := statusPageRange(now)
 	segments, err := systemevents.Load(app, ids, since, nowMs)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	bySystem := make(map[string][]uptime.Segment, len(ids))
 	rows := make([]statusSegment, 0, len(segments))
@@ -305,7 +315,7 @@ func statusPageSystems(app core.App, page *core.Record, now time.Time) ([]public
 			Days:   days[record.Id],
 		})
 	}
-	return result, nil
+	return result, ids, nil
 }
 
 // viewableByOwner returns the records of collectionName referenced by the
@@ -584,17 +594,24 @@ func formatISO(t time.Time) string {
 }
 
 // bindStatusPageHooks rejects status pages that list systems the requester
-// (the page owner, see the collection rules) cannot view. Monitors are
-// checked by the network monitor hooks.
-func bindStatusPageHooks(app core.App) {
+// (the page owner, see the collection rules) cannot view, and invalid groups
+// and custom domains. Monitors are checked by the network monitor hooks.
+func bindStatusPageHooks(h *Hub) {
 	checkSystems := func(e *core.RecordRequestEvent) error {
 		if err := checkReferencedSystems(e); err != nil {
 			return err
 		}
+		if message := validateStatusPageGroups(e.Record); message != "" {
+			return e.BadRequestError(message, nil)
+		}
+		if message := h.validateStatusPageDomain(e.Record); message != "" {
+			return e.BadRequestError(message, nil)
+		}
 		return e.Next()
 	}
-	app.OnRecordCreateRequest("status_pages").BindFunc(checkSystems)
-	app.OnRecordUpdateRequest("status_pages").BindFunc(checkSystems)
+	h.OnRecordCreateRequest("status_pages").BindFunc(checkSystems)
+	h.OnRecordUpdateRequest("status_pages").BindFunc(checkSystems)
+	bindStatusPageDomainEvents(h)
 }
 
 // checkReferencedSystems returns an error unless the requester can view every

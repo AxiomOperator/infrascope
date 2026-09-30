@@ -898,6 +898,18 @@ export interface StatusPageRecord {
 	showResponseTimes: boolean
 	/** Open and resolve incidents automatically when a component goes down. */
 	autoIncidents?: boolean
+	/** Named, ordered groups of the page's monitors and systems. */
+	groups?: StatusPageGroup[] | null
+	/** File name of the logo, or "". */
+	logo?: string
+	/** #rrggbb, or "". */
+	accentColor?: string
+	footerText?: string
+	hidePoweredBy?: boolean
+	/** Hostname that serves the page at its root, or "". */
+	customDomain?: string
+	/** Let visitors subscribe to email updates (needs SMTP). */
+	allowSubscriptions?: boolean
 	created: string
 	updated: string
 }
@@ -949,6 +961,30 @@ export interface MaintenanceRecord {
 }
 
 /** Public status page returned by GET /api/beszel/status-pages/:slug. */
+/** A group of components of a status page, as stored. */
+export interface StatusPageGroup {
+	name: string
+	collapsed?: boolean
+	components: { type: "monitor" | "system"; id: string }[]
+}
+
+/** A group of a public status page; items are indexes into systems and monitors. */
+export interface PublicStatusPageGroup {
+	name: string
+	collapsed: boolean
+	status: MonitorStatus
+	items: { kind: "monitor" | "system"; index: number }[]
+}
+
+export interface PublicStatusPageBranding {
+	/** Path of the logo below the base path, or null. */
+	logo: string | null
+	/** #rrggbb, or "". */
+	accentColor: string
+	footerText: string
+	hidePoweredBy: boolean
+}
+
 export interface PublicStatusPage {
 	title: string
 	description: string
@@ -960,6 +996,10 @@ export interface PublicStatusPage {
 	monitors: PublicStatusPageMonitor[]
 	maintenance: PublicStatusPageMaintenance[]
 	incidents?: { active: PublicStatusPageIncident[]; recent: PublicStatusPageIncident[] }
+	groups?: PublicStatusPageGroup[]
+	branding?: PublicStatusPageBranding
+	/** Whether visitors can subscribe to email updates. */
+	subscriptions?: boolean
 }
 
 /** An incident on a public status page. Title and messages are plain text. */

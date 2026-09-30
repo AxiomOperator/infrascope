@@ -41,6 +41,11 @@ msgstr ""
 msgid "{0, plural, one {# monitor} other {# monitors}}"
 msgstr ""
 
+#. placeholder {0}: data.confirmed
+#: src/components/status-subscribe.tsx
+msgid "{0, plural, one {# subscriber} other {# subscribers}}"
+msgstr ""
+
 #. placeholder {0}: record.systems.length
 #: src/components/routes/settings/status-pages.tsx
 msgid "{0, plural, one {# system} other {# systems}}"
@@ -163,6 +168,10 @@ msgstr ""
 msgid "{numFailed, plural, one {# failed service} other {# failed services}}"
 msgstr ""
 
+#: src/components/status-subscribe.tsx
+msgid "{pending} unconfirmed"
+msgstr ""
+
 #: src/components/active-alerts.tsx
 #: src/components/active-alerts.tsx
 msgid "{systemCount, plural, one {Across # system} other {Across # systems}}"
@@ -252,6 +261,7 @@ msgid "24 hours"
 msgstr "24小時"
 
 #: src/components/routes/status-page.tsx
+#: src/components/status-page-settings.tsx
 msgid "24h"
 msgstr ""
 
@@ -268,6 +278,7 @@ msgid "30 days ago"
 msgstr ""
 
 #: src/components/routes/status-page.tsx
+#: src/components/status-page-settings.tsx
 msgid "30d"
 msgstr ""
 
@@ -285,6 +296,7 @@ msgid "5 min"
 msgstr "5 分鐘"
 
 #: src/components/routes/status-page.tsx
+#: src/components/status-page-settings.tsx
 msgid "7d"
 msgstr ""
 
@@ -311,6 +323,10 @@ msgstr ""
 
 #: src/components/routes/system/raw-capacity-label.tsx
 msgid "About raw capacity"
+msgstr ""
+
+#: src/components/status-page-settings.tsx
+msgid "Accent color"
 msgstr ""
 
 #: src/components/network-monitors-table/monitor-http-options.tsx
@@ -398,6 +414,10 @@ msgstr ""
 msgid "Add a note..."
 msgstr ""
 
+#: src/components/status-page-settings.tsx
+msgid "Add group"
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Add header"
 msgstr ""
@@ -435,6 +455,11 @@ msgstr "新增系統"
 
 #: src/components/routes/settings/status-pages.tsx
 msgid "Add system…"
+msgstr ""
+
+#: src/components/status-page-settings.tsx
+#: src/components/status-page-settings.tsx
+msgid "Add to group…"
 msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
@@ -505,6 +530,10 @@ msgstr ""
 msgid "Alerts"
 msgstr "警報"
 
+#: src/components/status-page-settings.tsx
+msgid "All components are grouped"
+msgstr ""
+
 #: src/components/command-palette.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/navbar.tsx
@@ -532,6 +561,10 @@ msgstr "所有系統"
 
 #: src/components/routes/status-page.tsx
 msgid "All systems operational"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Allow email subscriptions"
 msgstr ""
 
 #: src/components/docker-discovery-settings.tsx
@@ -572,6 +605,10 @@ msgstr "您確定要刪除 {name} 嗎？"
 msgid "Are you sure?"
 msgstr "您確定嗎？"
 
+#: src/components/status-page-branding.tsx
+msgid "Atom feed"
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 msgid "Auth token"
 msgstr ""
@@ -588,15 +625,15 @@ msgstr "只有在受保護的環境（HTTPS）才能自動複製。"
 msgid "Automatically create incidents"
 msgstr ""
 
-#: src/components/routes/system/storage-pools-table.tsx
-msgctxt "Disk space available"
-msgid "Available"
-msgstr "可用"
-
 #: src/components/routes/system/package-updates-table.tsx
 msgctxt "Package version available to install"
 msgid "Available"
 msgstr ""
+
+#: src/components/routes/system/storage-pools-table.tsx
+msgctxt "Disk space available"
+msgid "Available"
+msgstr "可用"
 
 #: src/lib/shoutrrr.ts
 msgid "Avatar URL"
@@ -675,6 +712,18 @@ msgstr ""
 #: src/components/navbar.tsx
 msgid "Backups"
 msgstr "備份"
+
+#: src/components/status-page-settings.tsx
+msgid "Badge type"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Badges"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Badges and the incident feed reflect the saved page."
+msgstr ""
 
 #: src/components/routes/system/charts/network-charts.tsx
 #: src/lib/alerts.ts
@@ -777,6 +826,10 @@ msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Bot webhook key"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Branding and domain"
 msgstr ""
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
@@ -962,6 +1015,10 @@ msgstr ""
 msgid "Check the availability and response time of a service from the hub or an agent."
 msgstr ""
 
+#: src/components/status-subscribe.tsx
+msgid "Check your inbox and confirm the subscription with the link we sent you."
+msgstr ""
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Check your monitoring service"
 msgstr "檢查您的監控服務"
@@ -1066,6 +1123,10 @@ msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Client key"
+msgstr ""
+
+#: src/components/status-page-settings.tsx
+msgid "Collapsed"
 msgstr ""
 
 #: src/components/network-monitors-table/monitor-http-options.tsx
@@ -1346,6 +1407,10 @@ msgstr ""
 #: src/components/routes/system/charts/sensor-charts.tsx
 msgid "Current state"
 msgstr "目前狀態"
+
+#: src/components/status-page-settings.tsx
+msgid "Custom domain"
+msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Custom headers"
@@ -1632,12 +1697,17 @@ msgstr "編輯系統"
 #: src/components/login/auth-form.tsx
 #: src/components/login/forgot-pass-form.tsx
 #: src/components/login/otp-forms.tsx
+#: src/components/status-subscribe.tsx
 msgid "Email"
 msgstr "電子郵件"
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Email notifications"
 msgstr "電子郵件通知"
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Embed the status or uptime of this page in a README or website."
+msgstr ""
 
 #: src/lib/shoutrrr.ts
 #: src/lib/shoutrrr.ts
@@ -1692,12 +1762,20 @@ msgstr ""
 msgid "Enter a host name, optionally with :port"
 msgstr ""
 
+#: src/components/status-page-settings.tsx
+msgid "Enter a hostname like status.example.com, without https://, port or path."
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 msgid "Enter a phone number with country code, e.g. +15551234567"
 msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Enter a reminder interval between {REMINDER_MIN_MINUTES} and {REMINDER_MAX_MINUTES} minutes, or leave it blank."
+msgstr ""
+
+#: src/components/status-subscribe.tsx
+msgid "Enter a valid email address."
 msgstr ""
 
 #: src/components/routes/settings/notification-builder.tsx
@@ -1766,6 +1844,8 @@ msgstr ""
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/status-subscribe.tsx
+#: src/components/status-subscribe.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Error"
 msgstr "錯誤"
@@ -1776,6 +1856,14 @@ msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Event names"
+msgstr ""
+
+#: src/components/status-subscribe.tsx
+msgid "Every email has a link to unsubscribe."
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Every group needs a name."
 msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
@@ -1965,6 +2053,10 @@ msgstr "韌體"
 msgid "First update"
 msgstr ""
 
+#: src/components/status-page-settings.tsx
+msgid "Footer text"
+msgstr ""
+
 #: src/components/alerts/alerts-sheet.tsx
 msgid "For <0>{min}</0> {min, plural, one {minute} other {minutes}}"
 msgstr "持續<0>{min}</0> {min, plural, one {分鐘} other {分鐘}}"
@@ -2005,6 +2097,10 @@ msgstr ""
 msgid "General"
 msgstr "一般"
 
+#: src/components/status-subscribe.tsx
+msgid "Get an email when {title} reports an incident or an outage."
+msgstr ""
+
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Global"
 msgstr "全域"
@@ -2032,6 +2128,15 @@ msgstr "網格"
 
 #: src/lib/shoutrrr.ts
 msgid "Group"
+msgstr ""
+
+#: src/components/status-page-settings.tsx
+#: src/components/status-page-settings.tsx
+msgid "Group name"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Groups"
 msgstr ""
 
 #: src/components/network-monitors-table/monitor-http-options.tsx
@@ -2071,6 +2176,14 @@ msgstr "Heartbeat 監控"
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Heartbeat sent successfully"
 msgstr "Heartbeat 發送成功"
+
+#: src/components/status-subscribe.tsx
+msgid "Hide"
+msgstr ""
+
+#: src/components/status-page-settings.tsx
+msgid "Hide \"Powered by InfraScope\""
+msgstr ""
 
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Hide secrets"
@@ -2419,6 +2532,14 @@ msgstr "登入"
 msgid "Login attempt failed"
 msgstr "登入失敗"
 
+#: src/components/status-page-settings.tsx
+msgid "Logo"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Logo, accent color, footer and custom domain."
+msgstr ""
+
 #: src/components/command-palette.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/navbar.tsx
@@ -2585,6 +2706,7 @@ msgstr "型號"
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
 #: src/components/network-monitors-table/monitor-dialog.tsx
+#: src/components/status-page-settings.tsx
 msgid "Monitor"
 msgstr "監控"
 
@@ -2642,11 +2764,15 @@ msgstr "掛載點"
 
 #: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/status-pages.tsx
+#: src/components/status-page-settings.tsx
+#: src/components/status-page-settings.tsx
 msgid "Move down"
 msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/status-pages.tsx
+#: src/components/status-page-settings.tsx
+#: src/components/status-page-settings.tsx
 msgid "Move up"
 msgstr ""
 
@@ -2998,6 +3124,10 @@ msgstr ""
 msgid "Outage"
 msgstr ""
 
+#: src/components/status-page-settings.tsx
+msgid "Overall"
+msgstr ""
+
 #: src/components/alerts/alerts-sheet.tsx
 msgid "Overwrite existing alerts"
 msgstr "覆蓋現有警報"
@@ -3148,6 +3278,10 @@ msgstr "磁碟忙於 I/O 操作的時間百分比"
 msgid "Percentage of time spent in each state"
 msgstr "狀態時間佔比"
 
+#: src/components/status-page-settings.tsx
+msgid "Period"
+msgstr ""
+
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Permanent"
 msgstr "永久"
@@ -3167,6 +3301,10 @@ msgstr ""
 #: src/components/routes/system/raw-capacity-label.tsx
 msgid "Physical device space. True usable capacity is unknown. Pool disk usage alerts are disabled."
 msgstr "實體裝置空間。真實可用容量未知。儲存池磁碟使用率警報已停用。"
+
+#: src/components/status-page-settings.tsx
+msgid "Pick accent color"
+msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Plain text"
@@ -3218,6 +3356,10 @@ msgstr "請參閱<0>文件</0>以取得說明。"
 msgid "Please sign in to your account"
 msgstr "請登入您的帳號"
 
+#: src/components/status-page-settings.tsx
+msgid "PNG, JPEG, WebP or SVG, up to 512 KB. Shown above the title of public pages."
+msgstr ""
+
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "Pool Health"
 msgstr "儲存池健康狀態"
@@ -3249,7 +3391,7 @@ msgstr ""
 msgid "Power On"
 msgstr "電源開啟"
 
-#: src/components/routes/status-page.tsx
+#: src/components/status-page-branding.tsx
 msgid "Powered by <0>InfraScope</0>"
 msgstr ""
 
@@ -3447,7 +3589,15 @@ msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/status-pages.tsx
+#: src/components/status-page-settings.tsx
+#: src/components/status-page-settings.tsx
+#: src/components/status-subscribe.tsx
+#: src/components/status-subscribe.tsx
 msgid "Remove"
+msgstr ""
+
+#: src/components/status-page-settings.tsx
+msgid "Remove group"
 msgstr ""
 
 #: src/components/network-monitors-table/monitor-http-options.tsx
@@ -3485,6 +3635,10 @@ msgstr "被依賴"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Requires"
 msgstr "依賴"
+
+#: src/components/status-page-settings.tsx
+msgid "Reset"
+msgstr ""
 
 #: src/components/system-host-key.tsx
 #: src/components/system-host-key.tsx
@@ -3859,6 +4013,10 @@ msgstr ""
 msgid "Serial Number"
 msgstr "序號"
 
+#: src/components/status-page-settings.tsx
+msgid "Serve the page at the root of this hostname. Point its DNS to your reverse proxy, which must terminate TLS and forward the original Host header to the hub. Only the public page is served there."
+msgstr ""
+
 #: src/lib/shoutrrr.ts
 msgid "Server path"
 msgstr ""
@@ -3923,6 +4081,10 @@ msgstr ""
 msgid "Shoutrrr URL"
 msgstr ""
 
+#: src/components/status-subscribe.tsx
+msgid "Show"
+msgstr ""
+
 #: src/components/routes/settings/status-pages.tsx
 msgid "Show each monitor's URL, hostname or IP."
 msgstr ""
@@ -3932,6 +4094,7 @@ msgid "Show link previews"
 msgstr ""
 
 #: src/components/network-monitors-table/network-monitors-table.tsx
+#: src/components/status-subscribe.tsx
 msgid "Show more"
 msgstr ""
 
@@ -3945,6 +4108,10 @@ msgstr ""
 
 #: src/components/routes/settings/notification-builder.tsx
 msgid "Show secrets"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "Show systems and monitors in named, collapsible sections."
 msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
@@ -4001,6 +4168,11 @@ msgstr ""
 msgid "SMTP settings"
 msgstr "SMTP 設定"
 
+#: src/components/status-subscribe.tsx
+#: src/components/status-subscribe.tsx
+msgid "Something went wrong. Please try again later."
+msgstr ""
+
 #: src/components/network-monitors-table/network-monitors-table.tsx
 #: src/components/systems-table/systems-table.tsx
 msgid "Sort By"
@@ -4052,6 +4224,7 @@ msgstr "狀態"
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/network-monitors-table/network-monitors-columns.tsx
 #: src/components/routes/system/smart-table.tsx
+#: src/components/status-page-settings.tsx
 #: src/components/systemd-table/systemd-table.tsx
 #: src/components/systems-table/systems-table.tsx
 #: src/lib/alerts.ts
@@ -4095,6 +4268,19 @@ msgstr ""
 msgid "Sub State"
 msgstr "子狀態"
 
+#: src/components/status-subscribe.tsx
+msgid "Subscribe"
+msgstr ""
+
+#: src/components/status-page-branding.tsx
+msgid "Subscribe to incident updates with a feed reader"
+msgstr ""
+
+#: src/components/status-subscribe.tsx
+#: src/components/status-subscribe.tsx
+msgid "Subscribe to updates"
+msgstr ""
+
 #: src/components/routes/system/charts/memory-charts.tsx
 msgid "Swap space used by the system"
 msgstr "系統的虛擬記憶體使用量"
@@ -4119,6 +4305,7 @@ msgstr "切換主題"
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/system/smart-table.tsx
+#: src/components/status-page-settings.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 #: src/lib/alerts.ts
 msgid "System"
@@ -4223,6 +4410,10 @@ msgstr "測試 Heartbeat"
 msgid "Test notification sent"
 msgstr "已發送測試通知"
 
+#: src/components/status-page-settings.tsx
+msgid "Text in this color is adjusted where needed to stay readable in light and dark mode."
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-http-options.tsx
 msgid "Text the response body must contain"
 msgstr ""
@@ -4272,6 +4463,10 @@ msgstr ""
 msgid "The hub pins the SSH host key of each agent and refuses to connect if it changes. Reset it only if you reinstalled the agent or otherwise changed its host key. The next key the agent presents will be trusted."
 msgstr ""
 
+#: src/components/status-page-settings.tsx
+msgid "The logo can be at most 512 KB."
+msgstr ""
+
 #. placeholder {0}: system.name
 #: src/components/system-host-key.tsx
 msgid "The next SSH host key presented by {0} will be trusted."
@@ -4300,6 +4495,10 @@ msgstr "然後登入後台並在使用者列表中重設您的帳號密碼。"
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "This action cannot be undone. This will permanently delete all current records for {name} from the database."
 msgstr "此操作無法復原。這將永久刪除資料庫中{name}的所有當前記錄。"
+
+#: src/components/routes/settings/status-pages.tsx
+msgid "This custom domain is already used by another status page."
+msgstr ""
 
 #: src/components/network-monitors-table/network-monitors-table.tsx
 msgid "This monitor is down. Let status page visitors know."
@@ -4423,6 +4622,10 @@ msgstr "Token 與 Fingerprint 用於驗證連往 Hub 的 WebSocket 連線。"
 #: src/components/routes/status-page.tsx
 #: src/components/routes/status-page.tsx
 msgid "Too many requests, retrying…"
+msgstr ""
+
+#: src/components/status-subscribe.tsx
+msgid "Too many requests. Please try again later."
 msgstr ""
 
 #: src/lib/shoutrrr.ts
@@ -4561,12 +4764,22 @@ msgstr ""
 msgid "Unacknowledged only"
 msgstr ""
 
+#: src/components/status-page-settings.tsx
+msgid "Unavailable"
+msgstr ""
+
+#: src/components/routes/settings/status-pages.tsx
 #: src/components/routes/settings/status-pages.tsx
 msgid "Unavailable monitor"
 msgstr ""
 
 #: src/components/routes/settings/status-pages.tsx
+#: src/components/routes/settings/status-pages.tsx
 msgid "Unavailable system"
+msgstr ""
+
+#: src/components/status-subscribe.tsx
+msgid "Unconfirmed"
 msgstr ""
 
 #: src/components/routes/status-page.tsx
@@ -4674,6 +4887,7 @@ msgid "Upload an Uptime Kuma backup (Settings → Backup → Export in Uptime Ku
 msgstr ""
 
 #: src/components/routes/system/info-bar.tsx
+#: src/components/status-page-settings.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Uptime"
 msgstr "運行時間"
@@ -4730,6 +4944,14 @@ msgstr "儲存池 {displayName} 的使用量"
 
 #: src/components/routes/settings/status-pages.tsx
 msgid "Use 2-63 lowercase letters, numbers and hyphens, starting with a letter or number."
+msgstr ""
+
+#: src/components/status-page-settings.tsx
+msgid "Use a hex color like #3b82f6."
+msgstr ""
+
+#: src/components/status-page-settings.tsx
+msgid "Use a PNG, JPEG, WebP or SVG image."
 msgstr ""
 
 #: src/lib/shoutrrr.ts
@@ -4846,6 +5068,10 @@ msgstr "顯示欄位"
 msgid "Visible to"
 msgstr ""
 
+#: src/components/routes/settings/status-pages.tsx
+msgid "Visitors of a public page can subscribe to emails about incidents and outages. Requires SMTP and the application URL to be configured."
+msgstr ""
+
 #: src/components/routes/system/chart-card.tsx
 msgid "Waiting for enough records to display"
 msgstr "等待足夠的記錄以顯示"
@@ -4945,6 +5171,10 @@ msgstr ""
 #~ msgctxt "Button to copy install command"
 #~ msgid "Windows command"
 #~ msgstr "Windows 指令"
+
+#: src/components/status-page-settings.tsx
+msgid "Without groups, systems and monitors are listed in page order."
+msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Workflow webhook URL"

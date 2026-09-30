@@ -174,6 +174,7 @@ func (h *Hub) handleMonitorTransitions(transitions []uptime.Transition) {
 		h.AlertManager.HandleMonitorTransitions(notify)
 	}
 	h.handleIncidentTransitions(transitions)
+	h.statusSubscriptions.monitorTransitions(transitions)
 }
 
 // handleIncidentTransitions opens and resolves the automatic incidents of
@@ -424,6 +425,8 @@ type publicStatusIncident struct {
 	ResolvedAt string `json:"resolvedAt,omitempty"`
 	// Updates are newest first.
 	Updates []publicStatusIncidentUpdate `json:"updates"`
+	// id is the record id, for feeds; never published.
+	id string
 }
 
 type publicStatusIncidentUpdate struct {
@@ -435,8 +438,14 @@ type publicStatusIncidentUpdate struct {
 // statusPageIncidents returns the page owner's incidents that list the page:
 // unresolved ones and those resolved within incidentRecentDays of now.
 func statusPageIncidents(app core.App, page *core.Record, now time.Time) (publicStatusIncidents, error) {
+	return statusPageIncidentsSince(app, page, now, incidentRecentDays)
+}
+
+// statusPageIncidentsSince is statusPageIncidents for incidents resolved
+// within the given number of days of now.
+func statusPageIncidentsSince(app core.App, page *core.Record, now time.Time, days int) (publicStatusIncidents, error) {
 	result := publicStatusIncidents{Active: []publicStatusIncident{}, Recent: []publicStatusIncident{}}
-	since, err := types.ParseDateTime(now.AddDate(0, 0, -incidentRecentDays))
+	since, err := types.ParseDateTime(now.AddDate(0, 0, -days))
 	if err != nil {
 		return result, err
 	}
@@ -504,6 +513,7 @@ func statusPageIncidents(app core.App, page *core.Record, now time.Time) (public
 			Impact:    record.GetString("impact"),
 			StartedAt: formatISO(record.GetDateTime("startedAt").Time()),
 			Updates:   updates[record.Id],
+			id:        record.Id,
 		}
 		if item.Updates == nil {
 			item.Updates = []publicStatusIncidentUpdate{}

@@ -18,10 +18,19 @@ import {
 import { ModeToggle } from "@/components/mode-toggle"
 import { monitorStatusLabel } from "@/components/network-monitors-table/monitor-status-badge"
 import { prependBasePath } from "@/components/router"
+import {
+	ComponentGroup,
+	StatusPageFooter,
+	StatusPageLogo,
+	useAccentStyle,
+	useFeedLinks,
+} from "@/components/status-page-branding"
+import { StatusSubscribeButton } from "@/components/status-subscribe"
 import { Badge } from "@/components/ui/badge"
 import { HoverBars } from "@/components/ui/hover-bars"
 import { pb } from "@/lib/api"
 import { formatIncidentDuration } from "@/lib/incidents"
+import { layoutComponents } from "@/lib/status-page-branding"
 import { formatRelativeTime, formatUptime, monitorStatusBadgeColors } from "@/lib/network-monitor-utils"
 import { cn, formatShortDate } from "@/lib/utils"
 import type {
@@ -171,6 +180,8 @@ function useNow(interval = 15_000) {
 
 export default function StatusPage({ slug }: { slug: string }) {
 	const { data, problem, loading } = useStatusPage(slug)
+	const accentStyle = useAccentStyle(data?.branding?.accentColor)
+	useFeedLinks(slug, data?.title)
 
 	useEffect(() => {
 		if (data?.title) document.title = data.title
@@ -179,7 +190,7 @@ export default function StatusPage({ slug }: { slug: string }) {
 
 	let content: ReactNode
 	if (data) {
-		content = <StatusPageContent data={data} rateLimited={problem === "ratelimited"} />
+		content = <StatusPageContent slug={slug} data={data} rateLimited={problem === "ratelimited"} />
 	} else if (problem === "notfound") {
 		content = (
 			<Message
@@ -205,21 +216,10 @@ export default function StatusPage({ slug }: { slug: string }) {
 	}
 
 	return (
-		<div className="min-h-dvh flex flex-col bg-background text-foreground">
+		<div className="min-h-dvh flex flex-col bg-background text-foreground" style={accentStyle}>
+			{data?.branding?.accentColor && <div className="h-1 bg-(--sp-accent)" />}
 			<main className="mx-auto w-full max-w-4xl flex-1 px-4 pt-6 pb-10 sm:pt-10">{content}</main>
-			<footer className="pb-6 px-4 text-center text-xs text-muted-foreground">
-				<Trans>
-					Powered by{" "}
-					<a
-						href="https://github.com/AxiomOperator/infrascope"
-						target="_blank"
-						rel="noopener"
-						className="font-medium hover:text-foreground"
-					>
-						InfraScope
-					</a>
-				</Trans>
-			</footer>
+			<StatusPageFooter slug={slug} branding={data?.branding} showFeeds={!!data} />
 		</div>
 	)
 }
@@ -267,13 +267,22 @@ const overallConfig: Record<
 	},
 }
 
-function StatusPageContent({ data, rateLimited }: { data: PublicStatusPage; rateLimited: boolean }) {
+function StatusPageContent({
+	slug,
+	data,
+	rateLimited,
+}: {
+	slug: string
+	data: PublicStatusPage
+	rateLimited: boolean
+}) {
 	const now = useNow()
 	const overall = overallConfig[data.overall] ?? overallConfig.unknown
 	const OverallIcon = overall.icon
 	const maintenance = data.maintenance ?? []
 	const monitors = data.monitors ?? []
 	const systems = data.systems ?? []
+	const layout = layoutComponents(data)
 	const activeIncidents = data.incidents?.active ?? []
 	const pastIncidents = data.incidents?.recent ?? []
 
@@ -281,12 +290,16 @@ function StatusPageContent({ data, rateLimited }: { data: PublicStatusPage; rate
 		<div className="grid gap-6">
 			<header className="flex items-start justify-between gap-4">
 				<div className="min-w-0">
+					<StatusPageLogo logo={data.branding?.logo} />
 					<h1 className="text-2xl sm:text-3xl font-semibold tracking-tight break-words">{data.title}</h1>
 					{data.description && (
 						<p className="mt-2 text-muted-foreground whitespace-pre-line break-words">{data.description}</p>
 					)}
 				</div>
-				<ModeToggle />
+				<div className="flex shrink-0 items-center gap-2">
+					{data.subscriptions && <StatusSubscribeButton slug={slug} title={data.title} />}
+					<ModeToggle />
+				</div>
 			</header>
 
 			<section
@@ -324,18 +337,34 @@ function StatusPageContent({ data, rateLimited }: { data: PublicStatusPage; rate
 				</section>
 			)}
 
-			{systems.length > 0 && (
+			{layout.groups.map((group, g) => (
+				<ComponentGroup key={`${group.name}-${g}`} group={group} count={group.items.length}>
+					{group.items.map(({ kind, index, item }) => (
+						<ComponentRow
+							key={`${kind}-${index}`}
+							item={item}
+							showResponseTimes={kind === "monitor" && data.showResponseTimes}
+						/>
+					))}
+				</ComponentGroup>
+			))}
+
+			{layout.systems.length > 0 && (
 				<ComponentSection title={t`Servers`}>
-					{systems.map((system, i) => (
-						<ComponentRow key={`${system.name}-${i}`} item={system} showResponseTimes={false} />
+					{layout.systems.map((i) => (
+						<ComponentRow key={`${systems[i].name}-${i}`} item={systems[i]} showResponseTimes={false} />
 					))}
 				</ComponentSection>
 			)}
 
-			{monitors.length > 0 && (
-				<ComponentSection title={systems.length > 0 ? t`Monitors` : undefined}>
-					{monitors.map((monitor, i) => (
-						<ComponentRow key={`${monitor.name}-${i}`} item={monitor} showResponseTimes={data.showResponseTimes} />
+			{layout.monitors.length > 0 && (
+				<ComponentSection title={layout.systems.length > 0 || layout.groups.length > 0 ? t`Monitors` : undefined}>
+					{layout.monitors.map((i) => (
+						<ComponentRow
+							key={`${monitors[i].name}-${i}`}
+							item={monitors[i]}
+							showResponseTimes={data.showResponseTimes}
+						/>
 					))}
 				</ComponentSection>
 			)}
@@ -348,7 +377,7 @@ function StatusPageContent({ data, rateLimited }: { data: PublicStatusPage; rate
 
 			{data.incidents && (
 				<section className="grid gap-2" aria-labelledby="past-incidents">
-					<h2 id="past-incidents" className="text-sm font-semibold text-muted-foreground px-1">
+					<h2 id="past-incidents" className="text-sm font-semibold text-(--sp-accent-muted) px-1">
 						<Trans>Past incidents</Trans>
 					</h2>
 					{pastIncidents.length === 0 ? (
@@ -426,7 +455,7 @@ function MaintenanceNotice({ item }: { item: PublicStatusPageMaintenance }) {
 function ComponentSection({ title, children }: { title?: string; children: ReactNode }) {
 	return (
 		<section className="grid gap-2" aria-label={title}>
-			{title && <h2 className="text-sm font-semibold text-muted-foreground px-1">{title}</h2>}
+			{title && <h2 className="text-sm font-semibold text-(--sp-accent-muted) px-1">{title}</h2>}
 			<div className="rounded-lg border border-border/60 bg-card shadow-xs divide-y">{children}</div>
 		</section>
 	)
@@ -475,7 +504,7 @@ function ComponentRow({ item, showResponseTimes }: { item: ComponentItem; showRe
 						getBarClassName={getDayColor}
 						renderTooltip={(day) => <DayTooltip day={day} />}
 					/>
-					<div className="flex justify-between text-[0.7rem] text-muted-foreground">
+					<div className="flex justify-between text-[0.7rem] text-(--sp-accent-muted)">
 						<span>
 							<Trans>{days.length} days ago</Trans>
 						</span>

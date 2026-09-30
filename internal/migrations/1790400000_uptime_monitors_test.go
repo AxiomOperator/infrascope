@@ -56,7 +56,8 @@ func TestUptimeMonitorsMigration(t *testing.T) {
 	defer app.Cleanup()
 	assertUptimeSchema(t, app)
 
-	// Incidents reference status pages, so they are rolled back first.
+	// Incidents and subscribers reference status pages, so they are rolled back first.
+	require.NoError(t, findMigration(t, "_status_subscriptions.go").Down(app))
 	require.NoError(t, findMigration(t, "_incidents.go").Down(app))
 	migration := uptimeMigration(t)
 	require.NoError(t, migration.Down(app))

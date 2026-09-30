@@ -109,6 +109,7 @@ func (h *Hub) refreshSystemDependencies(monitorIDs []string) {
 			if err := openAutoIncidents(h, component, time.Now()); err != nil {
 				h.Logger().Error("Failed to update automatic incidents", "system", record.Id, "err", err)
 			}
+			h.statusSubscriptions.componentChanged(component, uptime.StatusDown)
 		}
 	}
 }

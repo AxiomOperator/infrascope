@@ -24,6 +24,7 @@ import {
 	$userSettings,
 	defaultLayoutWidth,
 } from "@/lib/stores.ts"
+import { getCustomDomainSlug } from "@/lib/status-page-branding"
 import * as systemsManager from "@/lib/systemsManager.ts"
 import type { BeszelInfo, UpdateInfo } from "./types"
 
@@ -35,6 +36,9 @@ const Monitors = lazy(() => import("@/components/routes/monitors.tsx"))
 const SystemDetail = lazy(() => import("@/components/routes/system.tsx"))
 const StatusPage = lazy(() => import("@/components/routes/status-page.tsx"))
 const CopyToClipboardDialog = lazy(() => import("@/components/copy-to-clipboard.tsx"))
+/** On the custom domain of a status page, the hub marks index.html with its slug and only that page is shown. */
+const customDomainSlug = getCustomDomainSlug()
+
 const ActiveAlerts = lazy(() => import("@/components/active-alerts.tsx").then((m) => ({ default: m.ActiveAlerts })))
 
 const App = memo(() => {
@@ -104,11 +108,11 @@ const Layout = () => {
 	}, [direction])
 
 	// public status pages render without the app shell or any authenticated requests
-	if (page?.route === "status_page") {
+	if (customDomainSlug || page?.route === "status_page") {
 		return (
 			<DirectionProvider dir={direction}>
 				<Suspense>
-					<StatusPage slug={page.params.slug} />
+					<StatusPage slug={customDomainSlug ?? (page?.route === "status_page" ? page.params.slug : "")} />
 				</Suspense>
 			</DirectionProvider>
 		)

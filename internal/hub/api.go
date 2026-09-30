@@ -64,7 +64,8 @@ func customAuthMiddleware(fn func(*core.RequestEvent) bool) func(*core.RequestEv
 func (h *Hub) registerMiddlewares(se *core.ServeEvent) {
 	// authorizes request with user matching the provided email
 	authorizeRequestWithEmail := func(e *core.RequestEvent, email string) (err error) {
-		if e.Auth != nil || email == "" {
+		// custom domains of status pages are never authenticated
+		if e.Auth != nil || email == "" || statusPageHostSlug(e) != "" {
 			return e.Next()
 		}
 		isAuthRefresh := e.Request.URL.Path == "/api/collections/users/auth-refresh" && e.Request.Method == http.MethodPost
@@ -199,6 +200,8 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	apiNoAuth.GET("/push/{token}", h.handlePush)
 	apiNoAuth.POST("/push/{token}", h.handlePush)
 	apiNoAuth.GET("/status-pages/{slug}", h.handleStatusPage)
+	h.registerStatusSubscriptionRoutes(apiAuth, apiNoAuth)
+	h.registerStatusPageRoutes(se, apiNoAuth)
 	apiAuth.POST("/monitors/{id}/push-token", h.regeneratePushToken).BindFunc(excludeReadOnlyRole)
 	// import monitors from an Uptime Kuma backup
 	apiAuth.POST("/import/uptime-kuma", h.importUptimeKuma).BindFunc(excludeReadOnlyRole)
