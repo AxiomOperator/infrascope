@@ -182,7 +182,7 @@ func (a *Agent) gatherStats(options common.DataRequestOptions) *system.CombinedD
 	data, isCached := a.cache.Get(cacheTimeMs)
 	if isCached {
 		slog.Debug("Cached data", "cacheTimeMs", cacheTimeMs)
-		return data
+		return a.attachDiscovery(data, cacheTimeMs, options.Discovery)
 	}
 
 	*data = system.CombinedData{
@@ -255,7 +255,22 @@ func (a *Agent) gatherStats(options common.DataRequestOptions) *system.CombinedD
 
 	a.cache.Set(data, cacheTimeMs)
 
-	return a.attachSystemDetails(data, cacheTimeMs, options.IncludeDetails)
+	return a.attachDiscovery(a.attachSystemDetails(data, cacheTimeMs, options.IncludeDetails), cacheTimeMs, options.Discovery)
+}
+
+// attachDiscovery adds the monitors declared by container labels to a copy of
+// a default-interval response when the hub asked for them.
+func (a *Agent) attachDiscovery(data *system.CombinedData, cacheTimeMs uint16, requested bool) *system.CombinedData {
+	if !requested || cacheTimeMs != defaultDataCacheTimeMs || a.dockerManager == nil {
+		return data
+	}
+	discovery := a.dockerManager.getDiscovery()
+	if discovery == nil {
+		return data
+	}
+	response := *data
+	response.Discovery = discovery
+	return &response
 }
 
 // Start initializes and starts the agent with optional WebSocket connection

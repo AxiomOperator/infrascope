@@ -2121,10 +2121,7 @@ func TestConvertContainerPortsToString(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctr := &container.ApiInfo{}
 			for _, p := range tt.ports {
-				ctr.Ports = append(ctr.Ports, struct {
-					PublicPort uint16
-					IP         string
-				}{PublicPort: p.PublicPort, IP: p.IP})
+				ctr.Ports = append(ctr.Ports, container.ApiPort{PublicPort: p.PublicPort, IP: p.IP})
 			}
 			result := convertContainerPortsToString(ctr)
 			assert.Equal(t, tt.expected, result)

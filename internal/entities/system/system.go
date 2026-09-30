@@ -223,4 +223,7 @@ type CombinedData struct {
 	// that omitted systemd data (for example, a short-cache dashboard request).
 	SystemdServicesUpdated bool                      `json:"systemdUpdated,omitempty" cbor:"5,keyasint,omitempty"`
 	Monitors               map[string]monitor.Result `cbor:"6,keyasint"`
+	// Discovery holds monitors declared by container labels; only sent when
+	// the hub asks for it (agents 0.21.0 and newer).
+	Discovery *Discovery `json:"discovery,omitempty" cbor:"7,keyasint,omitempty"`
 }

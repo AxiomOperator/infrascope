@@ -68,6 +68,9 @@ type dockerManager struct {
 	excludeContainers    []string                    // Patterns to exclude containers by name
 	usingPodman          bool                        // Whether the Docker Engine API is running on Podman
 
+	discoveryMu sync.Mutex                 // Protects discovery
+	discovery   []system.DiscoveredMonitor // Monitors declared by labels in the latest successful listing; nil when unknown
+
 	registryClient       *http.Client                  // Client for registry requests; nil uses a client with a 10-second timeout
 	imageUpdatesDisabled bool                          // Whether image update checks are disabled by configuration
 	imageUpdatesMutex    sync.RWMutex                  // Protects imageUpdates, its entries, and imageUpdatesRunning
@@ -162,11 +165,13 @@ func (dm *dockerManager) shouldExcludeContainer(name string) bool {
 func (dm *dockerManager) getDockerStats(cacheTimeMs uint16) ([]*container.Stats, error) {
 	resp, err := dm.client.Get("http://localhost/containers/json")
 	if err != nil {
+		dm.setDiscovery(nil)
 		return nil, err
 	}
 
 	dm.apiContainerList = dm.apiContainerList[:0]
 	if err := dm.decode(resp, &dm.apiContainerList); err != nil {
+		dm.setDiscovery(nil)
 		return nil, err
 	}
 
@@ -192,6 +197,7 @@ func (dm *dockerManager) getDockerStats(cacheTimeMs uint16) ([]*container.Stats,
 	dm.refreshImageUpdates(dm.apiContainerList, time.Now())
 
 	var failedContainers []*container.ApiInfo
+	discovered := []system.DiscoveredMonitor{}
 
 	for _, ctr := range dm.apiContainerList {
 		if ctr == nil || ctr.Id == "" {
@@ -199,12 +205,19 @@ func (dm *dockerManager) getDockerStats(cacheTimeMs uint16) ([]*container.Stats,
 			continue
 		}
 		ctr.IdShort = shortContainerID(ctr.Id)
+		// Decoding reuses the list's structs and merges into existing maps,
+		// so labels are taken and cleared before anything else.
+		labels := ctr.Labels
+		ctr.Labels = nil
 
 		// Skip this container if it matches the exclusion pattern
-		if name := containerName(ctr); dm.shouldExcludeContainer(name) {
+		name := containerName(ctr)
+		if dm.shouldExcludeContainer(name) {
 			slog.Debug("Excluding container", "name", name)
 			continue
 		}
+		// Ports are cleared by updateContainerStats, so read them first.
+		discovered = append(discovered, discoverContainerMonitors(name, labels, ctr.Ports)...)
 
 		dm.validIds[ctr.IdShort] = struct{}{}
 		// check if container is less than 1 minute old (possible restart)
@@ -257,8 +270,31 @@ func (dm *dockerManager) getDockerStats(cacheTimeMs uint16) ([]*container.Stats,
 
 	// prepare network trackers for next interval for this cache time
 	dm.cycleNetworkDeltasForCacheTime(cacheTimeMs)
+	dm.setDiscovery(discovered)
 
 	return stats, nil
+}
+
+// setDiscovery stores the monitors declared by container labels; nil marks
+// them unknown (Docker could not be listed).
+func (dm *dockerManager) setDiscovery(monitors []system.DiscoveredMonitor) {
+	dm.discoveryMu.Lock()
+	dm.discovery = monitors
+	dm.discoveryMu.Unlock()
+}
+
+// getDiscovery returns the monitors declared by container labels in the
+// latest listing, or nil when they are unknown.
+func (dm *dockerManager) getDiscovery() *system.Discovery {
+	if dm == nil {
+		return nil
+	}
+	dm.discoveryMu.Lock()
+	defer dm.discoveryMu.Unlock()
+	if dm.discovery == nil {
+		return nil
+	}
+	return &system.Discovery{Monitors: dm.discovery}
 }
 
 // initializeCpuTracking initializes CPU tracking maps for a specific cache time interval

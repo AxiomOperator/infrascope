@@ -72,6 +72,9 @@ type System struct {
 
 	// A fresh connection needs a full monitor configuration sync.
 	monitorsNeedSync atomic.Bool
+	// autoDiscover mirrors the system record's autoDiscover field as of the
+	// latest update, so the next data request asks for label discovery.
+	autoDiscover atomic.Bool
 	// Serialize persistence from scheduled updates and resumes through commit.
 	recordsMu sync.Mutex
 	// Protected by recordsMu; realtime reads don't consume probes.
@@ -227,6 +230,10 @@ func (sys *System) update() error {
 	// fetch system details if not already fetched
 	if !sys.detailsFetched.Load() {
 		options.IncludeDetails = true
+	}
+	// ask for monitors declared by container labels when discovery is on
+	if sys.autoDiscover.Load() && sys.getAgentVersion().GTE(beszel.MinVersionDockerDiscovery) {
+		options.Discovery = true
 	}
 
 	data, err := sys.fetchDataFromAgent(options)
@@ -436,7 +443,22 @@ func (sys *System) createRecords(data *system.CombinedData) (*core.Record, error
 			hub.Logger().Error("Error handling network monitor alerts", "err", alertErr)
 		}
 	}
+	if err == nil {
+		autoDiscover := systemRecord.GetBool("autoDiscover")
+		sys.autoDiscover.Store(autoDiscover)
+		if reconciler, ok := hub.(discoveryReconciler); ok && autoDiscover && data.Discovery != nil {
+			reconciler.ReconcileDockerDiscovery(systemRecord, data.Discovery)
+		}
+	}
 	return systemRecord, err
+}
+
+// discoveryReconciler is implemented by hubs that manage monitors declared
+// by container labels.
+type discoveryReconciler interface {
+	// ReconcileDockerDiscovery creates, updates and disables the monitors a
+	// system's container labels declare. It must not block for long.
+	ReconcileDockerDiscovery(systemRecord *core.Record, discovery *system.Discovery)
 }
 
 // statsRecordData is the stats JSON of a 1m system_stats record. It adds the

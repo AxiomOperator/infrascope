@@ -27,3 +27,7 @@ var MinVersionNetworkMonitors = semver.MustParse("0.20.0")
 // timeouts, HTTP options, retry intervals and per-check events. Older agents
 // receive configs without these fields (see monitor.Config.Legacy).
 var MinVersionMonitorChecks = semver.MustParse("0.21.0")
+
+// MinVersionDockerDiscovery is the minimum agent version that reports
+// monitors declared by container labels (system.CombinedData.Discovery).
+var MinVersionDockerDiscovery = semver.MustParse("0.21.0")

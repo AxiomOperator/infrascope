@@ -14,24 +14,28 @@ type ApiInfo struct {
 		Status string
 		// FailingStreak int
 	}
-	Ports []struct {
-		// PrivatePort uint16
-		PublicPort uint16
-		IP         string
-		// Type        string
-	}
+	Ports []ApiPort
+	// Labels is only read for monitor discovery and cleared afterwards.
+	Labels map[string]string
 	// ImageID string
 	// Command string
 	// Created int64
 	// SizeRw     int64 `json:",omitempty"`
 	// SizeRootFs int64 `json:",omitempty"`
-	// Labels     map[string]string
 	// HostConfig struct {
 	// 	NetworkMode string            `json:",omitempty"`
 	// 	Annotations map[string]string `json:",omitempty"`
 	// }
 	// NetworkSettings *SummaryNetworkSettings
 	// Mounts          []MountPoint
+}
+
+// ApiPort is a port mapping from /containers/json.
+type ApiPort struct {
+	PrivatePort uint16
+	PublicPort  uint16
+	IP          string
+	Type        string
 }
 
 // Docker container resources from /containers/{id}/stats
