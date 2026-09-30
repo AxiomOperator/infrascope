@@ -33,6 +33,23 @@ export interface SystemRecord extends RecordModel {
 	updated: string
 	/** Why the system last went down (e.g. an SSH host key mismatch); empty while up. */
 	downReason?: string
+	/** Monitors the system depends on; its status alerts are suppressed while any of them is down. */
+	dependsOn?: string[]
+	/** Names of the down dependencies, comma separated (server-managed); empty when not suppressed. */
+	suppressedBy?: string
+	/** Create monitors from Docker container labels. */
+	autoDiscover?: boolean
+	/** Also create http monitors for Traefik router hosts. */
+	autoDiscoverTraefik?: boolean
+	/** Label sets that could not be turned into monitors (server-managed). */
+	discoveryErrors?: DiscoveryError[] | null
+}
+
+export interface DiscoveryError {
+	container: string
+	/** Monitor id within the container ("default" without an id). */
+	key: string
+	error: string
 }
 
 export interface WiFi {
@@ -751,6 +768,16 @@ export interface NetworkMonitorRecord {
 	/** Push URL token; only returned to users who can edit the monitor. */
 	pushToken?: string
 	enabled: boolean
+	/** "docker" for monitors created from container labels; empty otherwise (server-managed). */
+	managedBy?: string
+	/** "docker:<container>:<id>" for monitors created from container labels (server-managed). */
+	managedKey?: string
+	/** System whose container labels declare the monitor (server-managed). */
+	managedSystem?: string
+	/** Fields set by labels, read-only for users (server-managed). */
+	managedFields?: string[] | null
+	/** When the declaring container disappeared (server-managed). */
+	managedMissingSince?: string
 	/** Latest TLS certificate details, reported for HTTPS targets. */
 	certInfo?: MonitorCertInfo | null
 	status: MonitorStatus | ""
@@ -762,6 +789,10 @@ export interface NetworkMonitorRecord {
 	/** Latest checks, oldest first: [unix seconds, state (0 down, 1 up, 2 pending), response ms (-1 on failure)]. */
 	recent?: MonitorRecentCheck[] | null
 	uptime?: MonitorUptime | null
+	/** Monitors this monitor depends on; its alerts are suppressed while any of them is down. */
+	dependsOn?: string[]
+	/** Names of the down dependencies, comma separated (server-managed); empty when not suppressed. */
+	suppressedBy?: string
 	created: string
 	updated: string
 }

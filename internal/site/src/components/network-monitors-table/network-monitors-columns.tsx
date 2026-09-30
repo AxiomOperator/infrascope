@@ -57,6 +57,7 @@ import {
 import { pb } from "@/lib/api"
 import { getLocationName, getMonitorLocations, isMultiLocation } from "@/lib/monitor-locations"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { DockerManagedBadge } from "./docker-managed-badge"
 import { MonitorStatusBadge } from "./monitor-status-badge"
 import { MonitorStatusBar } from "./status-bar"
 
@@ -217,6 +218,7 @@ export function getMonitorColumns(
 							<span className="absolute inset-0 truncate">{getValue() as string}</span>
 							{target && <span className="block truncate text-xs text-muted-foreground leading-tight">{target}</span>}
 						</div>
+						<DockerManagedBadge monitor={monitor} />
 					</div>
 				)
 			},

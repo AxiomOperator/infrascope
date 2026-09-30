@@ -36,7 +36,8 @@ import (
 // Like down alerts, threshold alerts are held during a monitor's maintenance
 // window (SetMaintenanceCheck): nothing is opened, resolved or notified. The
 // first evaluation after the window notifies a condition that still holds
-// once; one that cleared during the window is not notified.
+// once; one that cleared during the window is not notified. The same applies
+// while a monitor the monitor depends on is down (SetDependencyChecks).
 const (
 	alertNameMonitorLoss    = "MonitorLoss"
 	alertNameMonitorLatency = "MonitorLatency"
@@ -108,8 +109,12 @@ func (am *AlertManager) HandleMonitorResults(systemID string, results map[string
 		if !ok || !entry.transitionPending(result, now) {
 			continue
 		}
-		// State is held during maintenance and reevaluated after it.
+		// State is held during maintenance, and while a parent monitor is
+		// down, and reevaluated after it.
 		if am.inMaintenance != nil && am.inMaintenance(id, now) {
+			continue
+		}
+		if am.monitorSuppressed != nil && am.monitorSuppressed(id) {
 			continue
 		}
 		evaluated = true

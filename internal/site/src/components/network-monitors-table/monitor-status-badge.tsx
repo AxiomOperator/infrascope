@@ -3,6 +3,8 @@ import { Trans } from "@lingui/react/macro"
 import { useStore } from "@nanostores/react"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { UnreachableBadge } from "@/components/unreachable-badge"
+import { isUnreachable } from "@/lib/monitor-dependencies"
 import { getLocationName, getLocationStatuses, type MonitorLocationState } from "@/lib/monitor-locations"
 import {
 	formatRelativeTime,
@@ -35,7 +37,7 @@ type BadgeMonitor = Pick<
 	NetworkMonitorRecord,
 	"status" | "enabled" | "statusChanged" | "lastError" | "lastStatusCode"
 > &
-	Partial<Pick<NetworkMonitorRecord, "system" | "locations" | "locationStatus">>
+	Partial<Pick<NetworkMonitorRecord, "system" | "locations" | "locationStatus" | "suppressedBy">>
 
 /** Status of each location of a multi-location monitor, for tooltips. */
 export function LocationStatusList({ states, className }: { states: MonitorLocationState[]; className?: string }) {
@@ -56,9 +58,22 @@ export function LocationStatusList({ states, className }: { states: MonitorLocat
 
 /**
  * Status badge of a monitor with a tooltip showing the last error, the status of each location
- * of multi-location monitors and when the status changed.
+ * of multi-location monitors and when the status changed. Monitors behind a down parent also
+ * get an "Unreachable" badge.
  */
-export function MonitorStatusBadge({
+export function MonitorStatusBadge(props: { monitor: BadgeMonitor; className?: string; tooltip?: boolean }) {
+	if (!isUnreachable(props.monitor)) {
+		return <StatusBadge {...props} />
+	}
+	return (
+		<span className="inline-flex flex-wrap items-center gap-1.5">
+			<StatusBadge {...props} />
+			<UnreachableBadge record={props.monitor} />
+		</span>
+	)
+}
+
+function StatusBadge({
 	monitor,
 	className,
 	tooltip = true,

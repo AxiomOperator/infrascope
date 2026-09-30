@@ -53,10 +53,14 @@ type Hub struct {
 	maintenance *maintenanceWindows
 	// monitorNotices delivers the engine's status changes to the alert manager.
 	monitorNotices *transitionQueue
+	// dependencies updates systems whose parent monitors changed state.
+	dependencies *idQueue
 	// statusPages caches and rate limits public status page requests.
 	statusPages *statusPages
 	// systemEvents records the status history of systems.
 	systemEvents *systemevents.Recorder
+	// discovery rate limits Docker label discovery reconciles.
+	discovery *dockerDiscovery
 }
 
 // NewHub creates a new Hub instance with default configuration
@@ -72,11 +76,15 @@ func NewHub(app core.App) *Hub {
 	hub.uptime = uptime.New(app,
 		uptime.WithNotifier(hub.monitorNotices.push),
 		uptime.WithMaintenanceCheck(hub.maintenance.Active),
+		uptime.WithDependencyListener(func(ids []string) { hub.dependencies.push(ids) }),
 	)
+	hub.dependencies = newIDQueue(hub.refreshSystemDependencies)
+	hub.AlertManager.SetDependencyChecks(hub.uptime.Suppressed, hub.systemSuppressed)
 	hub.hubMonitors = newHubMonitorRunner(app, hub.uptime, func(results map[string]monitor.Result) {
 		hub.HandleMonitorResults("", results)
 	})
 	hub.statusPages = newStatusPages()
+	hub.discovery = newDockerDiscovery()
 	hub.systemEvents = systemevents.New()
 	hub.systemEvents.Bind(app)
 	hub.hb = heartbeat.New(app, utils.GetEnv)
@@ -165,6 +173,8 @@ func (h *Hub) StartHub() error {
 	h.App.OnRecordCreate("user_settings").BindFunc(h.um.InitializeUserSettings)
 
 	bindNetworkMonitorsEvents(h)
+	bindDependencyEvents(h)
+	bindDockerDiscoveryEvents(h)
 	bindStatusPageHooks(h)
 
 	pb, ok := h.App.(*pocketbase.PocketBase)

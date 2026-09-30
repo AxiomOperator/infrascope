@@ -42,6 +42,8 @@ const (
 	// agentFetchInterval is how often the hub collects agent results, which
 	// delays delivery of agent checks by up to this much.
 	agentFetchInterval = time.Minute
+	// maxSuppressedByLength matches the size of the suppressedBy fields.
+	maxSuppressedByLength = 1000
 	// maxErrorLength matches the size of the lastError and monitor_events.error fields.
 	maxErrorLength = 300
 	// legacyFailureError is the error of checks synthesised for agents that do
@@ -202,13 +204,17 @@ type locPersisted struct {
 const stateVersion = 1
 
 func truncateError(err string) string {
-	if len(err) <= maxErrorLength {
-		return err
+	return truncateText(err, maxErrorLength)
+}
+
+// truncateText shortens text to at most limit bytes without splitting a rune.
+func truncateText(text string, limit int) string {
+	if len(text) <= limit {
+		return text
 	}
-	// Avoid splitting a multi-byte rune.
-	cut := maxErrorLength
-	for cut > 0 && err[cut]&0xC0 == 0x80 {
+	cut := limit
+	for cut > 0 && text[cut]&0xC0 == 0x80 {
 		cut--
 	}
-	return err[:cut]
+	return text[:cut]
 }

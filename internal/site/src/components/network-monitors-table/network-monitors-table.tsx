@@ -48,6 +48,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { isReadOnlyUser, queueUserSettings } from "@/lib/api"
 import { pb } from "@/lib/api"
 import { SystemStatus } from "@/lib/enums"
+import { disableLabel, isDockerManaged } from "@/lib/docker-discovery"
 import { $allSystemsById, $direction, $textMeasureVersion, $userSettings, getUserChartTime } from "@/lib/stores"
 import { getMonitorProtocolLabel, usesMonitorPort } from "@/lib/monitor-protocols"
 import { cn, formatShortDate, isVisuallyLonger, matchesFilterGroups, parseFilterGroups, parseSemVer } from "@/lib/utils"
@@ -102,6 +103,7 @@ import { monitorStatusBgColors } from "@/lib/network-monitor-utils"
 import { formatMicroseconds } from "@/lib/utils"
 import { getDailyUptime, useMonitorEvents, useMonitorIncidents } from "@/lib/use-monitor-events"
 import { MonitorStatusBadge, monitorStatusLabel } from "./monitor-status-badge"
+import { MonitorDependenciesCard } from "./monitor-dependencies-card"
 import { MonitorPushUrl } from "./monitor-push-url"
 import { DailyUptimeBar } from "./daily-uptime-bar"
 import { useStore } from "@nanostores/react"
@@ -142,6 +144,8 @@ export default function NetworkMonitorsTableNew({
 	const [globalFilter, setGlobalFilter] = useState("")
 	const [deleteOpen, setDeleteOpen] = useState(false)
 	const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([])
+	// Monitors created from Docker labels among those pending deletion; they come back while the labels exist.
+	const [pendingManagedCount, setPendingManagedCount] = useState(0)
 	const [editingMonitor, setEditingMonitor] = useState<NetworkMonitorRecord>()
 
 	const { toast } = useToast()
@@ -248,7 +252,9 @@ export default function NetworkMonitorsTableNew({
 			}
 
 			const ids = monitorsToDelete.map((monitor) => monitor.id)
-			if (ids.length === 1) {
+			const managedCount = monitorsToDelete.filter(isDockerManaged).length
+			setPendingManagedCount(managedCount)
+			if (ids.length === 1 && !managedCount) {
 				try {
 					await pb.collection("network_monitors").delete(ids[0])
 				} catch (err: unknown) {
@@ -506,6 +512,15 @@ export default function NetworkMonitorsTableNew({
 									</AlertDialogTitle>
 									<AlertDialogDescription>
 										<Trans>This will permanently delete all selected records from the database.</Trans>
+										{pendingManagedCount > 0 && (
+											<span className="block mt-2">
+												<Trans>
+													Monitors created from Docker labels are recreated while their labels exist. To remove one for
+													good, add the label <code className="bg-muted px-1 rounded-sm">{disableLabel}</code> to the
+													container.
+												</Trans>
+											</span>
+										)}
 									</AlertDialogDescription>
 								</AlertDialogHeader>
 								<AlertDialogFooter>
@@ -873,6 +888,7 @@ function NetworkMonitorSheetContent({
 				<div className="grid gap-4">
 					<MonitorOverview monitor={monitor} />
 					{multi && <MonitorLocations monitor={monitor} />}
+					<MonitorDependenciesCard monitor={monitor} enabled={open} />
 					{monitor.protocol === "push" && monitor.pushToken && (
 						<Card className="p-4">
 							<MonitorPushUrl monitorId={monitor.id} pushToken={monitor.pushToken} />

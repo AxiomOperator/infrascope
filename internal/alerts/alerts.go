@@ -29,6 +29,12 @@ type AlertManager struct {
 	monitorThresholds *monitorThresholdCache
 	// inMaintenance reports whether a monitor is in a maintenance window; nil for never.
 	inMaintenance func(monitorID string, now time.Time) bool
+	// monitorSuppressed reports whether a monitor's alerts are suppressed
+	// because a monitor it depends on is down; nil for never.
+	monitorSuppressed func(monitorID string) bool
+	// systemSuppressed reports whether a system's status alerts are
+	// suppressed because a monitor it depends on is down; nil for never.
+	systemSuppressed func(systemID string) bool
 }
 
 type AlertMessageData struct {

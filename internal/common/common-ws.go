@@ -96,6 +96,9 @@ type FingerprintResponse struct {
 type DataRequestOptions struct {
 	CacheTimeMs    uint16 `cbor:"0,keyasint"`
 	IncludeDetails bool   `cbor:"1,keyasint"`
+	// Discovery asks for monitors declared by container labels
+	// (system.CombinedData.Discovery) with default-interval data.
+	Discovery bool `cbor:"2,keyasint,omitempty"`
 }
 
 type ZfsDataRequest struct {

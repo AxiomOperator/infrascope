@@ -121,7 +121,18 @@ func (am *AlertManager) CancelPendingStatusAlerts(systemID string) {
 	})
 }
 
+// SetDependencyChecks sets the functions that report whether the alerts of
+// a monitor or the status alerts of a system are suppressed because a monitor
+// they depend on is down. Call it before alerts are handled.
+func (am *AlertManager) SetDependencyChecks(monitor func(monitorID string) bool, system func(systemID string) bool) {
+	am.monitorSuppressed = monitor
+	am.systemSuppressed = system
+}
+
 // processPendingAlert sends a "down" alert if the pending alert has expired and the system is still down.
+// While a monitor the system depends on is down, the alert is dropped
+// untriggered; HandleSystemDependencyRecovered sends it once the parents
+// recover if the system is still down.
 func (am *AlertManager) processPendingAlert(alertID string) {
 	value, loaded := am.pendingAlerts.LoadAndDelete(alertID)
 	if !loaded {
@@ -131,6 +142,9 @@ func (am *AlertManager) processPendingAlert(alertID string) {
 	info := value.(*alertInfo)
 	refreshedAlertData, ok := am.alertsCache.Refresh(info.alertData)
 	if !ok || refreshedAlertData.Triggered {
+		return
+	}
+	if am.systemSuppressed != nil && am.systemSuppressed(refreshedAlertData.SystemID) {
 		return
 	}
 	if err := am.sendStatusAlert("down", info.systemName, refreshedAlertData); err != nil {
@@ -167,6 +181,33 @@ func (am *AlertManager) sendStatusAlert(alertStatus string, systemName string, a
 		Link:     am.hub.MakeLink("system", systemID),
 		LinkText: "View " + systemName,
 	})
+}
+
+// HandleSystemDependencyRecovered sends the down alerts suppressed while a
+// monitor the system depends on was down: when the system is still down, each
+// untriggered status alert without a pending delay is sent once. A system
+// that recovered meanwhile is not notified. Call it when the system's
+// dependencies are no longer down.
+func (am *AlertManager) HandleSystemDependencyRecovered(systemRecord *core.Record) {
+	if systemRecord.GetString("status") != "down" {
+		return
+	}
+	if am.systemSuppressed != nil && am.systemSuppressed(systemRecord.Id) {
+		return
+	}
+	systemName := systemRecord.GetString("name")
+	for _, alertData := range am.alertsCache.GetAlertsByName(systemRecord.Id, "Status") {
+		if alertData.Triggered {
+			continue
+		}
+		// A pending delay sends the alert when it expires.
+		if _, pending := am.pendingAlerts.Load(alertData.Id); pending {
+			continue
+		}
+		if err := am.sendStatusAlert("down", systemName, alertData); err != nil {
+			am.hub.Logger().Error("Failed to send alert", "err", err)
+		}
+	}
 }
 
 // resolveStatusAlerts resolves any triggered status alerts that weren't resolved

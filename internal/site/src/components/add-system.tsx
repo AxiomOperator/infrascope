@@ -29,9 +29,11 @@ import {
 	InstallDropdown,
 } from "./install-dropdowns"
 import { $router, basePath, Link, navigate } from "./router"
+import { DockerDiscoverySettings, useDockerDiscovery } from "./docker-discovery-settings"
 import { DropdownMenu, DropdownMenuTrigger } from "./ui/dropdown-menu"
 import { DockerIcon, FreeBsdIcon, TuxIcon } from "./ui/icons"
 import { InputCopy } from "./ui/input-copy"
+import { MonitorDependencySelect } from "./network-monitors-table/monitor-dependency-select"
 
 // To avoid a refactor of the dialog, we will just keep this function as a "skeleton" for the actual dialog
 export function AddSystemDialog({ open, setOpen }: { open: boolean; setOpen: (open: boolean) => void }) {
@@ -70,6 +72,8 @@ export const SystemDialog = ({ setOpen, system }: { setOpen: (open: boolean) => 
 	const isUnixSocket = hostValue.startsWith("/")
 	const [tab, setTab] = useBrowserStorage("as-tab", "docker")
 	const [token, setToken] = useState(system?.token ?? "")
+	const discovery = useDockerDiscovery(system?.id)
+	const [dependsOn, setDependsOn] = useState<string[]>(system?.dependsOn ?? [])
 
 	useEffect(() => {
 		;(async () => {
@@ -95,6 +99,8 @@ export const SystemDialog = ({ setOpen, system }: { setOpen: (open: boolean) => 
 		const formData = new FormData(e.target as HTMLFormElement)
 		const data = Object.fromEntries(formData) as Record<string, any>
 		data.users = pb.authStore.record!.id
+		Object.assign(data, discovery.data())
+		data.dependsOn = dependsOn
 		try {
 			setOpen(false)
 			if (system) {
@@ -205,7 +211,12 @@ export const SystemDialog = ({ setOpen, system }: { setOpen: (open: boolean) => 
 							<Trans>Token</Trans>
 						</Label>
 						<InputCopy value={token} id="tkn" name="tkn" />
+						<Label htmlFor="depends-on" className="xs:text-end whitespace-pre">
+							<Trans>Depends on</Trans>
+						</Label>
+						<MonitorDependencySelect id="depends-on" value={dependsOn} onChange={setDependsOn} />
 					</div>
+					<DockerDiscoverySettings {...discovery} />
 					<DialogFooter className="flex justify-end gap-x-2 gap-y-3 flex-col mt-5">
 						{/* Docker */}
 						<TabsContent value="docker" className="contents">

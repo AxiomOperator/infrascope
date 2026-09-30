@@ -35,12 +35,15 @@ export function MonitorHttpOptions({
 	onChange,
 	secretsHidden,
 	disabled,
+	locked,
 }: {
 	value: HttpFormState
 	onChange: (value: HttpFormState) => void
 	/** Secret options exist but aren't visible to this user; they are kept unchanged. */
 	secretsHidden?: boolean
 	disabled?: boolean
+	/** Reports whether an option is set by Docker labels and read-only. */
+	locked?: (option: "keyword" | "acceptedCodes") => boolean
 }) {
 	const [open, setOpen] = useState(() => hasCustomHttpOptions(value))
 	const [showSecrets, setShowSecrets] = useState(false)
@@ -116,6 +119,7 @@ export function MonitorHttpOptions({
 							id={`${id}-codes`}
 							value={value.acceptedCodes}
 							onChange={(e) => set("acceptedCodes", e.target.value)}
+							readOnly={locked?.("acceptedCodes")}
 							placeholder="200-399"
 							disabled={disabled}
 						/>
@@ -138,6 +142,7 @@ export function MonitorHttpOptions({
 							id={`${id}-keyword`}
 							value={value.keyword}
 							onChange={(e) => set("keyword", e.target.value)}
+							readOnly={locked?.("keyword")}
 							placeholder={t`Text the response body must contain`}
 							disabled={disabled}
 						/>

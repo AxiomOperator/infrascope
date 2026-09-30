@@ -43,6 +43,7 @@ import { connectedWiFi, strongestWiFi, strongestWiFiSignal, wifiSignalState } fr
 import type { SystemRecord, WiFi } from "@/types"
 import { SystemDialog } from "../add-system"
 import { canResetHostKey, getDownReason, isHostKeyMismatch, ResetHostKeyDialog } from "../system-host-key"
+import { UnreachableBadge } from "../unreachable-badge"
 import AlertButton from "../alerts/alert-button"
 import { $router, Link } from "../router"
 import {
@@ -175,6 +176,7 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 								<span className="absolute inset-0 truncate">{name}</span>
 							</Link>
 							<HostKeyMismatchButton system={info.row.original} />
+							<UnreachableBadge record={info.row.original} className="py-0" />
 						</span>
 						<Link href={linkUrl} className="inset-0 absolute size-full" aria-label={name}></Link>
 					</>

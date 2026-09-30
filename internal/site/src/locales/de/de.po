@@ -74,8 +74,15 @@ msgstr ""
 msgid "{0} of {1} row(s) selected."
 msgstr "{0} von {1} Zeile(n) ausgewählt."
 
+#. placeholder {0}: value.length
+#: src/components/network-monitors-table/monitor-dependency-select.tsx
+msgid "{0} of {MAX_DEPENDENCIES} selected"
+msgstr ""
+
 #. placeholder {0}: selected.length
 #. placeholder {0}: selectedSystemIds.size
+#. placeholder {0}: value.length
+#: src/components/network-monitors-table/monitor-dependency-select.tsx
 #: src/components/network-monitors-table/system-multi-select.tsx
 #: src/components/network-monitors-table/system-multi-select.tsx
 #: src/components/routes/settings/maintenance.tsx
@@ -475,6 +482,10 @@ msgstr "Alle Systeme"
 
 #: src/components/routes/status-page.tsx
 msgid "All systems operational"
+msgstr ""
+
+#: src/components/docker-discovery-settings.tsx
+msgid "Also monitor Traefik router hosts"
 msgstr ""
 
 #: src/lib/shoutrrr.ts
@@ -1047,6 +1058,10 @@ msgstr ""
 msgid "Containers"
 msgstr "Container"
 
+#: src/components/docker-discovery-settings.tsx
+msgid "Containers with <0>infrascope.monitor.*</0> labels get monitors. Requires agent 0.21.0 or newer."
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-check-options.tsx
 msgid "Contains"
 msgstr ""
@@ -1198,6 +1213,10 @@ msgstr ""
 msgid "Create account"
 msgstr "Konto erstellen"
 
+#: src/components/docker-discovery-settings.tsx
+msgid "Create monitors from Docker labels"
+msgstr ""
+
 #. Context: date created
 #: src/components/alerts-history-columns.tsx
 msgid "Created"
@@ -1324,6 +1343,12 @@ msgstr "Fingerabdruck löschen"
 msgid "Deliver as critical alert"
 msgstr ""
 
+#: src/components/add-system.tsx
+#: src/components/network-monitors-table/monitor-dependencies-card.tsx
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Depends on"
+msgstr ""
+
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/status-pages.tsx
 #: src/components/systemd-table/systemd-table.tsx
@@ -1366,6 +1391,10 @@ msgstr ""
 #: src/lib/i18n.ts
 msgid "Discharging"
 msgstr "Wird entladen"
+
+#: src/components/docker-discovery-settings.tsx
+msgid "Discovery errors"
+msgstr ""
 
 #: src/components/routes/system.tsx
 #: src/components/systems-table/systems-table-columns.tsx
@@ -1455,6 +1484,10 @@ msgstr "Herunterladen"
 #: src/components/alerts-history-columns.tsx
 msgid "Duration"
 msgstr "Dauer"
+
+#: src/components/docker-discovery-settings.tsx
+msgid "Each Host rule of a Traefik router becomes an HTTP monitor."
+msgstr ""
 
 #: src/lib/shoutrrr.ts
 msgid "Each line must look like key=value"
@@ -2144,6 +2177,10 @@ msgstr ""
 msgid "Keyword"
 msgstr ""
 
+#: src/components/docker-discovery-settings.tsx
+msgid "Label reference"
+msgstr ""
+
 #: src/components/routes/settings/general.tsx
 msgid "Language"
 msgstr "Sprache"
@@ -2300,6 +2337,14 @@ msgstr ""
 msgid "Manage display and notification preferences."
 msgstr "Anzeige- und Benachrichtigungseinstellungen verwalten."
 
+#: src/components/network-monitors-table/docker-managed-badge.tsx
+msgid "Managed by Docker labels on {container}"
+msgstr ""
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Managed by Docker labels on <0>{dockerContainer}</0>. Fields set by labels are read-only."
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Manual setup instructions"
@@ -2427,6 +2472,10 @@ msgstr ""
 msgid "Monitors created"
 msgstr "Monitore erstellt"
 
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Monitors created from Docker labels are recreated while their labels exist. To remove one for good, add the label <0>{disableLabel}</0> to the container."
+msgstr ""
+
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "More actions"
 msgstr ""
@@ -2532,6 +2581,10 @@ msgstr "Nein"
 msgid "No data"
 msgstr ""
 
+#: src/components/network-monitors-table/monitor-dependency-select.tsx
+msgid "No dependencies"
+msgstr ""
+
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "No detail data for this pool."
 msgstr "Für diesen Pool sind keine Detaildaten verfügbar."
@@ -2548,6 +2601,7 @@ msgstr ""
 msgid "No matching services."
 msgstr ""
 
+#: src/components/network-monitors-table/monitor-dependency-select.tsx
 #: src/components/routes/settings/maintenance.tsx
 msgid "No monitors found."
 msgstr ""
@@ -2626,9 +2680,17 @@ msgstr ""
 msgid "Notifications"
 msgstr "Benachrichtigungen"
 
+#: src/components/unreachable-badge.tsx
+msgid "Notifications are suppressed until the parent recovers."
+msgstr ""
+
 #: src/lib/alerts.ts
 msgid "Notifications may include recent container log excerpts."
 msgstr "Benachrichtigungen können Auszüge aus aktuellen Container-Logs enthalten."
+
+#: src/components/network-monitors-table/monitor-dependencies-card.tsx
+msgid "Notifications suppressed while a parent is down"
+msgstr ""
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Notify when the certificate expires within this many days. 0 disables it."
@@ -3388,6 +3450,8 @@ msgstr "Suche"
 msgid "Search for systems or settings..."
 msgstr "Nach Systemen oder Einstellungen suchen..."
 
+#: src/components/network-monitors-table/monitor-dependency-select.tsx
+#: src/components/network-monitors-table/monitor-dependency-select.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 msgid "Search monitors"
@@ -4260,6 +4324,15 @@ msgstr "Unbekannt"
 msgid "Unlimited"
 msgstr "Unbegrenzt"
 
+#: src/components/unreachable-badge.tsx
+msgid "Unreachable"
+msgstr ""
+
+#: src/components/unreachable-badge.tsx
+#: src/components/unreachable-badge.tsx
+msgid "Unreachable — parent {parents} down"
+msgstr ""
+
 #. Context: System is up
 #: src/components/network-monitors-table/monitor-status-badge.tsx
 #: src/components/network-monitors-table/status-bar.tsx
@@ -4565,6 +4638,10 @@ msgstr "Wenn aktiviert, ermöglicht dieser Token Agenten die Selbstregistrierung
 #: src/components/routes/settings/heartbeat.tsx
 msgid "When using POST, each heartbeat includes a JSON payload with system status summary, list of down systems, and triggered alerts."
 msgstr "Bei Verwendung von POST enthält jeder Heartbeat eine JSON-Payload mit einer Zusammenfassung des Systemstatus, einer Liste der ausgefallenen Systeme und ausgelösten Warnungen."
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "While any of these monitors is down, alerts for this monitor are suppressed and it shows as unreachable."
+msgstr ""
 
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Wi-Fi"

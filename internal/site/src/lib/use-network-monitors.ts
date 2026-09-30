@@ -114,6 +114,8 @@ const NETWORK_MONITOR_FIELDS = [
 	"http,httpSecrets,notify,certExpiryDays,pushToken,enabled",
 	"res,resMin1h,resMax1h,resAvg1h,loss1h,certInfo,updated",
 	"status,statusChanged,lastCheck,lastError,lastStatusCode,recent,uptime",
+	"dependsOn,suppressedBy",
+	"managedBy,managedKey,managedFields",
 ].join(",")
 
 interface UseNetworkMonitorsProps {

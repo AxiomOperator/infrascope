@@ -67,8 +67,10 @@ import {
 import { MonitorCheckDescription, MonitorCheckOptions } from "./monitor-check-options"
 import { hasCustomHttpOptions, MonitorHttpOptions, SwitchField } from "./monitor-http-options"
 import { MonitorPushUrl } from "./monitor-push-url"
+import { isManagedField, managedContainer } from "@/lib/docker-discovery"
 import { MonitorBulkAddSheet } from "./monitor-bulk-add-sheet"
 import { SystemMultiSelect } from "./system-multi-select"
+import { MonitorDependencySelect } from "./monitor-dependency-select"
 import { UptimeKumaImportDialog } from "./uptime-kuma-import-dialog"
 
 /** Where a monitor runs: the hub, one agent (or one monitor per selected agent), or several locations at once. */
@@ -251,6 +253,7 @@ function MonitorDialogContent({
 	const [retries, setRetries] = useState(String(monitor?.retries ?? 1))
 	const [retryInterval, setRetryInterval] = useState(monitor?.retryInterval ? String(monitor.retryInterval) : "")
 	const [notify, setNotify] = useState(monitor?.notify ?? true)
+	const [dependsOn, setDependsOn] = useState<string[]>(monitor?.dependsOn ?? [])
 	const [certExpiryDays, setCertExpiryDays] = useState(String(monitor?.certExpiryDays ?? 0))
 	const [lossThreshold, setLossThreshold] = useState(thresholdInput(monitor?.lossThreshold))
 	const [latencyThreshold, setLatencyThreshold] = useState(thresholdInput(monitor?.latencyThreshold))
@@ -276,6 +279,9 @@ function MonitorDialogContent({
 	const defaultLocationQuorum = defaultQuorum(orderedLocations.length)
 	// Secret HTTP options are omitted from responses for users who can't see them.
 	const secretsHidden = isEditing && !("httpSecrets" in monitor)
+	// Fields set by Docker labels are read-only (the hub keeps their stored values).
+	const locked = (field: string) => isManagedField(monitor, field)
+	const dockerContainer = managedContainer(monitor)
 
 	// When the dialog is opened, initialize form fields with monitor values (if editing) or defaults (if adding).
 	useEffect(() => {
@@ -294,6 +300,7 @@ function MonitorDialogContent({
 		setRetries(String(monitor?.retries ?? 1))
 		setRetryInterval(monitor?.retryInterval ? String(monitor.retryInterval) : "")
 		setNotify(monitor?.notify ?? true)
+		setDependsOn(monitor?.dependsOn ?? [])
 		setCertExpiryDays(String(monitor?.certExpiryDays ?? 0))
 		setLossThreshold(thresholdInput(monitor?.lossThreshold))
 		setLatencyThreshold(thresholdInput(monitor?.latencyThreshold))
@@ -435,6 +442,7 @@ function MonitorDialogContent({
 				retries: Number(retries) || 0,
 				retryInterval: isPush ? 0 : Number(retryInterval) || 0,
 				notify,
+				dependsOn,
 				certExpiryDays: monitorReportsCert(protocol, basePayload.target, checkForm) ? Number(certExpiryDays) || 0 : 0,
 				lossThreshold: lossValue,
 				latencyThreshold: latencyValue,
@@ -534,11 +542,23 @@ function MonitorDialogContent({
 				</DialogDescription>
 			</DialogHeader>
 			<form onSubmit={handleSubmit} className="grid gap-4 tabular-nums">
+				{dockerContainer && (
+					<p className="rounded-md border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+						<Trans>
+							Managed by Docker labels on <span className="font-mono">{dockerContainer}</span>. Fields set by labels are
+							read-only.
+						</Trans>
+					</p>
+				)}
 				<div className="grid gap-2">
 					<Label htmlFor="monitor-runs-on">
 						<Trans>Runs on</Trans>
 					</Label>
-					<Select value={runsOn} onValueChange={(value) => changeRunsOn(value as RunsOn)}>
+					<Select
+						value={runsOn}
+						onValueChange={(value) => changeRunsOn(value as RunsOn)}
+						disabled={locked("locations")}
+					>
 						<SelectTrigger id="monitor-runs-on">
 							<SelectValue />
 						</SelectTrigger>
@@ -647,7 +667,11 @@ function MonitorDialogContent({
 						<Label htmlFor="monitor-protocol">
 							<Trans>Protocol</Trans>
 						</Label>
-						<Select value={protocol} onValueChange={(value) => changeProtocol(value as MonitorProtocol)}>
+						<Select
+							value={protocol}
+							onValueChange={(value) => changeProtocol(value as MonitorProtocol)}
+							disabled={locked("protocol")}
+						>
 							<SelectTrigger id="monitor-protocol">
 								<SelectValue />
 							</SelectTrigger>
@@ -694,6 +718,7 @@ function MonitorDialogContent({
 								onChange={(e) => setPort(e.target.value)}
 								placeholder={protocol === "tcp" ? "443" : String(defaultPortFor(protocol) || "")}
 								required={protocol === "grpc"}
+								disabled={locked("port")}
 								min={1}
 								max={65535}
 							/>
@@ -714,6 +739,7 @@ function MonitorDialogContent({
 							value={target}
 							onChange={(e) => setTarget(e.target.value)}
 							placeholder={targetPlaceholder(protocol, t`Container name or ID`)}
+							disabled={locked("target")}
 							required
 						/>
 					</div>
@@ -744,6 +770,7 @@ function MonitorDialogContent({
 						value={name}
 						onChange={(e) => setName(e.target.value)}
 						placeholder={isPush ? t`Push monitor` : target.trim() || t`Optional`}
+						disabled={locked("name")}
 						maxLength={100}
 					/>
 				</div>
@@ -759,6 +786,7 @@ function MonitorDialogContent({
 							onChange={(e) => setMonitorInterval(e.target.value)}
 							min={hubChecks ? hubMinInterval : 1}
 							max={3600}
+							disabled={locked("interval")}
 							required
 						/>
 					</div>
@@ -773,6 +801,7 @@ function MonitorDialogContent({
 								value={timeout}
 								onChange={(e) => setTimeoutValue(e.target.value)}
 								placeholder={t`Default`}
+								disabled={locked("timeout")}
 								min={0}
 								max={60}
 							/>
@@ -787,6 +816,7 @@ function MonitorDialogContent({
 							type="number"
 							value={retries}
 							onChange={(e) => setRetries(e.target.value)}
+							disabled={locked("retries")}
 							min={0}
 							max={10}
 						/>
@@ -843,15 +873,34 @@ function MonitorDialogContent({
 						onChange={setHttpForm}
 						secretsHidden={secretsHidden}
 						disabled={loading}
+						locked={locked}
 					/>
 				)}
 				<SwitchField
 					id="monitor-notify"
 					checked={notify}
 					onCheckedChange={setNotify}
+					disabled={locked("notify")}
 					label={<Trans>Notifications</Trans>}
 					description={<Trans>Send notifications when this monitor goes down or recovers.</Trans>}
 				/>
+				<div className="grid gap-2">
+					<Label htmlFor="monitor-depends-on">
+						<Trans>Depends on</Trans>
+					</Label>
+					<MonitorDependencySelect
+						id="monitor-depends-on"
+						value={dependsOn}
+						onChange={setDependsOn}
+						monitorId={monitor?.id}
+						disabled={loading}
+					/>
+					<p className="text-xs text-muted-foreground">
+						<Trans>
+							While any of these monitors is down, alerts for this monitor are suppressed and it shows as unreachable.
+						</Trans>
+					</p>
+				</div>
 				{!isPush && (
 					<div className="grid gap-2">
 						<div className="grid sm:grid-cols-2 items-end gap-3">

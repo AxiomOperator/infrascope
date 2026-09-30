@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
@@ -220,6 +221,10 @@ func (sm *SystemManager) onRecordUpdate(e *core.RecordEvent) error {
 // - up: Triggers system alerts
 // - down: Cancels pending container alerts and triggers status change alerts
 func (sm *SystemManager) onRecordAfterUpdateSuccess(e *core.RecordEvent) error {
+	// Dependency updates only change the server-managed suppressedBy field.
+	if dependencyUpdate(e.Record) {
+		return e.Next()
+	}
 	newStatus := e.Record.GetString("status")
 	prevStatus := pending
 	system, ok := sm.systems.GetOk(e.Record.Id)
@@ -302,6 +307,25 @@ func (sm *SystemManager) onRecordAfterUpdateSuccess(e *core.RecordEvent) error {
 		}
 	}
 	return e.Next()
+}
+
+// dependencyUpdate reports whether a saved system record changed only its
+// suppressedBy field (and the update time), as the hub's dependency updates do.
+func dependencyUpdate(record *core.Record) bool {
+	original := record.Original()
+	if original == nil || original.IsNew() || record.GetString("suppressedBy") == original.GetString("suppressedBy") {
+		return false
+	}
+	for _, field := range record.Collection().Fields {
+		name := field.GetName()
+		if name == "suppressedBy" || name == "updated" {
+			continue
+		}
+		if !reflect.DeepEqual(record.Get(name), original.Get(name)) {
+			return false
+		}
+	}
+	return true
 }
 
 // onRecordAfterDeleteSuccess is called after a system record is successfully deleted.
@@ -394,6 +418,7 @@ func (sm *SystemManager) AddRecord(record *core.Record, system *System) (err err
 	system.setStatus(record.GetString("status"))
 	system.Host = record.GetString("host")
 	system.Port = record.GetString("port")
+	system.autoDiscover.Store(record.GetBool("autoDiscover"))
 
 	sm.lifecycleMu.Lock()
 	defer sm.lifecycleMu.Unlock()

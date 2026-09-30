@@ -3,6 +3,7 @@ package uptime
 import (
 	"database/sql"
 	"errors"
+	"slices"
 	"strings"
 	"time"
 
@@ -55,11 +56,13 @@ func (e *Engine) tryDrain() {
 // drainLocked drains with writeMu held and releases it.
 func (e *Engine) drainLocked() {
 	var notices []Transition
+	var deps []string
 	for {
 		e.mu.Lock()
 		ops := e.queue
 		notices = append(notices, e.notices...)
-		e.queue, e.notices = nil, nil
+		deps = append(deps, e.depChanged...)
+		e.queue, e.notices, e.depChanged = nil, nil, nil
 		if len(ops) == 0 {
 			// Drains are serialized by writeMu, so appending here keeps
 			// persisted transitions in the order they occurred.
@@ -78,6 +81,9 @@ func (e *Engine) drainLocked() {
 		e.write(ops, live)
 	}
 	e.deliver()
+	if len(deps) > 0 && e.onDependency != nil {
+		e.onDependency(slices.Compact(deps))
+	}
 }
 
 // deliver passes persisted transitions to the notifier, in order and one
@@ -213,13 +219,19 @@ func (e *Engine) Load() error {
 	now := e.now()
 	e.mu.Lock()
 	e.monitors = make(map[string]*monitorState, len(records))
+	e.dependents = map[string]map[string]struct{}{}
 	for _, record := range records {
 		st := e.newStateFromRecord(record, now, names[record.Id])
 		st.segment = segments[record.Id]
 		e.monitors[st.id] = st
-		// Repair records whose status does not match their configuration.
-		e.reconcile(st, now.UnixMilli(), false)
+		e.link(st.id, nil, st.dependsOn)
 	}
+	e.loading = true
+	for _, record := range records {
+		// Repair records whose status does not match their configuration.
+		e.reconcile(e.monitors[record.Id], now.UnixMilli(), false)
+	}
+	e.loading = false
 	e.mu.Unlock()
 	e.drain()
 	return nil
@@ -232,6 +244,7 @@ func (e *Engine) newStateFromRecord(record *core.Record, now time.Time, names ma
 	st.applyConfig(record)
 	_ = record.UnmarshalJSONField("state", &st.p)
 	st.status = record.GetString("status")
+	st.suppressedBy = record.GetString("suppressedBy")
 	st.statusChanged = record.GetDateTime("statusChanged").Time()
 	hold := ""
 	switch st.status {
@@ -309,6 +322,7 @@ func (st *monitorState) applyConfig(record *core.Record) {
 	st.interval = time.Duration(record.GetInt("interval")) * time.Second
 	st.locations = monitorloc.Of(record)
 	st.quorum = monitorloc.Quorum(record)
+	st.dependsOn = record.GetStringSlice("dependsOn")
 }
 
 // findOpenSegment returns the latest open segment of a monitor.

@@ -69,8 +69,15 @@ msgstr "{0} locations, down at {1}"
 msgid "{0} of {1} row(s) selected."
 msgstr "{0} of {1} row(s) selected."
 
+#. placeholder {0}: value.length
+#: src/components/network-monitors-table/monitor-dependency-select.tsx
+msgid "{0} of {MAX_DEPENDENCIES} selected"
+msgstr "{0} of {MAX_DEPENDENCIES} selected"
+
 #. placeholder {0}: selected.length
 #. placeholder {0}: selectedSystemIds.size
+#. placeholder {0}: value.length
+#: src/components/network-monitors-table/monitor-dependency-select.tsx
 #: src/components/network-monitors-table/system-multi-select.tsx
 #: src/components/network-monitors-table/system-multi-select.tsx
 #: src/components/routes/settings/maintenance.tsx
@@ -471,6 +478,10 @@ msgstr "All Systems"
 #: src/components/routes/status-page.tsx
 msgid "All systems operational"
 msgstr "All systems operational"
+
+#: src/components/docker-discovery-settings.tsx
+msgid "Also monitor Traefik router hosts"
+msgstr "Also monitor Traefik router hosts"
 
 #: src/lib/shoutrrr.ts
 msgid "An incoming webhook URL, or a bot token like xoxb-… for bot mode."
@@ -1042,6 +1053,10 @@ msgstr "Container name or ID"
 msgid "Containers"
 msgstr "Containers"
 
+#: src/components/docker-discovery-settings.tsx
+msgid "Containers with <0>infrascope.monitor.*</0> labels get monitors. Requires agent 0.21.0 or newer."
+msgstr "Containers with <0>infrascope.monitor.*</0> labels get monitors. Requires agent 0.21.0 or newer."
+
 #: src/components/network-monitors-table/monitor-check-options.tsx
 msgid "Contains"
 msgstr "Contains"
@@ -1193,6 +1208,10 @@ msgstr "Create a \"Post to a channel when a webhook request is received\" workfl
 msgid "Create account"
 msgstr "Create account"
 
+#: src/components/docker-discovery-settings.tsx
+msgid "Create monitors from Docker labels"
+msgstr "Create monitors from Docker labels"
+
 #. Context: date created
 #: src/components/alerts-history-columns.tsx
 msgid "Created"
@@ -1319,6 +1338,12 @@ msgstr "Delete fingerprint"
 msgid "Deliver as critical alert"
 msgstr "Deliver as critical alert"
 
+#: src/components/add-system.tsx
+#: src/components/network-monitors-table/monitor-dependencies-card.tsx
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Depends on"
+msgstr "Depends on"
+
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/status-pages.tsx
 #: src/components/systemd-table/systemd-table.tsx
@@ -1361,6 +1386,10 @@ msgstr "Direct message"
 #: src/lib/i18n.ts
 msgid "Discharging"
 msgstr "Discharging"
+
+#: src/components/docker-discovery-settings.tsx
+msgid "Discovery errors"
+msgstr "Discovery errors"
 
 #: src/components/routes/system.tsx
 #: src/components/systems-table/systems-table-columns.tsx
@@ -1450,6 +1479,10 @@ msgstr "Download"
 #: src/components/alerts-history-columns.tsx
 msgid "Duration"
 msgstr "Duration"
+
+#: src/components/docker-discovery-settings.tsx
+msgid "Each Host rule of a Traefik router becomes an HTTP monitor."
+msgstr "Each Host rule of a Traefik router becomes an HTTP monitor."
 
 #: src/lib/shoutrrr.ts
 msgid "Each line must look like key=value"
@@ -2139,6 +2172,10 @@ msgstr "key {0}"
 msgid "Keyword"
 msgstr "Keyword"
 
+#: src/components/docker-discovery-settings.tsx
+msgid "Label reference"
+msgstr "Label reference"
+
 #: src/components/routes/settings/general.tsx
 msgid "Language"
 msgstr "Language"
@@ -2295,6 +2332,14 @@ msgstr "Major outage"
 msgid "Manage display and notification preferences."
 msgstr "Manage display and notification preferences."
 
+#: src/components/network-monitors-table/docker-managed-badge.tsx
+msgid "Managed by Docker labels on {container}"
+msgstr "Managed by Docker labels on {container}"
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "Managed by Docker labels on <0>{dockerContainer}</0>. Fields set by labels are read-only."
+msgstr "Managed by Docker labels on <0>{dockerContainer}</0>. Fields set by labels are read-only."
+
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Manual setup instructions"
@@ -2422,6 +2467,10 @@ msgstr "Monitors"
 msgid "Monitors created"
 msgstr "Monitors created"
 
+#: src/components/network-monitors-table/network-monitors-table.tsx
+msgid "Monitors created from Docker labels are recreated while their labels exist. To remove one for good, add the label <0>{disableLabel}</0> to the container."
+msgstr "Monitors created from Docker labels are recreated while their labels exist. To remove one for good, add the label <0>{disableLabel}</0> to the container."
+
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "More actions"
 msgstr "More actions"
@@ -2527,6 +2576,10 @@ msgstr "No"
 msgid "No data"
 msgstr "No data"
 
+#: src/components/network-monitors-table/monitor-dependency-select.tsx
+msgid "No dependencies"
+msgstr "No dependencies"
+
 #: src/components/routes/system/storage-pools-table.tsx
 msgid "No detail data for this pool."
 msgstr "No detail data for this pool."
@@ -2543,6 +2596,7 @@ msgstr "No maintenance windows."
 msgid "No matching services."
 msgstr "No matching services."
 
+#: src/components/network-monitors-table/monitor-dependency-select.tsx
 #: src/components/routes/settings/maintenance.tsx
 msgid "No monitors found."
 msgstr "No monitors found."
@@ -2621,9 +2675,17 @@ msgstr "Notification services"
 msgid "Notifications"
 msgstr "Notifications"
 
+#: src/components/unreachable-badge.tsx
+msgid "Notifications are suppressed until the parent recovers."
+msgstr "Notifications are suppressed until the parent recovers."
+
 #: src/lib/alerts.ts
 msgid "Notifications may include recent container log excerpts."
 msgstr "Notifications may include recent container log excerpts."
+
+#: src/components/network-monitors-table/monitor-dependencies-card.tsx
+msgid "Notifications suppressed while a parent is down"
+msgstr "Notifications suppressed while a parent is down"
 
 #: src/components/network-monitors-table/monitor-dialog.tsx
 msgid "Notify when the certificate expires within this many days. 0 disables it."
@@ -3383,6 +3445,8 @@ msgstr "Search"
 msgid "Search for systems or settings..."
 msgstr "Search for systems or settings..."
 
+#: src/components/network-monitors-table/monitor-dependency-select.tsx
+#: src/components/network-monitors-table/monitor-dependency-select.tsx
 #: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/maintenance.tsx
 msgid "Search monitors"
@@ -4255,6 +4319,15 @@ msgstr "Unknown"
 msgid "Unlimited"
 msgstr "Unlimited"
 
+#: src/components/unreachable-badge.tsx
+msgid "Unreachable"
+msgstr "Unreachable"
+
+#: src/components/unreachable-badge.tsx
+#: src/components/unreachable-badge.tsx
+msgid "Unreachable — parent {parents} down"
+msgstr "Unreachable — parent {parents} down"
+
 #. Context: System is up
 #: src/components/network-monitors-table/monitor-status-badge.tsx
 #: src/components/network-monitors-table/status-bar.tsx
@@ -4560,6 +4633,10 @@ msgstr "When enabled, this token allows agents to self-register without prior sy
 #: src/components/routes/settings/heartbeat.tsx
 msgid "When using POST, each heartbeat includes a JSON payload with system status summary, list of down systems, and triggered alerts."
 msgstr "When using POST, each heartbeat includes a JSON payload with system status summary, list of down systems, and triggered alerts."
+
+#: src/components/network-monitors-table/monitor-dialog.tsx
+msgid "While any of these monitors is down, alerts for this monitor are suppressed and it shows as unreachable."
+msgstr "While any of these monitors is down, alerts for this monitor are suppressed and it shows as unreachable."
 
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Wi-Fi"

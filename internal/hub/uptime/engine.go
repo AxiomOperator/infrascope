@@ -83,6 +83,22 @@ import (
 // a segment. A down segment starts at the first failure of its streak (but
 // not before the segment it replaces) and stores that failure's error.
 //
+// Dependencies
+//
+// A monitor can depend on up to five parent monitors (network_monitors.
+// dependsOn, for example the router in front of it). A parent counts as down
+// only while its displayed status is "down" (not pending, unknown, paused or
+// maintenance). While any parent is down, the monitor's notifications are
+// suppressed like during maintenance: notified is not updated, so a change
+// that still holds when the last parent recovers is notified once then, and
+// a down period that ended while suppressed is not notified at all. The
+// monitor's displayed status, segments and uptime are unaffected (downtime
+// behind a down parent still counts), and the names of its down parents are
+// written to network_monitors.suppressedBy. The engine keeps a parent ->
+// children index, so a parent status change re-evaluates its children, and
+// reports the parents whose down state changed to WithDependencyListener,
+// for systems that depend on monitors.
+//
 // Persistence
 //
 // Status changes, segments and the state JSON are queued while the engine
@@ -106,6 +122,14 @@ type Engine struct {
 	notices  []Transition
 	// ready holds persisted transitions awaiting delivery, oldest first.
 	ready []Transition
+	// dependents maps a monitor to the monitors that depend on it.
+	dependents map[string]map[string]struct{}
+	// depChanged holds monitors whose down state changed, for onDependency.
+	depChanged []string
+	// onDependency receives monitors whose down state changed.
+	onDependency func([]string)
+	// loading is set while Load reconciles, which never notifies.
+	loading bool
 
 	// notifyMu serializes notifier calls, so transitions are delivered in order.
 	notifyMu sync.Mutex
@@ -131,6 +155,13 @@ func WithMaintenanceCheck(fn func(monitorID string, now time.Time) bool) Option 
 	return func(e *Engine) { e.inMaintenance = fn }
 }
 
+// WithDependencyListener sets the function that receives the monitors whose
+// down state (displayed status "down" or not) changed, after the change is
+// persisted and without engine locks held. It should return quickly.
+func WithDependencyListener(fn func(monitorIDs []string)) Option {
+	return func(e *Engine) { e.onDependency = fn }
+}
+
 // WithNow overrides the clock, for tests.
 func WithNow(fn func() time.Time) Option {
 	return func(e *Engine) { e.now = fn }
@@ -138,7 +169,7 @@ func WithNow(fn func() time.Time) Option {
 
 // New creates an engine. Call Load before feeding it results.
 func New(app core.App, opts ...Option) *Engine {
-	e := &Engine{app: app, now: time.Now, monitors: map[string]*monitorState{}}
+	e := &Engine{app: app, now: time.Now, monitors: map[string]*monitorState{}, dependents: map[string]map[string]struct{}{}}
 	for _, opt := range opts {
 		opt(e)
 	}
@@ -160,6 +191,10 @@ type monitorState struct {
 	locs map[string]*locState
 	// names are the display names of the locations, for errors.
 	names map[string]string
+	// dependsOn are the monitor's parent monitors.
+	dependsOn []string
+	// suppressedBy names the parents that are down, as last queued for persistence.
+	suppressedBy string
 
 	// p is the monitor's state, derived from its locations by aggregate.
 	p persistedState
@@ -617,6 +652,7 @@ func (e *Engine) applyCheck(st *monitorState, location string, event monitor.Che
 // (Unix milliseconds) and a notification when due. Requires e.mu.
 func (e *Engine) reconcile(st *monitorState, at int64, allowNotify bool) {
 	status := st.displayStatus()
+	wasDown := st.status == StatusDown
 	segmentStatus := status
 	if status == StatusPending {
 		segmentStatus = st.segment.status
@@ -638,6 +674,10 @@ func (e *Engine) reconcile(st *monitorState, at int64, allowNotify bool) {
 		st.segment = next
 	}
 
+	suppressedBy := e.suppressionOf(st)
+	suppressionChanged := suppressedBy != st.suppressedBy
+	st.suppressedBy = suppressedBy
+
 	if transition := e.evaluateNotify(st, at); transition != nil && allowNotify {
 		e.notices = append(e.notices, *transition)
 	}
@@ -649,8 +689,11 @@ func (e *Engine) reconcile(st *monitorState, at int64, allowNotify bool) {
 		st.checksDirty = true
 		locChanged = true
 	}
-	if status != st.status || !st.p.equal(st.saved) || locChanged {
+	if status != st.status || !st.p.equal(st.saved) || locChanged || suppressionChanged {
 		fields := map[string]any{}
+		if suppressionChanged {
+			fields["suppressedBy"] = suppressedBy
+		}
 		if status != st.status {
 			st.status = status
 			st.statusChanged = time.UnixMilli(at).UTC()
@@ -661,6 +704,9 @@ func (e *Engine) reconcile(st *monitorState, at int64, allowNotify bool) {
 		st.saved = st.p
 		fields["state"] = st.p
 		e.queueUpdate(st, fields)
+	}
+	if (status == StatusDown) != wasDown {
+		e.dependencyChanged(st.id, at)
 	}
 }
 
@@ -685,7 +731,7 @@ func (st *monitorState) addCheckFields(fields map[string]any) {
 // evaluateNotify updates the notified status when the confirmed status
 // changed and returns the transition to report, if any. Requires e.mu.
 func (e *Engine) evaluateNotify(st *monitorState, at int64) *Transition {
-	if !st.enabled || st.hold != "" || st.p.Maintenance {
+	if !st.enabled || st.hold != "" || st.p.Maintenance || st.suppressedBy != "" {
 		return nil
 	}
 	confirmed := st.p.Confirmed
@@ -821,10 +867,13 @@ func (e *Engine) Upsert(record *core.Record) {
 		}
 		st = loaded
 		e.monitors[st.id] = st
+		e.link(st.id, nil, st.dependsOn)
 		e.reconcile(st, now.UnixMilli(), false)
 	} else {
 		wasEnabled := st.enabled
+		oldDeps, oldName, prevSuppressed := st.dependsOn, st.displayName(), st.suppressedBy
 		st.applyConfig(record)
+		e.link(st.id, oldDeps, st.dependsOn)
 		st.names = names
 		st.syncLocations(now)
 		for _, ls := range st.locs {
@@ -837,13 +886,18 @@ func (e *Engine) Upsert(record *core.Record) {
 			}
 		}
 		st.aggregate()
-		e.reconcile(st, now.UnixMilli(), false)
+		// A change removing the down parents notifies what they suppressed.
+		e.reconcile(st, now.UnixMilli(), prevSuppressed != "")
+		if st.status == StatusDown && st.displayName() != oldName {
+			// Children name their down parents.
+			e.dependencyChanged(st.id, now.UnixMilli())
+		}
 	}
 	// Restore status fields overwritten with stale values.
 	var stored persistedState
 	_ = record.UnmarshalJSONField("state", &stored)
-	if record.GetString("status") != st.status || !stored.equal(st.saved) {
-		fields := map[string]any{"status": st.status, "state": st.saved}
+	if record.GetString("status") != st.status || !stored.equal(st.saved) || record.GetString("suppressedBy") != st.suppressedBy {
+		fields := map[string]any{"status": st.status, "state": st.saved, "suppressedBy": st.suppressedBy}
 		if !st.statusChanged.IsZero() {
 			fields["statusChanged"] = st.statusChanged
 		}
@@ -874,10 +928,106 @@ func (e *Engine) locationNames(locations []string) map[string]string {
 }
 
 // Remove forgets a deleted monitor. Its segments are deleted with the record.
+// Monitors depending on it no longer do.
 func (e *Engine) Remove(monitorID string) {
 	e.mu.Lock()
-	delete(e.monitors, monitorID)
+	st, ok := e.monitors[monitorID]
+	if ok {
+		e.link(monitorID, st.dependsOn, nil)
+		delete(e.monitors, monitorID)
+		if st.status == StatusDown {
+			e.dependencyChanged(monitorID, e.now().UnixMilli())
+		}
+	}
+	queued := len(e.queue) > 0
 	e.mu.Unlock()
+	if queued {
+		e.tryDrain()
+	}
+}
+
+// link updates the dependency index for a monitor whose parents changed
+// from old to deps. Requires e.mu.
+func (e *Engine) link(monitorID string, old, deps []string) {
+	for _, parent := range old {
+		if children := e.dependents[parent]; children != nil {
+			delete(children, monitorID)
+			if len(children) == 0 {
+				delete(e.dependents, parent)
+			}
+		}
+	}
+	for _, parent := range deps {
+		if parent == monitorID {
+			continue
+		}
+		children := e.dependents[parent]
+		if children == nil {
+			children = map[string]struct{}{}
+			e.dependents[parent] = children
+		}
+		children[monitorID] = struct{}{}
+	}
+}
+
+// downParents returns the names of the monitors among ids whose displayed
+// status is down, in order. Requires e.mu.
+func (e *Engine) downParents(ids []string, self string) []string {
+	var names []string
+	for _, id := range ids {
+		if parent, ok := e.monitors[id]; ok && id != self && parent.status == StatusDown {
+			names = append(names, parent.displayName())
+		}
+	}
+	return names
+}
+
+// suppressionOf returns the suppressedBy value of an enabled monitor: its
+// down parents' names, comma separated. Requires e.mu.
+func (e *Engine) suppressionOf(st *monitorState) string {
+	if !st.enabled {
+		return ""
+	}
+	return JoinSuppressedBy(e.downParents(st.dependsOn, st.id))
+}
+
+// JoinSuppressedBy formats parent names for a suppressedBy field.
+func JoinSuppressedBy(names []string) string {
+	return truncateText(strings.Join(names, ", "), maxSuppressedByLength)
+}
+
+// dependencyChanged re-evaluates the children of a monitor whose down state
+// (or name while down) changed and queues it for the dependency listener.
+// Requires e.mu.
+func (e *Engine) dependencyChanged(monitorID string, at int64) {
+	if e.onDependency != nil {
+		e.depChanged = append(e.depChanged, monitorID)
+	}
+	children := slices.Sorted(maps.Keys(e.dependents[monitorID]))
+	for _, id := range children {
+		if child, ok := e.monitors[id]; ok {
+			// A child's status does not depend on its parents, so this never
+			// cascades further (and terminates even with cycles).
+			e.reconcile(child, at, !e.loading)
+		}
+	}
+}
+
+// Suppressed reports whether a monitor's notifications are suppressed
+// because one of its parents is down.
+func (e *Engine) Suppressed(monitorID string) bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	st, ok := e.monitors[monitorID]
+	return ok && st.suppressedBy != ""
+}
+
+// DownDependencies returns the names of the monitors among ids that are
+// down, in order, for records other than monitors that depend on them.
+func (e *Engine) DownDependencies(ids []string) []string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.downParents(ids, "")
 }
 
 // Tick applies time-based changes: maintenance windows starting or ending and

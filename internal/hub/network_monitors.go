@@ -37,6 +37,10 @@ const (
 var monitorServerFields = []string{
 	"status", "statusChanged", "lastCheck", "lastError", "lastStatusCode", "recent", "uptime", "state", "certState", "alertState",
 	"res", "resAvg1h", "resMin1h", "resMax1h", "loss1h", "certInfo", "updated", "locationStatus", "locationSystems",
+	// Docker label discovery (discovery.go).
+	"managedBy", "managedKey", "managedSystem", "managedFields", "managedMissingSince",
+	// Dependency-aware alerts (dependencies.go).
+	"suppressedBy",
 }
 
 // monitorSecretFields are network_monitors fields shown only to users who can edit the monitor.
@@ -238,6 +242,9 @@ func prepareMonitor(app core.App, record, original *core.Record, auth *core.Reco
 
 	locations, err := prepareMonitorLocations(app, record, original, auth, superuser)
 	if err != nil {
+		return err
+	}
+	if err := prepareDependencies(app, record, original, auth, superuser, true); err != nil {
 		return err
 	}
 	hasHub := slices.Contains(locations, monitorloc.Hub)
