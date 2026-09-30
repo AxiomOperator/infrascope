@@ -26,6 +26,9 @@ func (h *Hub) startServer(se *core.ServeEvent) error {
 	csp, cspExists := utils.GetEnv("CSP")
 	// add route
 	se.Router.GET("/{path...}", func(e *core.RequestEvent) error {
+		if isServiceWorkerPath(e.Request.URL.Path, basePath) {
+			return serveServiceWorker(e, site.DistDirFS, basePath)
+		}
 		// serve static assets if path is in staticPaths
 		for i := range staticPaths {
 			if strings.Contains(e.Request.URL.Path, staticPaths[i]) {
