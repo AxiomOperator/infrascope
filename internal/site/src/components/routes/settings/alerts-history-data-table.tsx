@@ -20,7 +20,7 @@ import {
 	DownloadIcon,
 	Trash2Icon,
 } from "lucide-react"
-import { memo, useEffect, useState } from "react"
+import { memo, useEffect, useMemo, useState } from "react"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -39,6 +39,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/components/ui/use-toast"
+import { filterUnacknowledged } from "@/lib/alert-ack"
 import { getAlertInfo } from "@/lib/alerts"
 import { pb } from "@/lib/api"
 import { cn, formatDuration, formatShortDate, useBrowserStorage } from "@/lib/utils"
@@ -67,6 +68,8 @@ export default function AlertsHistoryDataTable() {
 	const [globalFilter, setGlobalFilter] = useState("")
 	const { toast } = useToast()
 	const [deleteOpen, setDeleteDialogOpen] = useState(false)
+	const [unacknowledgedOnly, setUnacknowledgedOnly] = useState(false)
+	const rows = useMemo(() => filterUnacknowledged(data, unacknowledgedOnly), [data, unacknowledgedOnly])
 
 	// Store pagination preference in local storage
 	const [pagination, setPagination] = useBrowserStorage<PaginationState>("ah-pagination", {
@@ -80,7 +83,7 @@ export default function AlertsHistoryDataTable() {
 		const pbOptions = {
 			expand: "system,monitor",
 			fields:
-				"id,name,system,monitor,monitor_name,value,state,created,resolved,expand.system.name,expand.monitor.name,expand.monitor.target",
+				"id,alert_id,name,system,monitor,monitor_name,value,state,created,resolved,acknowledgedAt,acknowledgedBy,ackNote,reminderCount,expand.system.name,expand.monitor.name,expand.monitor.target",
 		}
 		// Initial load
 		pb.collection<AlertsHistoryRecord>("alerts_history")
@@ -122,7 +125,7 @@ export default function AlertsHistoryDataTable() {
 	}, [])
 
 	const table = useReactTable({
-		data,
+		data: rows,
 		columns: [
 			{
 				id: "select",
@@ -216,6 +219,7 @@ export default function AlertsHistoryDataTable() {
 			created: (record) => formatShortDate(record.created),
 			resolved: (record) => (record.resolved ? formatShortDate(record.resolved) : ""),
 			duration: (record) => (record.resolved ? formatDuration(record.created, record.resolved) : ""),
+			acknowledged: (record) => (record.acknowledgedAt ? formatShortDate(record.acknowledgedAt) : ""),
 		}
 		const csvRows = [Object.keys(cells).join(",")]
 		for (const row of selectedRows) {
@@ -281,6 +285,10 @@ export default function AlertsHistoryDataTable() {
 							</Button>
 						</div>
 					)}
+					<Label className="flex items-center gap-2 shrink-0 text-sm font-normal cursor-pointer">
+						<Checkbox checked={unacknowledgedOnly} onCheckedChange={(value) => setUnacknowledgedOnly(!!value)} />
+						<Trans>Unacknowledged only</Trans>
+					</Label>
 					<Input
 						placeholder={t`Filter...`}
 						value={globalFilter}

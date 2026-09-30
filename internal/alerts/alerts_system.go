@@ -440,13 +440,18 @@ func (am *AlertManager) sendSystemAlert(alert SystemAlertData) {
 		// app.Logger().Error("failed to save alert record", "err", err)
 		return
 	}
+	var historyID string
+	if alert.triggered {
+		historyID = openHistoryID(am.hub, alert.alertData.Id, alert.alertData.UserID)
+	}
 	am.SendAlert(AlertMessageData{
-		UserID:   alert.alertData.UserID,
-		SystemID: alert.systemRecord.Id,
-		Title:    subject,
-		Message:  body,
-		Link:     am.hub.MakeLink("system", alert.systemRecord.Id),
-		LinkText: "View " + systemName,
+		UserID:    alert.alertData.UserID,
+		SystemID:  alert.systemRecord.Id,
+		Title:     subject,
+		Message:   body,
+		Link:      am.hub.MakeLink("system", alert.systemRecord.Id),
+		LinkText:  "View " + systemName,
+		HistoryID: historyID,
 	})
 }
 

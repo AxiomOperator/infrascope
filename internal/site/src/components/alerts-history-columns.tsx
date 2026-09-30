@@ -1,8 +1,12 @@
 import { t } from "@lingui/core/macro"
 import { Plural, Trans } from "@lingui/react/macro"
 import type { ColumnDef } from "@tanstack/react-table"
+import { MessageSquareTextIcon } from "lucide-react"
+import { useState } from "react"
+import { AckBadge, AlertAckPanel } from "@/components/alert-ack"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { getAlertInfo } from "@/lib/alerts"
 import { cn, formatDuration, formatShortDate, toFixedFloat } from "@/lib/utils"
 import type { AlertsHistoryRecord } from "@/types"
@@ -18,6 +22,32 @@ export function getAlertHistoryName(record: AlertsHistoryRecord): string {
 	const label = getAlertInfo(record.name)?.name().replace("cpu", "CPU") || record.name
 	const monitorName = getAlertMonitorName(record)
 	return monitorName ? `${label}: ${monitorName}` : label
+}
+
+/** Detail dialog of a history row with its acknowledgement and notes. */
+function AlertHistoryDetails({ record }: { record: AlertsHistoryRecord }) {
+	const [open, setOpen] = useState(false)
+	const system = record.expand?.system?.name
+	return (
+		<Dialog open={open} onOpenChange={setOpen}>
+			<Button variant="ghost" size="icon" className="size-8" onClick={() => setOpen(true)} aria-label={t`Details`}>
+				<MessageSquareTextIcon className="size-4" />
+			</Button>
+			{open && (
+				<DialogContent className="max-h-[90vh] overflow-auto">
+					<DialogHeader>
+						<DialogTitle>{getAlertHistoryName(record)}</DialogTitle>
+						<DialogDescription>
+							{system ? `${system} · ` : ""}
+							{formatShortDate(record.created)}
+							{record.resolved ? ` – ${formatShortDate(record.resolved)}` : ""}
+						</DialogDescription>
+					</DialogHeader>
+					<AlertAckPanel record={record} />
+				</DialogContent>
+			)}
+		</Dialog>
+	)
 }
 
 export const alertsHistoryColumns: ColumnDef<AlertsHistoryRecord>[] = [
@@ -188,5 +218,21 @@ export const alertsHistoryColumns: ColumnDef<AlertsHistoryRecord>[] = [
 			}
 			return <span className="ps-2">{duration}</span>
 		},
+	},
+	{
+		id: "acknowledged",
+		accessorFn: (record) => record.acknowledgedAt ?? "",
+		enableSorting: true,
+		header: ({ column }) => (
+			<Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+				<Trans>Acknowledged</Trans>
+			</Button>
+		),
+		cell: ({ row }) => (
+			<span className="flex items-center gap-1 ps-1">
+				<AckBadge record={row.original} />
+				<AlertHistoryDetails record={row.original} />
+			</span>
+		),
 	},
 ]

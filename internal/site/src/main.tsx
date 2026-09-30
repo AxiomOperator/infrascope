@@ -6,6 +6,7 @@ import { DirectionProvider } from "@radix-ui/react-direction"
 // import { Suspense, lazy, useEffect, StrictMode } from "react"
 import { lazy, memo, Suspense, useEffect } from "react"
 import ReactDOM from "react-dom/client"
+import { showAckLinkToast } from "@/components/alert-ack.tsx"
 import Navbar from "@/components/navbar.tsx"
 import { $router } from "@/components/router.tsx"
 import Settings from "@/components/routes/settings/layout.tsx"
@@ -54,6 +55,8 @@ const App = memo(() => {
 		})
 		// get user settings
 		updateUserSettings()
+		// confirm an alert acknowledged from a notification link
+		showAckLinkToast()
 		// need to get system list before alerts
 		systemsManager.init()
 		systemsManager

@@ -118,13 +118,18 @@ func (am *AlertManager) sendSystemdAlert(triggered bool, systemName string, aler
 
 	systemID := alertData.SystemID
 
+	var historyID string
+	if triggered {
+		historyID = openHistoryID(am.hub, alertData.Id, alertData.UserID)
+	}
 	return am.SendAlert(AlertMessageData{
-		UserID:   alertData.UserID,
-		SystemID: systemID,
-		Title:    title,
-		Message:  message,
-		Link:     am.hub.MakeLink("system", systemID),
-		LinkText: "View " + systemName,
+		UserID:    alertData.UserID,
+		SystemID:  systemID,
+		Title:     title,
+		Message:   message,
+		Link:      am.hub.MakeLink("system", systemID),
+		LinkText:  "View " + systemName,
+		HistoryID: historyID,
 	})
 }
 

@@ -1,12 +1,14 @@
+import { openHistoryKey } from "@/lib/alert-ack"
 import { alertInfo, monitorAlertInfo } from "@/lib/alerts"
 import { getMonitorName } from "@/lib/network-monitor-utils"
 import { $alerts, $allSystemsById } from "@/lib/stores"
 import { useDownMonitors } from "@/lib/use-network-monitors"
-import type { AlertRecord, NetworkMonitorRecord } from "@/types"
+import type { AlertRecord, AlertsHistoryRecord, NetworkMonitorRecord } from "@/types"
 import { Plural, Trans } from "@lingui/react/macro"
 import { useStore } from "@nanostores/react"
 import { getPagePath } from "@nanostores/router"
 import { useMemo, useState } from "react"
+import { AlertSheetAck, useOpenAlertHistory } from "./alert-ack"
 import { AlertBannerSheet, AlertBannerSheetItem } from "./alert-banner-sheet"
 import { $router } from "./router"
 
@@ -58,6 +60,10 @@ function MonitorDownDesc({ monitor }: { monitor: NetworkMonitorRecord }) {
 	return monitor.lastError || monitorAlertInfo.MonitorDown.triggeredDesc?.()
 }
 
+function historyFooter(record?: AlertsHistoryRecord) {
+	return record ? <AlertSheetAck record={record} /> : undefined
+}
+
 /** Banner showing the number of triggered alerts and down monitors, with a sheet listing them. */
 export const ActiveAlerts = ({ className }: { className?: string }) => {
 	const alerts = useStore($alerts)
@@ -65,6 +71,8 @@ export const ActiveAlerts = ({ className }: { className?: string }) => {
 	const [open, setOpen] = useState(false)
 	const downMonitors = useDownMonitors()
 	const downMonitorsKey = downMonitors.map((m) => `${m.id}${m.name}${m.lastError}`).join("")
+	// open history rows, for acknowledgement and notes in the sheet
+	const openHistory = useOpenAlertHistory(open)
 
 	const { activeAlerts, systemCount, alertsKey } = useMemo(() => {
 		const activeAlerts: AlertRecord[] = []
@@ -142,6 +150,7 @@ export const ActiveAlerts = ({ className }: { className?: string }) => {
 						icon={monitorAlertInfo.MonitorDown.icon}
 						title={<MonitorDownLabel monitor={monitor} />}
 						description={<MonitorDownDesc monitor={monitor} />}
+						footer={historyFooter(openHistory.get(openHistoryKey(monitor.id, "MonitorDown")))}
 					/>
 				))}
 				{activeAlerts.map((alert) => {
@@ -155,10 +164,11 @@ export const ActiveAlerts = ({ className }: { className?: string }) => {
 							icon={info.icon}
 							title={<AlertLabel alert={alert} systemName={system?.name} />}
 							description={<AlertTriggeredDesc alert={alert} />}
+							footer={historyFooter(openHistory.get(openHistoryKey(alert.id)))}
 						/>
 					)
 				})}
 			</AlertBannerSheet>
 		)
-	}, [alertsKey, downMonitorsKey, systemCount, systems, open, className])
+	}, [alertsKey, downMonitorsKey, systemCount, systems, open, className, openHistory])
 }

@@ -211,6 +211,11 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	// update / delete user alerts
 	apiAuth.POST("/user-alerts", alerts.UpsertUserAlerts)
 	apiAuth.DELETE("/user-alerts", alerts.DeleteUserAlerts)
+	// acknowledge alerts, from the app or a signed link in a notification
+	apiAuth.POST("/alerts-history/{id}/ack", h.AcknowledgeAlert).BindFunc(excludeReadOnlyRole)
+	apiAuth.POST("/alerts-history/{id}/unack", h.UnacknowledgeAlert).BindFunc(excludeReadOnlyRole)
+	apiNoAuth.GET("/ack/{token}", h.HandleAckLink)
+	apiNoAuth.POST("/ack/{token}", h.HandleAckLink)
 	// refresh SMART devices for a system
 	apiAuth.POST("/smart/refresh", h.refreshSmartData).BindFunc(excludeReadOnlyRole)
 	// refresh ZFS pool details for a system

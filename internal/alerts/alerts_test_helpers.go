@@ -111,3 +111,27 @@ func BuildContainerLogExcerpt(raw string) string {
 func (am *AlertManager) CheckMonitorCertsAt(now time.Time) error {
 	return am.checkMonitorCerts(now)
 }
+
+// SendAlertRemindersAt sends the reminders due at now (for testing).
+func (am *AlertManager) SendAlertRemindersAt(now time.Time) error {
+	return am.sendAlertReminders(now)
+}
+
+// SetAckSecret sets the key material of acknowledgement links (for testing).
+func (am *AlertManager) SetAckSecret(secret []byte) error {
+	key, err := deriveAckKey(secret)
+	if err != nil {
+		return err
+	}
+	am.ackSecret = key
+	return nil
+}
+
+// AckToken returns an acknowledgement link token that expires at expires (for testing).
+func (am *AlertManager) AckToken(historyID, userID string, expires time.Time) (string, error) {
+	key, err := am.ackKey()
+	if err != nil {
+		return "", err
+	}
+	return signAckToken(key, historyID, userID, expires), nil
+}

@@ -160,10 +160,13 @@ func (am *AlertManager) handleMonitorTransition(transition uptime.Transition) (e
 				if open[user] {
 					continue
 				}
-				if err := createMonitorHistory(tx, user, target, alertNameMonitorDown, 0); err != nil {
+				historyID, err := createMonitorHistory(tx, user, target, alertNameMonitorDown, 0)
+				if err != nil {
 					return err
 				}
-				messages = append(messages, am.monitorDownMessage(user, target, transition))
+				message := am.monitorDownMessage(user, target, transition)
+				message.HistoryID = historyID
+				messages = append(messages, message)
 			}
 		case uptime.StatusUp:
 			for _, user := range target.users {
@@ -267,17 +270,21 @@ func openMonitorHistoryUsers(app core.App, monitorID, name string) (map[string]b
 	return users, nil
 }
 
-func createMonitorHistory(app core.App, user string, target monitorTarget, name string, value float64) error {
+// createMonitorHistory opens a monitor alert for a user and returns the history row id.
+func createMonitorHistory(app core.App, user string, target monitorTarget, name string, value float64) (string, error) {
 	collection, err := app.FindCachedCollectionByNameOrId("alerts_history")
 	if err != nil {
-		return err
+		return "", err
 	}
 	history := core.NewRecord(collection)
 	history.Load(map[string]any{
 		"alert_id": target.id, "user": user, "system": target.systemID, "monitor": target.id,
 		"name": name, "monitor_name": target.name, "value": value,
 	})
-	return app.Save(history)
+	if err := app.Save(history); err != nil {
+		return "", err
+	}
+	return history.Id, nil
 }
 
 // resolveMonitorHistory resolves the open history rows of a monitor alert.
@@ -390,10 +397,13 @@ func (am *AlertManager) checkMonitorCert(monitorID string, now time.Time) (err e
 		}
 		daysLeft := certDaysLeft(expires, now)
 		for _, user := range target.users {
-			if err := createMonitorHistory(tx, user, target, alertNameMonitorCert, float64(daysLeft)); err != nil {
+			historyID, err := createMonitorHistory(tx, user, target, alertNameMonitorCert, float64(daysLeft))
+			if err != nil {
 				return err
 			}
-			messages = append(messages, am.monitorCertMessage(user, target, cert, daysLeft, now))
+			message := am.monitorCertMessage(user, target, cert, daysLeft, now)
+			message.HistoryID = historyID
+			messages = append(messages, message)
 		}
 		state.Notified = cert.Expires
 		encoded, err := json.Marshal(state)

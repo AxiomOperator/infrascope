@@ -35,6 +35,8 @@ type AlertManager struct {
 	// systemSuppressed reports whether a system's status alerts are
 	// suppressed because a monitor it depends on is down; nil for never.
 	systemSuppressed func(systemID string) bool
+	// ackSecret overrides the key of acknowledgement links (tests).
+	ackSecret []byte
 }
 
 type AlertMessageData struct {
@@ -44,6 +46,9 @@ type AlertMessageData struct {
 	Message  string
 	Link     string
 	LinkText string
+	// HistoryID is the open alerts_history row the message notifies, if
+	// any; notifications of it include a one-click acknowledgement link.
+	HistoryID string
 }
 
 type UserNotificationSettings struct {
@@ -140,6 +145,8 @@ func (am *AlertManager) bindEvents() {
 	am.hub.OnRecordAfterCreateSuccess("zfs_pools").BindFunc(am.handleZfsPoolCreateAlert)
 	am.hub.OnRecordAfterUpdateSuccess("zfs_pools").BindFunc(am.handleZfsPoolAlert)
 	am.hub.OnRecordAfterDeleteSuccess("zfs_pools").BindFunc(resolveZfsPoolHistoryOnDelete)
+	am.hub.OnRecordCreateRequest("user_settings").BindFunc(validateReminderSettings)
+	am.hub.OnRecordUpdateRequest("user_settings").BindFunc(validateReminderSettings)
 
 	am.hub.OnServe().BindFunc(func(e *core.ServeEvent) error {
 		// Populate all alerts into cache on startup
@@ -160,6 +167,11 @@ func (am *AlertManager) bindEvents() {
 
 // IsNotificationSilenced checks if a notification should be silenced based on configured quiet hours
 func (am *AlertManager) IsNotificationSilenced(userID, systemID string) bool {
+	return am.isNotificationSilencedAt(userID, systemID, time.Now())
+}
+
+// isNotificationSilencedAt checks if quiet hours silence notifications at now.
+func (am *AlertManager) isNotificationSilencedAt(userID, systemID string, now time.Time) bool {
 	// Query for quiet hours windows that match this user and system
 	// Include both global windows (system is null/empty) and system-specific windows
 	var filter string
@@ -183,7 +195,7 @@ func (am *AlertManager) IsNotificationSilenced(userID, systemID string) bool {
 		return false
 	}
 
-	now := time.Now().UTC()
+	now = now.UTC()
 	for _, window := range quietHourWindows {
 		start := window.GetDateTime("start").Time()
 		end := window.GetDateTime("end").Time()
@@ -201,7 +213,15 @@ func (am *AlertManager) SendAlert(data AlertMessageData) error {
 		am.hub.Logger().Info("Notification silenced", "user", data.UserID, "system", data.SystemID, "title", data.Title)
 		return nil
 	}
+	return am.deliverAlert(data)
+}
 
+// deliverAlert sends an alert to the user's destinations without checking
+// quiet hours.
+func (am *AlertManager) deliverAlert(data AlertMessageData) error {
+	if link := am.ackLink(data.HistoryID, data.UserID, time.Now()); link != "" {
+		data.Message += "\n\nAcknowledge: " + link
+	}
 	// get user settings
 	record, err := am.hub.FindFirstRecordByFilter(
 		"user_settings", "user={:user}",

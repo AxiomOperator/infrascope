@@ -241,12 +241,13 @@ func (am *AlertManager) sendContainerHealthAlert(unhealthy bool, systemName stri
 	}
 
 	return am.SendAlert(AlertMessageData{
-		UserID:   alertData.UserID,
-		SystemID: alertData.SystemID,
-		Title:    title,
-		Message:  message,
-		Link:     link,
-		LinkText: linkText,
+		UserID:    alertData.UserID,
+		SystemID:  alertData.SystemID,
+		Title:     title,
+		Message:   message,
+		Link:      link,
+		LinkText:  linkText,
+		HistoryID: openHistoryID(am.hub, alertData.Id, alertData.UserID),
 	})
 }
 

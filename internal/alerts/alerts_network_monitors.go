@@ -217,6 +217,10 @@ func (am *AlertManager) evaluateNetworkMonitorAlerts(app core.App, systemID stri
 						delete(states, m.Id)
 					}
 					changed = true
+					var incidentID string
+					if triggered {
+						incidentID = states[m.Id]
+					}
 					state, comparison := "loss", "exceeds"
 					if !triggered {
 						state, comparison = "recovered", "is at or below"
@@ -226,6 +230,7 @@ func (am *AlertManager) evaluateNetworkMonitorAlerts(app core.App, systemID stri
 						Title:   fmt.Sprintf("Network monitor %s on %s: %s", state, system.GetString("name"), label),
 						Message: fmt.Sprintf("%s on %s: loss over the past hour is %.2f%%, which %s the %.2f%% threshold.", label, system.GetString("name"), result.PacketLoss1h, comparison, alert.GetFloat("value")),
 						Link:    am.hub.MakeLink("system", systemID), LinkText: "View " + system.GetString("name"),
+						HistoryID: incidentID,
 					})
 				}
 			}

@@ -180,6 +180,7 @@ func (am *AlertManager) evaluateMonitorThresholds(monitorID string, result monit
 				}
 				target = &loaded
 			}
+			historyIDs := map[string]string{}
 			if triggered {
 				open, err := openMonitorHistoryUsers(tx, monitorID, threshold.name)
 				if err != nil {
@@ -189,15 +190,19 @@ func (am *AlertManager) evaluateMonitorThresholds(monitorID string, result monit
 					if open[user] {
 						continue
 					}
-					if err := createMonitorHistory(tx, user, *target, threshold.name, value); err != nil {
+					historyID, err := createMonitorHistory(tx, user, *target, threshold.name, value)
+					if err != nil {
 						return err
 					}
+					historyIDs[user] = historyID
 				}
 			} else if err := resolveMonitorHistory(tx, monitorID, threshold.name, now); err != nil {
 				return err
 			}
 			for _, user := range target.users {
-				messages = append(messages, am.monitorThresholdMessage(user, *target, threshold.name, triggered, value, limit))
+				message := am.monitorThresholdMessage(user, *target, threshold.name, triggered, value, limit)
+				message.HistoryID = historyIDs[user]
+				messages = append(messages, message)
 			}
 			*active = triggered
 		}

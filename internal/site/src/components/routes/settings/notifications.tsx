@@ -6,10 +6,12 @@ import * as v from "valibot"
 import { prependBasePath } from "@/components/router"
 import { Button } from "@/components/ui/button"
 import { Dialog } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import { InputTags } from "@/components/ui/input-tags"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "@/components/ui/use-toast"
+import { parseReminderMinutes, REMINDER_MAX_MINUTES, REMINDER_MIN_MINUTES } from "@/lib/alert-ack"
 import { isAdmin } from "@/lib/api"
 import type { UserSettings } from "@/types"
 import { saveSettings } from "./layout"
@@ -26,6 +28,8 @@ const sameList = (a: string[], b: string[]) => a.length === b.length && a.every(
 const SettingsNotificationsPage = ({ userSettings }: { userSettings: UserSettings }) => {
 	const [webhooks, setWebhooks] = useState(userSettings.webhooks ?? [])
 	const [emails, setEmails] = useState<string[]>(userSettings.emails ?? [])
+	const [reminder, setReminder] = useState(String(userSettings.reminderMinutes || ""))
+	const reminderMinutes = parseReminderMinutes(reminder)
 	const [isLoading, setIsLoading] = useState(false)
 	// index of the entry being edited, "new" when adding, null when the dialog is closed
 	const [editing, setEditing] = useState<number | "new" | null>(null)
@@ -35,9 +39,13 @@ const SettingsNotificationsPage = ({ userSettings }: { userSettings: UserSetting
 	useEffect(() => {
 		setWebhooks(userSettings.webhooks ?? [])
 		setEmails(userSettings.emails ?? [])
+		setReminder(String(userSettings.reminderMinutes || ""))
 	}, [userSettings])
 
-	const isDirty = !sameList(webhooks, userSettings.webhooks ?? []) || !sameList(emails, userSettings.emails ?? [])
+	const isDirty =
+		!sameList(webhooks, userSettings.webhooks ?? []) ||
+		!sameList(emails, userSettings.emails ?? []) ||
+		reminderMinutes !== (userSettings.reminderMinutes || 0)
 
 	function openDialog(target: number | "new") {
 		setDialogKey((k) => k + 1)
@@ -53,10 +61,18 @@ const SettingsNotificationsPage = ({ userSettings }: { userSettings: UserSetting
 	const removeWebhook = (index: number) => setWebhooks(webhooks.filter((_, i) => i !== index))
 
 	async function updateSettings() {
+		if (reminderMinutes === null) {
+			toast({
+				title: t`Failed to save settings`,
+				description: t`Enter a reminder interval between ${REMINDER_MIN_MINUTES} and ${REMINDER_MAX_MINUTES} minutes, or leave it blank.`,
+				variant: "destructive",
+			})
+			return
+		}
 		setIsLoading(true)
 		try {
 			const parsedData = v.parse(NotificationSchema, { emails, webhooks })
-			await saveSettings(parsedData)
+			await saveSettings({ ...parsedData, reminderMinutes })
 		} catch (e: unknown) {
 			toast({
 				title: t`Failed to save settings`,
@@ -167,6 +183,45 @@ const SettingsNotificationsPage = ({ userSettings }: { userSettings: UserSetting
 							/>
 						)}
 					</Dialog>
+				</div>
+				<Separator />
+				<div className="grid gap-2">
+					<div className="mb-1">
+						<h3 className="mb-1 text-lg font-medium">
+							<Trans>Reminders</Trans>
+						</h3>
+						<p className="text-sm text-muted-foreground leading-relaxed">
+							<Trans>
+								Repeat notifications for unacknowledged alerts every N minutes until they are acknowledged or resolved
+								(at most 24 times). Quiet hours apply.
+							</Trans>
+						</p>
+					</div>
+					<Label className="block" htmlFor="reminder-minutes">
+						<Trans>Reminder interval (minutes)</Trans>
+					</Label>
+					<Input
+						id="reminder-minutes"
+						type="number"
+						inputMode="numeric"
+						min={REMINDER_MIN_MINUTES}
+						max={REMINDER_MAX_MINUTES}
+						step={1}
+						value={reminder}
+						onChange={(e) => setReminder(e.target.value)}
+						placeholder={t`Off`}
+						className="w-40"
+						aria-invalid={reminderMinutes === null}
+					/>
+					<p
+						className={
+							reminderMinutes === null ? "text-[0.8rem] text-destructive" : "text-[0.8rem] text-muted-foreground"
+						}
+					>
+						<Trans>
+							Between {REMINDER_MIN_MINUTES} and {REMINDER_MAX_MINUTES}. Leave blank or 0 to disable reminders.
+						</Trans>
+					</p>
 				</div>
 				<Separator />
 				<div className="space-y-3">

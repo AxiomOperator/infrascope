@@ -75,14 +75,17 @@ export function AlertBannerSheetItem({
 	icon: Icon,
 	title,
 	description,
+	footer,
 }: {
 	href: string
 	onClick?: () => void
 	icon: LucideIcon | React.FC<{ className?: string }>
 	title: ReactNode
 	description?: ReactNode
+	/** Content below the item, outside its link (for controls). */
+	footer?: ReactNode
 }) {
-	return (
+	const link = (
 		<Link
 			href={href}
 			onClick={onClick}
@@ -97,5 +100,14 @@ export function AlertBannerSheetItem({
 			</div>
 			<ChevronRightIcon className="size-4 self-center shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
 		</Link>
+	)
+	if (!footer) {
+		return link
+	}
+	return (
+		<div className="grid gap-2 rounded-lg border p-2 [&>a]:border-0 [&>a]:p-1">
+			{link}
+			<div className="px-1 pb-1">{footer}</div>
+		</div>
 	)
 }
