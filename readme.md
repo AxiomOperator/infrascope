@@ -1,74 +1,55 @@
-# Beszel
+# InfraScope
 
-Beszel is a lightweight server monitoring platform that includes Docker statistics, historical data, and alert functions.
+InfraScope is a self-hosted server monitoring and uptime platform. It tracks system and container metrics, runs uptime checks from the hub or from your own machines, alerts you through the channels you choose, and publishes public status pages.
 
-It has a friendly web interface, simple configuration, and is ready to use out of the box. It supports automatic backup, multi-user, OAuth authentication, and API access.
-
-[![agent Docker Image Size](https://img.shields.io/docker/image-size/henrygd/beszel-agent/latest?logo=docker&label=agent%20image%20size)](https://hub.docker.com/r/henrygd/beszel-agent)
-[![hub Docker Image Size](https://img.shields.io/docker/image-size/henrygd/beszel/latest?logo=docker&label=hub%20image%20size)](https://hub.docker.com/r/henrygd/beszel)
-[![MIT license](https://img.shields.io/github/license/henrygd/beszel?color=%239944ee)](https://github.com/henrygd/beszel/blob/main/LICENSE)
-[![Crowdin](https://badges.crowdin.net/beszel/localized.svg)](https://crowdin.com/project/beszel)
-
-![Screenshot of Beszel dashboard and system page, side by side. The dashboard shows metrics from multiple connected systems, while the system page shows detailed metrics for a single system.](https://henrygd-assets.b-cdn.net/beszel/screenshot-new.png)
+InfraScope is a fork of [Beszel](https://github.com/henrygd/beszel).
 
 ## Features
 
-- **Lightweight**: Smaller and less resource-intensive than leading solutions.
-- **Simple**: Easy setup with little manual configuration required.
-- **Alerts**: Configurable alerts for most metrics. Supports many notification services.
-- **Docker stats**: Tracks CPU, memory, and network usage history for each container.
-- **Network monitoring**: Monitor response time and interruptions directly from agents.
-- **S.M.A.R.T.**: Disk health data and notifications on drive failure.
-- **Multi-user**: Users manage their own systems. Admins can share systems across users.
-- **OAuth / OIDC**: Supports many OAuth2 providers. Password auth can be disabled.
-- **Automatic backups**: Save to and restore from disk or S3-compatible storage.
-<!-- - **REST API**: Use or update your data in your own scripts and applications. -->
+- **System metrics:** CPU, memory (including swap and ZFS ARC), disks, disk I/O, network, load, temperatures, fans, GPUs (NVIDIA, AMD, Intel, Apple), battery and Wi-Fi.
+- **Containers:** Docker and Podman stats, health, logs and image updates.
+- **Disks and services:** S.M.A.R.T. (including eMMC and mdraid), ZFS/storage pools, systemd services, OS package updates.
+- **Uptime monitoring:**
+  - **Check types:** HTTP (methods, headers, status codes, keyword/JSON checks), TCP, ICMP, DNS records, SSH, PostgreSQL, MySQL, Redis, SMTP, IMAP, gRPC, game servers, Docker containers, and push/heartbeat monitors.
+  - **Locations:** run each check from the hub, from agents, or from several locations with a quorum.
+  - **Results:** retries, uptime %, incident history, certificate expiry and packet-loss/latency alerts.
+  - **Setup:** monitors can be created from Docker labels or imported from Uptime Kuma.
+- **Alerts and notifications:**
+  - **Delivery:** named channels (email, 24 Shoutrrr services with a guided setup form, and browser push), routed by severity, with message templates.
+  - **Controls:** quiet hours, maintenance windows, dependency-aware alerts, acknowledgements and reminders.
+- **Status pages and incidents:** public pages with groups, branding, custom domains, badges and RSS/Atom feeds; incident timelines and email subscriptions.
+- **Multi-user:** roles, OAuth/OIDC, MFA, and sharing systems between users.
 
 ## Architecture
 
-Beszel consists of two main components: the **hub** and the **agent**.
-
-- **Hub**: A web application built on [PocketBase](https://pocketbase.io/) that provides a dashboard for viewing and managing connected systems.
-- **Agent**: Runs on each system you want to monitor and communicates system metrics to the hub.
+- **Hub:** a single Go binary built on [PocketBase](https://pocketbase.io/). It serves the web UI and API, runs hub-side checks, and stores data in SQLite.
+- **Agent:** a lightweight Go binary on each monitored machine. It connects to the hub over WebSocket (outbound) or accepts SSH connections from the hub.
 
 ## Getting started
 
-The [quick start guide](https://beszel.dev/guide/getting-started) and other documentation is available on our website, [beszel.dev](https://beszel.dev). You'll be up and running in a few minutes.
+| | |
+|---|---|
+| [Run the hub](docs/hub.md) | Build from source, Docker Compose, systemd, reverse proxy, environment variables |
+| [Deploy agents](docs/agent.md) | linux-amd64 builds from CI, install script, Docker, systemd, agent settings |
+| [Update](docs/updating.md) | Signed self-updates, Docker and manual updates |
+| [Develop and release](docs/development.md) | Tests, builds, CI workflows, publishing signed releases |
 
-## Screenshots
+Quick start from source:
 
-![Dashboard](https://beszel.dev/image/dashboard.png)
-![System page](https://beszel.dev/image/system-full.png)
-![Notification Settings](https://beszel.dev/image/settings-notifications.png)
+```bash
+git clone https://github.com/AxiomOperator/infrascope.git && cd infrascope
+make build-web-ui && make build-hub
+./build/beszel_linux_amd64 serve --http 0.0.0.0:8090
+```
 
-## Supported metrics
+Then open `http://localhost:8090`, create your account, and click **Add system** to get the agent's install details.
 
-- **CPU usage** - Host system and Docker / Podman containers.
-- **Memory usage** - Host system and containers. Includes swap and ZFS ARC.
-- **Disk usage** - Host system. Supports multiple partitions and devices.
-- **Disk I/O** - Host system. Supports multiple partitions and devices.
-- **Network usage** - Host system and containers.
-- **Load average** - Host system.
-- **Temperature** - Host system sensors.
-- **Fan speed** - Host system sensors (Linux, via `/sys/class/hwmon`).
-- **GPU usage / power draw** - Nvidia, AMD, and Intel.
-- **Battery charge** - Host system and some peripherals.
-- **Containers** - Status and metrics of all running Docker / Podman containers.
-- **S.M.A.R.T.** - Host system disk health (includes eMMC wear/EOL and Linux mdraid array health via sysfs when available).
-- **ZFS** - Pool capacity, usage, health, I/O throughput, scrub status, and per-dataset usage.
+> InfraScope hasn't published a release yet. Prebuilt linux-amd64 agents are available as artifacts of the **Build agent (linux-amd64)** GitHub Actions workflow; see [Deploying the agent](docs/agent.md#option-a-linux-amd64-binary-from-ci).
 
-## Help and discussion
+## Issues
 
-Please search existing issues and discussions before opening a new one. I try my best to respond, but may not always have time to do so.
-
-#### Bug reports and feature requests
-
-Bug reports and feature requests can be posted on [GitHub issues](https://github.com/henrygd/beszel/issues).
-
-#### Support and general discussion
-
-Support requests and general discussion can be posted on [GitHub discussions](https://github.com/henrygd/beszel/discussions) or the community-run [Matrix room](https://matrix.to/#/#beszel:matrix.org): `#beszel:matrix.org`.
+Report bugs and request features in [GitHub issues](https://github.com/AxiomOperator/infrascope/issues).
 
 ## License
 
-Beszel is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+InfraScope is licensed under the MIT License. It's based on Beszel © 2024 henrygd. See [LICENSE](LICENSE).

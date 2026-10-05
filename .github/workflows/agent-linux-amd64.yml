@@ -1,0 +1,106 @@
+name: Build agent (linux-amd64)
+
+# Builds the InfraScope agent for linux/amd64 on every push to main, on pull
+# requests and on demand, and uploads the archives as a workflow artifact.
+# Tagged releases are still built and published by release.yml.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "agent/**"
+      - "internal/**"
+      - "!internal/site/**"
+      - "beszel.go"
+      - "go.mod"
+      - "go.sum"
+      - ".github/workflows/agent-linux-amd64.yml"
+  pull_request:
+    paths:
+      - "agent/**"
+      - "internal/**"
+      - "!internal/site/**"
+      - "beszel.go"
+      - "go.mod"
+      - "go.sum"
+      - ".github/workflows/agent-linux-amd64.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-linux-amd64-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test agent
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Vet
+        run: go vet -tags=testing ./agent/... ./internal/netmon/... ./internal/cmd/agent/...
+
+      - name: Test
+        run: go test -tags=testing ./agent/... ./internal/netmon/...
+
+  build:
+    name: Build linux-amd64
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      # Optional: embeds the release signing public key so the binary can
+      # verify signed self-updates. Without it, `beszel-agent update` refuses
+      # to install updates, which is the safe default for development builds.
+      RELEASE_PUBLIC_KEY: ${{ vars.INFRASCOPE_RELEASE_PUBLIC_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Build
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          set -euo pipefail
+          ldflags="-s -w -X github.com/henrygd/beszel/internal/ghupdate.releasePublicKey=${RELEASE_PUBLIC_KEY}"
+          mkdir -p dist/static dist/glibc
+          # Static build: runs on any linux/amd64 system (glibc or musl).
+          go build -trimpath -ldflags "$ldflags" -o dist/static/beszel-agent ./internal/cmd/agent
+          # glibc build: adds NVIDIA GPU monitoring through NVML.
+          go build -trimpath -tags=glibc -ldflags "$ldflags" -o dist/glibc/beszel-agent ./internal/cmd/agent
+          tar -C dist/static -czf dist/beszel-agent_linux_amd64.tar.gz beszel-agent
+          tar -C dist/glibc -czf dist/beszel-agent_linux_amd64_glibc.tar.gz beszel-agent
+          (cd dist && sha256sum beszel-agent_linux_amd64.tar.gz beszel-agent_linux_amd64_glibc.tar.gz > checksums.txt)
+          cat dist/checksums.txt
+
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          dist/static/beszel-agent --version
+          dist/glibc/beszel-agent --version
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: beszel-agent_linux_amd64-${{ github.sha }}
+          path: |
+            dist/beszel-agent_linux_amd64.tar.gz
+            dist/beszel-agent_linux_amd64_glibc.tar.gz
+            dist/checksums.txt
+          if-no-files-found: error
+          retention-days: 30
