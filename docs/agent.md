@@ -28,7 +28,7 @@ Each agent supports two connection modes, and can use both at once:
 
 ## Step 2: install the agent
 
-> **Release status:** InfraScope hasn't published a GitHub release yet, so the install script and published Docker images aren't available. Use **[a CI build](#option-a-linux-amd64-binary-from-ci)** or **[build from source](#option-d-build-from-source)** until then.
+> For most installs, use **[the install script](#option-b-install-script-linux)** or **[Docker](#option-c-docker-compose)**; both use [InfraScope's releases](https://github.com/AxiomOperator/infrascope/releases). To install a prebuilt binary directly, download `beszel-agent_<os>_<arch>.tar.gz` from the latest release. **CI builds (option A)** carry the latest unreleased code from `main`.
 
 ### Option A: linux-amd64 binary from CI
 
@@ -58,7 +58,7 @@ sudo install -m 0755 beszel-agent /usr/local/bin/beszel-agent
 
 Then [run it as a systemd service](#run-as-a-systemd-service).
 
-### Option B: install script (Linux, after the first release)
+### Option B: install script (Linux)
 
 ```bash
 curl -sL https://raw.githubusercontent.com/AxiomOperator/infrascope/main/supplemental/scripts/install-agent.sh -o install-agent.sh
@@ -80,7 +80,7 @@ The script installs to `/opt/beszel-agent`, creates a `beszel` system user, and 
 
 ### Option C: Docker Compose
 
-Build the image locally until releases publish `ghcr.io/axiomoperator/infrascope/beszel-agent`:
+Each release publishes `ghcr.io/axiomoperator/infrascope/beszel-agent`. There are also `beszel-agent-nvidia` and `beszel-agent-intel` variants for GPU monitoring. Tags are `latest`, the full version (e.g. `0.21.0`), `0.21` and `0`. To build it yourself:
 
 ```bash
 docker build -f internal/dockerfile_agent -t infrascope-agent .
@@ -89,7 +89,7 @@ docker build -f internal/dockerfile_agent -t infrascope-agent .
 ```yaml
 services:
   infrascope-agent:
-    image: infrascope-agent          # or ghcr.io/axiomoperator/infrascope/beszel-agent:<version>
+    image: ghcr.io/axiomoperator/infrascope/beszel-agent:latest   # or a version tag, e.g. 0.21.0
     container_name: infrascope-agent
     restart: unless-stopped
     network_mode: host               # needed for accurate network stats

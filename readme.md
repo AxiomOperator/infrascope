@@ -44,7 +44,7 @@ make build-web-ui && make build-hub
 
 Then open `http://localhost:8090`, create your account, and click **Add system** to get the agent's install details.
 
-> InfraScope hasn't published a release yet. Prebuilt linux-amd64 agents are available as artifacts of the **Build agent (linux-amd64)** GitHub Actions workflow; see [Deploying the agent](docs/agent.md#option-a-linux-amd64-binary-from-ci).
+> Prebuilt, signed binaries, `.deb` packages and Docker images (`ghcr.io/axiomoperator/infrascope/beszel`, `…/beszel-agent`) come with each [release](https://github.com/AxiomOperator/infrascope/releases).
 
 ## Issues
 

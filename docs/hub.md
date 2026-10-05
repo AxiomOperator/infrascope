@@ -2,7 +2,7 @@
 
 The hub is a single Go binary (`beszel`) that serves the web UI, the API, public status pages, and the endpoint agents connect to. It stores everything in a data directory (`beszel_data` by default).
 
-> **Release status:** InfraScope hasn't published a GitHub release yet. Until it does, the release-based options (install script, prebuilt binaries, published Docker images) aren't available. Use **[build from source](#option-1-build-from-source)** or **[Docker built locally](#option-2-docker-compose)** instead.
+> Prebuilt binaries, Docker images and the install script come from [InfraScope's releases](https://github.com/AxiomOperator/infrascope/releases). The quickest start is **[Docker Compose](#option-2-docker-compose)** or **[the install script](#option-3-systemd-service-with-the-install-script)**. To use a prebuilt binary directly, download `beszel_<os>_<arch>.tar.gz` from the latest release, extract it, and run `./beszel serve --http 0.0.0.0:8090`.
 
 ## Requirements
 
@@ -42,7 +42,7 @@ Useful flags:
 
 ## Option 2: Docker Compose
 
-Published images will be at `ghcr.io/axiomoperator/infrascope/beszel` once the first release is tagged. Until then, build the image locally from the repository root, after building the web UI as in option 1:
+Each release publishes `ghcr.io/axiomoperator/infrascope/beszel` for amd64, arm64 and arm. Tags are `latest`, the full version (e.g. `0.21.0`), `0.21` and `0`. To build the image yourself instead, build the web UI as in option 1, then run this from the repository root:
 
 ```bash
 docker build -f internal/dockerfile_hub -t infrascope-hub .
@@ -53,7 +53,7 @@ docker build -f internal/dockerfile_hub -t infrascope-hub .
 ```yaml
 services:
   infrascope:
-    image: infrascope-hub            # or ghcr.io/axiomoperator/infrascope/beszel:<version>
+    image: ghcr.io/axiomoperator/infrascope/beszel:latest   # or a version tag, e.g. 0.21.0
     container_name: infrascope
     restart: unless-stopped
     ports:
@@ -73,7 +73,7 @@ The container starts as root, takes ownership of `/beszel_data`, and then switch
 
 ## Option 3: systemd service with the install script
 
-Once releases exist, `supplemental/scripts/install-hub.sh` installs the hub as a systemd service with its own `beszel` user:
+`supplemental/scripts/install-hub.sh` downloads the latest release and installs the hub as a systemd service with its own `beszel` user:
 
 ```bash
 curl -sL https://raw.githubusercontent.com/AxiomOperator/infrascope/main/supplemental/scripts/install-hub.sh -o install-hub.sh
