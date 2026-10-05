@@ -12,7 +12,7 @@ before:
 builds:
   - id: beszel
     binary: beszel
-    main: internal/cmd/hub/hub.go
+    main: ./internal/cmd/hub
     env:
       - CGO_ENABLED=0
     # Embeds the release signing public key; self-updates verify archives
@@ -42,7 +42,7 @@ builds:
 
   - id: beszel-agent
     binary: beszel-agent
-    main: internal/cmd/agent/agent.go
+    main: ./internal/cmd/agent
     env:
       - CGO_ENABLED=0
     ldflags:
@@ -94,7 +94,7 @@ builds:
 
   - id: beszel-agent-linux-amd64-glibc
     binary: beszel-agent
-    main: internal/cmd/agent/agent.go
+    main: ./internal/cmd/agent
     env:
       - CGO_ENABLED=0
     flags:
