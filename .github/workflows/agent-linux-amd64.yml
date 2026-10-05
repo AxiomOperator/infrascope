@@ -95,7 +95,7 @@ jobs:
           dist/glibc/beszel-agent --version
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: beszel-agent_linux_amd64-${{ github.sha }}
           path: |
