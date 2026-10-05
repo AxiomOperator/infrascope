@@ -36,6 +36,9 @@ export default defineConfig({
 		"zh-HK",
 	],
 	sourceLocale: "en",
+	// Sort by message id so extraction is deterministic. Sorting by message text
+	// leaves entries with the same text but different contexts in a random order.
+	orderBy: "messageId",
 	compileNamespace: "ts",
 	formatOptions: {
 		lineNumbers: false,
