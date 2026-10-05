@@ -10,7 +10,8 @@ const { detectService, getService, services } = lib
 
 type Fields = Record<string, string | boolean | string[]>
 
-// Fake Slack credentials, assembled at runtime so secret scanners don't flag them.
+// Fake Slack and Telegram credentials, assembled at runtime so secret scanners don't flag them.
+const TELEGRAM_TOKEN = ["123456789", "TEST-ONLY_not_a_real_token_0000000"].join(":")
 const SLACK_BOT_TOKEN = ["xoxb", "123456789012", "1234567890123", "4mt0t4l1YL3g1T5L4cK70k3N"].join("-")
 const SLACK_HOOK = ["https://hooks.slack.com/services", "T00000000", "B00000000", "X".repeat(24)].join("/")
 const SLACK_HOOK_2 = ["https://hooks.slack.com/services", "WNA3PBYV6", "F20DUQND3RQ", "Webc4MAvoacrpPakR8phF0zi"].join(
@@ -104,7 +105,7 @@ const samples: Record<string, Fields> = {
 		color: "attention",
 	},
 	telegram: {
-		token: "110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw",
+		token: TELEGRAM_TOKEN,
 		chats: ["@channel-1", "-1001234"],
 		parseMode: "HTML",
 		notification: false,
