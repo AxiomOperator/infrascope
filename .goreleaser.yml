@@ -160,13 +160,13 @@ nfpms:
   - id: beszel-agent
     package_name: beszel-agent
     description: |-
-      Agent for Beszel
-      Beszel is a lightweight server monitoring platform that includes Docker
-      statistics, historical data, and alert functions. It has a friendly web
-      interface, simple configuration, and is ready to use out of the box.
-      It supports automatic backup, multi-user, OAuth authentication, and
-      API access.
-    maintainer: henrygd <hank@henrygd.me>
+      Agent for InfraScope
+      InfraScope is a self-hosted server monitoring and uptime platform. The
+      agent collects system, container and disk metrics and runs uptime checks
+      for the InfraScope hub.
+    maintainer: AxiomOperator <axiomoperator@users.noreply.github.com>
+    homepage: https://github.com/AxiomOperator/infrascope
+    license: MIT
     section: net
     ids:
       - beszel-agent
@@ -294,7 +294,9 @@ winget:
       #     branch: master
 
 release:
-  draft: true
+  # Publish immediately; tags with a suffix such as v1.0.0-rc.1 are marked as pre-releases.
+  draft: false
+  prerelease: auto
 
 changelog:
   disable: true
