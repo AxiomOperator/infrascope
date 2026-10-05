@@ -151,10 +151,10 @@ signs:
   - id: release-archives
     artifacts: archive
     cmd: /tmp/infrascope-signtool
-    args: ["-in", "${artifact}", "-out", "${signature}"]
+    # The release workflow writes the INFRASCOPE_RELEASE_SIGNING_KEY secret to this
+    # file before GoReleaser runs and removes it afterwards.
+    args: ["-key-file", "/tmp/infrascope-release-signing.key", "-in", "${artifact}", "-out", "${signature}"]
     signature: "${artifact}.sig"
-    env:
-      - INFRASCOPE_RELEASE_SIGNING_KEY={{ .Env.INFRASCOPE_RELEASE_SIGNING_KEY }}
 
 nfpms:
   - id: beszel-agent

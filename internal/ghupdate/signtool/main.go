@@ -5,8 +5,8 @@
 //	signtool -in beszel_linux_amd64.tar.gz -out beszel_linux_amd64.tar.gz.sig
 //
 // The base64 ed25519 private key (32-byte seed or 64-byte key) is read from
-// the environment variable named by -key-env (INFRASCOPE_RELEASE_SIGNING_KEY),
-// a repository secret. Builds embed the matching public key through
+// the file given by -key-file or, without it, from the environment variable
+// named by -key-env (INFRASCOPE_RELEASE_SIGNING_KEY), a repository secret. Builds embed the matching public key through
 // -X github.com/henrygd/beszel/internal/ghupdate.releasePublicKey=<base64>.
 //
 // signtool -generate prints a new key pair; signtool -public prints the public
@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/henrygd/beszel/internal/ghupdate"
 )
@@ -28,6 +29,7 @@ func main() {
 	in := flag.String("in", "", "archive to sign")
 	out := flag.String("out", "", "signature file to write")
 	keyEnv := flag.String("key-env", "INFRASCOPE_RELEASE_SIGNING_KEY", "environment variable holding the base64 private key")
+	keyFile := flag.String("key-file", "", "file holding the base64 private key (takes precedence over -key-env)")
 	generate := flag.Bool("generate", false, "print a new key pair")
 	public := flag.Bool("public", false, "print the public key of the private key")
 	flag.Parse()
@@ -41,8 +43,13 @@ func main() {
 	}
 
 	encoded := os.Getenv(*keyEnv)
+	if *keyFile != "" {
+		data, err := os.ReadFile(*keyFile)
+		exitOnError(err)
+		encoded = strings.TrimSpace(string(data))
+	}
 	if encoded == "" {
-		exitOnError(fmt.Errorf("%s is not set: releases must be signed", *keyEnv))
+		exitOnError(fmt.Errorf("no signing key in -key-file or %s: releases must be signed", *keyEnv))
 	}
 	privateKey, err := ghupdate.ParsePrivateKey(encoded)
 	exitOnError(err)

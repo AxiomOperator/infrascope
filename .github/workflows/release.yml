@@ -41,6 +41,25 @@ jobs:
           dotnet build -c Release ./agent/lhm/beszel_lhm.csproj
         shell: bash
 
+      - name: Prepare release signing key
+        env:
+          INFRASCOPE_RELEASE_SIGNING_KEY: ${{ secrets.INFRASCOPE_RELEASE_SIGNING_KEY }}
+          INFRASCOPE_RELEASE_PUBLIC_KEY: ${{ vars.INFRASCOPE_RELEASE_PUBLIC_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$INFRASCOPE_RELEASE_SIGNING_KEY" ] || [ -z "$INFRASCOPE_RELEASE_PUBLIC_KEY" ]; then
+            echo "::error::Set the INFRASCOPE_RELEASE_SIGNING_KEY secret and INFRASCOPE_RELEASE_PUBLIC_KEY variable (see docs/development.md)."
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$INFRASCOPE_RELEASE_SIGNING_KEY" > /tmp/infrascope-release-signing.key
+          # Fail fast if the private key doesn't match the public key embedded in the binaries.
+          derived=$(go run ./internal/ghupdate/signtool -key-file /tmp/infrascope-release-signing.key -public)
+          if [ "$derived" != "$INFRASCOPE_RELEASE_PUBLIC_KEY" ]; then
+            echo "::error::INFRASCOPE_RELEASE_SIGNING_KEY does not match INFRASCOPE_RELEASE_PUBLIC_KEY."
+            exit 1
+          fi
+
       - name: GoReleaser beszel
         uses: goreleaser/goreleaser-action@v7
         with:
@@ -52,6 +71,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.TOKEN || secrets.GITHUB_TOKEN }}
           WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
           IS_FORK: ${{ github.repository_owner != 'henrygd' }}
-          # Release signing (see .goreleaser.yml signs); self-updates refuse unsigned archives.
-          INFRASCOPE_RELEASE_SIGNING_KEY: ${{ secrets.INFRASCOPE_RELEASE_SIGNING_KEY }}
+          # Embedded in the binaries so self-updates can verify signed archives.
+          # The private key is read from the file written by the step above.
           INFRASCOPE_RELEASE_PUBLIC_KEY: ${{ vars.INFRASCOPE_RELEASE_PUBLIC_KEY }}
+
+      - name: Remove release signing key
+        if: always()
+        run: rm -f /tmp/infrascope-release-signing.key
